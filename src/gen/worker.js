@@ -165,7 +165,11 @@ async function generate(params, signal, progress) {
 	progress(0.9, 'Tafle wody i brzegi');
 	await new Promise((r) => setTimeout(r, 0));
 	const { h16, s8, min, max, percent } = packTerrain(raw, cover, n, coverRes, size);
-	const places = pickPlaces(allPlaces, half).map((p, i) => {
+	// miejscowość, od której region wziął nazwę, na początek listy (domyślne miejsce startu)
+	const picked = pickPlaces(allPlaces, half);
+	const own = picked.findIndex((p) => p.name.toLowerCase() === String(name).toLowerCase());
+	if (own > 0) picked.unshift(...picked.splice(own, 1));
+	const places = picked.map((p, i) => {
 		const ll = localToLonLat(p.x, p.z, center);
 		return { id: `p${i}`, name: p.name, cls: p.cls, lon: +ll.lon.toFixed(5), lat: +ll.lat.toFixed(5) };
 	});
