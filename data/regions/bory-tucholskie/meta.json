@@ -1,0 +1,80 @@
+{
+	"id": "bory-tucholskie",
+	"name": "Bory Tucholskie",
+	"center": {
+		"lon": 17.65,
+		"lat": 53.64
+	},
+	"size": 46000,
+	"bounds": {
+		"west": 17.301106849710436,
+		"north": 53.846843683656644,
+		"east": 17.99889315028956,
+		"south": 53.43315631634336
+	},
+	"height": {
+		"file": "height.bin.gz",
+		"res": 2048,
+		"min": 79,
+		"max": 213
+	},
+	"cover": {
+		"file": "cover.bin.gz",
+		"res": 4096,
+		"classes": {
+			"grass": 0,
+			"forest": 1,
+			"shrub": 2,
+			"crop": 3,
+			"built": 4,
+			"bare": 5,
+			"water": 6,
+			"wetland": 7
+		},
+		"percent": {
+			"grass": 14.2,
+			"forest": 40.9,
+			"shrub": 0,
+			"crop": 39.8,
+			"built": 2,
+			"bare": 0,
+			"water": 2.9,
+			"wetland": 0.1
+		}
+	},
+	"shore": {
+		"file": "shore.bin.gz",
+		"res": 2048,
+		"metersPerUnit": 3,
+		"zero": 128
+	},
+	"sources": [
+		{
+			"name": "AWS Terrain Tiles (Terrarium)",
+			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
+		},
+		{
+			"name": "ESA WorldCover 10 m 2021 v200",
+			"license": "CC BY 4.0, © ESA WorldCover project / Copernicus Sentinel data 2021"
+		},
+		{
+			"name": "OpenStreetMap",
+			"license": "ODbL, © współtwórcy OpenStreetMap"
+		}
+	],
+	"baked": "2026-10-17T09:09:53.697Z",
+	"osm": {
+		"file": "osm.json.gz",
+		"counts": {
+			"roads": 21768,
+			"rails": 488,
+			"buildings": 73194,
+			"waterways": 907,
+			"power": 207,
+			"treeRows": 280,
+			"stations": 19,
+			"crossings": 255,
+			"platforms": 46
+		}
+	}
+}

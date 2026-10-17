@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Lot – nad Polską</title>
+	<link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="src/ui/menu.css">
+	<script type="importmap">
+	{
+		"imports": {
+			"three": "./vendor/three/three.webgpu.js",
+			"three/webgpu": "./vendor/three/three.webgpu.js",
+			"three/tsl": "./vendor/three/three.tsl.js",
+			"three/addons/": "./vendor/three/addons/"
+		}
+	}
+	</script>
+</head>
+<body>
+	<canvas id="view"></canvas>
+
+	<div id="hud">
+		<header>
+			<h1>Lot <span id="region-name"></span></h1>
+			<button id="hud-toggle" title="Ukryj panel (H)">–</button>
+		</header>
+		<div class="hud-body">
+			<label>Godzina <output id="hour-v"></output>
+				<span class="row"><input id="hour" type="range" min="0" max="24" step="0.01"><button id="play" title="Upływ czasu">▶</button></span>
+			</label>
+			<label>Data <output id="day-v"></output><input id="day" type="range" min="1" max="365" step="1"></label>
+			<label>Powietrze <output id="haze-v"></output><input id="haze" type="range" min="1" max="40" step="0.5"></label>
+			<label>Chmury <output id="cover-v"></output><input id="cover" type="range" min="0" max="0.9" step="0.01"></label>
+			<label>Miniatura <output id="mini-v"></output><input id="mini" type="range" min="0" max="2" step="0.05"></label>
+			<label>Ekspozycja <output id="exposure-v"></output><input id="exposure" type="range" min="0.3" max="3" step="0.01"></label>
+			<label>Rzeźba terenu <output id="relief-v"></output><input id="relief" type="range" min="1" max="4" step="0.1"></label>
+			<p class="hint">Lot: A/D (←/→) – przechył i skręt · W/S (↑/↓) – wznoszenie i opadanie · E/Shift i Q – gaz · R – od nowa<br>Kamera: C – za samolotem / kabina / swobodna · V – kabina · kółko – odległość (w kabinie – pole widzenia) · prawy przycisk – kąt (w kabinie: przeciąganie – rozglądanie się, dwuklik – na wprost) · L – reflektory · H – panel</p>
+		</div>
+	</div>
+	<div id="flight">
+		<div><b id="speed">0</b><span>km/h</span></div>
+		<div><b id="alt">0</b><span>m n.p.m.</span></div>
+		<div><b id="agl">0</b><span>m nad ziemią</span></div>
+		<div><b id="thr">0</b><span>% gazu</span></div>
+		<div class="mode">kamera: <span id="mode">za samolotem</span> (C)</div>
+	</div>
+	<div id="esc-hint">Esc – pauza i menu</div>
+	<div id="fps"></div>
+	<div id="credits">Wysokości: AWS Terrain Tiles · Pokrycie: ESA WorldCover 2021 (CC BY 4.0) · Drogi, budynki, tory: © współtwórcy OpenStreetMap (ODbL)</div>
+
+	<section id="menu" hidden aria-label="Menu gry"></section>
+
+	<div id="boot">
+		<div class="boot-card">
+			<svg viewBox="0 0 64 64" aria-hidden="true" style="color:#f6c344"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/><path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/><path fill="#8fd0ff" d="M30.2 13h3.6v4.2h-3.6z" opacity=".9"/></svg>
+			<div class="eyebrow">SP-DRB · BORY TUCHOLSKIE · 53°38′ N</div>
+			<h1>LOT</h1>
+			<div class="sub-title">NAD POLSKĄ</div>
+			<p class="lead">zręcznościowy lot nad prawdziwą mapą Polski</p>
+			<div class="boot-bar"><i id="boot-bar"></i></div>
+			<div class="boot-stage" id="boot-stage">Wczytywanie terenu…</div>
+			<div class="boot-press">Kliknij lub naciśnij dowolny klawisz</div>
+			<div class="version" id="boot-version"></div>
+		</div>
+	</div>
+	<div id="nogpu" hidden>
+		<div class="box">
+			<div class="title" id="nogpu-title"></div>
+			<p id="nogpu-text"></p>
+		</div>
+	</div>
+
+	<script type="module" src="src/main.js"></script>
+</body>
+</html>
