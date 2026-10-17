@@ -44,7 +44,7 @@ npm run dist:dir   # tylko rozpakowana aplikacja w dist/win-unpacked
 npm run icon       # ikony: favicon.ico, icons/, build/icon.png
 ```
 
-- **Web** (`tools/web.js`): `index.html`, `style.css`, ikony, `src/`, `vendor/three/` i `data/regions/` (bez podglądów i opisów), ok. 17 MB. Wystarczy dowolny serwer statyczny, ale WebGPU działa tylko w bezpiecznym kontekście – strona musi być podana przez HTTPS (albo z localhost). Dane `.gz` gra rozpakowuje sama; gdy serwer doda do nich `Content-Encoding: gzip`, też działa. Podgląd zbudowanej wersji: `node server.js web/lot`.
+- **Web** (`tools/web.js`): `index.html`, `style.css`, ikony, `src/`, `vendor/three/` i `data/regions/` (bez podglądów i opisów), ok. 125 MB (trzy regiony). Wystarczy dowolny serwer statyczny, ale WebGPU działa tylko w bezpiecznym kontekście – strona musi być podana przez HTTPS (albo z localhost). Dane `.gz` gra rozpakowuje sama; gdy serwer doda do nich `Content-Encoding: gzip`, też działa. Podgląd zbudowanej wersji: `node server.js web/lot`.
 - **Electron** (`electron/`): pliki gry podaje protokół `app://game` (moduły ES, mapa importów, `fetch` danych i `localStorage` działają jak na serwerze), proszona jest wydajna karta graficzna. F11 / Alt+Enter – pełny ekran, okno pamięta rozmiar i położenie, w menu głównym jest „Wyjdź z gry”. Izolacja kontekstu i piaskownica; stronie udostępnione jest tylko `window.desktop` (pełny ekran, wyjście). Ctrl+Shift+I – narzędzia deweloperskie (tylko wersja niespakowana).
 - **Pakowanie** (`tools/dist.js`, electron-builder): Electron brany z `node_modules/electron/dist` (bez pobierania). Dwuczęściowa wersja (0.7) jest na czas budowania zamieniana na trzyczęściową (0.7.0).
 
@@ -66,7 +66,17 @@ Dodatkowo przy wypiekaniu:
 
 OSM pobiera `npm run bake:osm` w 64 kafelkach z kilku serwerów Overpass. Serwery bywają przeciążone, więc narzędzie czeka, ponawia, a kafelki, których się nie udało pobrać, pomija. Kolejne uruchomienie dobiera tylko brakujące, bo pobrane są w pamięci podręcznej. `--cached-only` składa plik z tego, co już jest. Pobrane kafelki trafiają do `tools/.cache/`. `node tools/preview-region.js` zapisuje podgląd regionu (`preview.png`, pokrycie z cieniowaniem rzeźby) do sprawdzenia danych bez gry.
 
-Regiony definiuje `src/regions.js`. Teraz jest jeden: **Bory Tucholskie**, kwadrat 46 × 46 km wokół Tucholi, z Charzykowami, Brdą i Chojnicami.
+Regiony definiuje `src/regions.js`. Wbudowane są trzy, każdy 46 × 46 km:
+
+| Region | Dane | Budynki | Pliki |
+|---|---|---|---|
+| **Zabrze** (domyślny) – Gliwice, Katowice, Bytom, Ruda Śląska, Chorzów | kafle OpenStreetMap, rzeźba szczegółowa | 470 tys. | 53 MB |
+| **Beskid Śląski** – Szczyrk, Bielsko-Biała, Wisła, Ustroń, Żywiec, Skoczów; do 1549 m | kafle OpenStreetMap, rzeźba szczegółowa | 272 tys. | 46 MB |
+| **Bory Tucholskie** – Tuchola, Charzykowy, Brda, Chojnice | ESA WorldCover i Overpass | 73 tys. | 14 MB |
+
+Regiony z polem `gen` wypieka `npm run bake:gen -- <id>` (`tools/bake-gen.js`) tym samym rdzeniem co generator w grze
+(`src/gen/build.js`), z miejscami startu i odmianą nazw z `src/regions.js`; kafle zostają w `tools/.cache/tiles/`.
+Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 GB pamięci.
 
 ## Grafika
 

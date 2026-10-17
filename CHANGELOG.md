@@ -3,8 +3,12 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
-## 0.8 – generator regionów
+## 0.8 – generator regionów, Zabrze i Beskid Śląski
 
+- **Nowe regiony wbudowane** (46 × 46 km, kafle OpenStreetMap, rzeźba szczegółowa): **Zabrze** – teraz domyślny
+  (Gliwice, Katowice, Bytom, Ruda Śląska, Chorzów; 470 tys. budynków) i **Beskid Śląski** (Szczyrk, Bielsko-Biała,
+  Wisła, Ustroń, Żywiec, Skoczów; do 1549 m n.p.m.), z odmianą nazw w opisie położenia.
+- `npm run bake:gen` – wypiekanie regionów wbudowanych tym samym rdzeniem co generator w grze.
 - **Generator regionów w grze** (menu → Regiony i generator map): środek z wyszukiwarki miejscowości (Nominatim) albo
   z propozycji (Katowice, Gliwice, Beskid Śląski, Jura, Częstochowa, Tatry, Kraków, Trójmiasto, Warszawa, Wrocław),
   bok 20 / 30 / 46 / 60 km, rzeźba standardowa (2048², z12) lub szczegółowa (4096², z13), budynki wszystkie / bez

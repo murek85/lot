@@ -27,11 +27,11 @@ import { lonLatToLocal } from './geo.js';
 import { transmittance, ATMOSPHERE } from './atmosphere/model.js';
 import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
+import { DEFAULT_REGION, REGIONS } from './regions.js';
 import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta } from './gen/client.js';
 import { PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
 
 const $ = (id) => document.getElementById(id);
-const DEFAULT_REGION = 'bory-tucholskie';
 // wybrany region (wbudowany albo wygenerowany w grze) – zmiana regionu przeładowuje stronę
 const regionChoice = { get() { try { return localStorage.getItem('lot-region') || DEFAULT_REGION; } catch { return DEFAULT_REGION; } },
 	set(id) { try { if (id === DEFAULT_REGION) localStorage.removeItem('lot-region'); else localStorage.setItem('lot-region', id); } catch { /* bez pamięci */ } } };
@@ -99,8 +99,8 @@ async function start() {
 		regionChoice.set(DEFAULT_REGION);
 		region = await loadRegion(DEFAULT_REGION, bootBar);
 	}
-	const generated = isGenerated(region.meta.id);
-	if (generated) $('credits').textContent = 'Wysokości: AWS Terrain Tiles · Mapa: OpenFreeMap, © OpenMapTiles · Dane: © współtwórcy OpenStreetMap (ODbL)';
+	// region z kafli wektorowych (wbudowany albo wygenerowany w grze) – inne źródła danych niż Bory Tucholskie
+	if (region.meta.generated) $('credits').textContent = 'Wysokości: AWS Terrain Tiles · Mapa: OpenFreeMap, © OpenMapTiles · Dane: © współtwórcy OpenStreetMap (ODbL)';
 	$('region-name').textContent = region.meta.name;
 	bootEyebrow(region.meta);
 
@@ -452,7 +452,7 @@ async function start() {
 		menu.show('home');
 	};
 	// zapisy osobno dla każdego regionu (Bory Tucholskie – klucze sprzed generatora)
-	const slotKey = (id) => (generated ? `slot-${region.meta.id}-${id}` : `slot-${id}`);
+	const slotKey = (id) => (region.meta.id === 'bory-tucholskie' ? `slot-${id}` : `slot-${region.meta.id}-${id}`);
 	const menuApi = {
 		get plan() { return plan; },
 		settings,
@@ -460,6 +460,7 @@ async function start() {
 		region: region.meta,
 		places: placeList,
 		switchRegion,
+		builtinRegions: Object.values(REGIONS),
 		generateRegion: generateWithScreen,
 		deleteRegion: (id) => deleteRegion(id).then(() => { if (id === region.meta.id) switchRegion(DEFAULT_REGION); }),
 		inFlight: () => game !== 'menu',

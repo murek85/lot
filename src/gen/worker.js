@@ -5,15 +5,13 @@
 // { type: 'cancel' } przerywa bieżącą pracę.
 import { decodeTile } from './mvt.js';
 import { tilesFor, tileKey } from './tiles.js';
-import { convertTile, rasterizePolygon, pickPlaces, COVER, COVER_PRIORITY, UNSET } from './convert.js';
-import { packTerrain } from './terrain.js';
+import { convertTile } from './convert.js';
+import { buildRegion, pool, MAP_Z } from './build.js';
 import { fetchTile, saveRegion, gzip, persist } from './store.js';
-import { localToLonLat, lonToTileX, latToTileY, terrariumHeight, regionBounds } from '../geo.js';
+import { terrariumHeight } from '../geo.js';
 
 const OFM = 'https://tiles.openfreemap.org/planet';
 const TERRARIUM = (z, x, y) => `https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${z}/${x}/${y}.png`;
-const MAP_Z = 14;
-const LAYERS = ['transportation', 'building', 'waterway', 'water', 'landcover', 'landuse', 'poi', 'place'];
 const PARALLEL = 8;
 
 let abort = null;
@@ -41,26 +39,11 @@ async function mapTemplate(signal) {
 	return tileUrl;
 }
 
-/** Równoległe przetwarzanie listy (najwyżej n naraz) z przerwaniem. */
-async function pool(list, n, fn, signal) {
-	let next = 0;
-	const worker = async () => {
-		while (next < list.length) {
-			if (signal.aborted) throw new Error('cancelled');
-			const i = next++;
-			await fn(list[i], i);
-		}
-	};
-	await Promise.all(Array.from({ length: Math.min(n, list.length) }, worker));
-}
-
 async function mapTile(x, y, signal) {
 	const tpl = await mapTemplate(signal);
 	const url = tpl.replace('{z}', MAP_Z).replace('{x}', x).replace('{y}', y);
 	return fetchTile(tileKey('ofm', MAP_Z, x, y), url, signal);
 }
-
-const empty = () => ({ roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [] });
 
 /** Szacunek przed generowaniem: 9 kafli rozłożonych po regionie → liczba obiektów, rozmiar pobierania, obciążenie. */
 async function estimate(params, signal) {
@@ -109,95 +92,16 @@ async function heightTile(z, x, y, signal) {
 }
 
 async function generate(params, signal, progress) {
-	const { id, name, center, size, buildings = 'all', terrain = 'standard' } = params;
-	const detailed = terrain === 'detailed';
-	const hz = detailed ? 13 : 12, n = detailed ? 4096 : 2048, coverRes = 4096, half = size / 2;
 	await persist();
-
-	// 1. mapa: kafel po kaflu – pobranie (albo magazyn), dekodowanie, konwersja, rastrowanie pokrycia
-	const list = tilesFor(center, size, MAP_Z);
-	const osm = empty();
-	const cover = new Uint8Array(coverRes * coverRes).fill(UNSET);
-	const allPlaces = [];
-	let done = 0, bytes = 0, fromCache = 0;
-	progress(0, `Mapa: 0 / ${list.length} kafli`);
-	await pool(list, PARALLEL, async ([x, y]) => {
-		const t = await mapTile(x, y, signal);
-		bytes += t.buf.byteLength;
-		if (t.cached) fromCache++;
-		if (t.buf.byteLength) {
-			const out = convertTile(decodeTile(t.buf, LAYERS), MAP_Z, x, y, { center, half, buildings });
-			for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms']) for (const o of out[k]) osm[k].push(o);
-			for (const c of out.cover) rasterizePolygon(cover, coverRes, size, c.rings, c.cls, COVER_PRIORITY);
-			allPlaces.push(...out.places);
-		}
-		done++;
-		if (done % 8 === 0 || done === list.length) {
-			progress((done / list.length) * 0.72, `Mapa: ${done} / ${list.length} kafli · ${(bytes / 1e6).toFixed(0)} MB${fromCache ? ` (${fromCache} z pamięci)` : ''}`);
-		}
-	}, signal);
-	for (let i = 0; i < cover.length; i++) if (cover[i] === UNSET) cover[i] = COVER.crop;
-
-	// 2. wysokości: kafle Terrarium → siatka n×n (dwuliniowo, jak w narzędziu wypiekania)
-	const hList = tilesFor(center, size, hz, 2000);
-	const tiles = new Map();
-	done = 0;
-	await pool(hList, PARALLEL, async ([x, y]) => {
-		tiles.set(`${x}/${y}`, await heightTile(hz, x, y, signal));
-		done++;
-		progress(0.72 + (done / hList.length) * 0.13, `Rzeźba terenu: ${done} / ${hList.length} kafli`);
-	}, signal);
-	progress(0.86, 'Siatka wysokości');
-	const px = (gx, gy) => tiles.get(`${Math.floor(gx / 256)}/${Math.floor(gy / 256)}`)?.[(gy & 255) * 256 + (gx & 255)] ?? 0;
-	const raw = new Float32Array(n * n), cell = size / n;
-	for (let j = 0; j < n; j++) {
-		if (j % 256 === 0 && signal.aborted) throw new Error('cancelled');
-		for (let i = 0; i < n; i++) {
-			const { lon, lat } = localToLonLat(-half + (i + 0.5) * cell, -half + (j + 0.5) * cell, center);
-			const fx = lonToTileX(lon, hz) * 256 - 0.5, fy = latToTileY(lat, hz) * 256 - 0.5;
-			const x = Math.floor(fx), y = Math.floor(fy), u = fx - x, v = fy - y;
-			raw[j * n + i] = (px(x, y) * (1 - u) + px(x + 1, y) * u) * (1 - v) + (px(x, y + 1) * (1 - u) + px(x + 1, y + 1) * u) * v;
-		}
-	}
-	tiles.clear();
-
-	// 3. woda, brzegi, zapis
-	progress(0.9, 'Tafle wody i brzegi');
-	await new Promise((r) => setTimeout(r, 0));
-	const { h16, s8, min, max, percent } = packTerrain(raw, cover, n, coverRes, size);
-	// miejscowość, od której region wziął nazwę, na początek listy (domyślne miejsce startu)
-	const picked = pickPlaces(allPlaces, half);
-	const own = picked.findIndex((p) => p.name.toLowerCase() === String(name).toLowerCase());
-	if (own > 0) picked.unshift(...picked.splice(own, 1));
-	const places = picked.map((p, i) => {
-		const ll = localToLonLat(p.x, p.z, center);
-		return { id: `p${i}`, name: p.name, cls: p.cls, lon: +ll.lon.toFixed(5), lat: +ll.lat.toFixed(5) };
+	const { meta, data } = await buildRegion(params, {
+		signal, progress, parallel: PARALLEL,
+		mapTile: (x, y) => mapTile(x, y, signal),
+		heightTile: (z, x, y) => heightTile(z, x, y, signal),
 	});
-	if (!places.length) places.push({ id: 'p0', name: name, cls: 'centre', lon: center.lon, lat: center.lat });
 	progress(0.94, 'Zapis regionu');
-	const counts = Object.fromEntries(Object.entries(osm).map(([k, v]) => [k, v.length]));
-	const files = {
-		'height.bin.gz': await gzip(h16),
-		'cover.bin.gz': await gzip(cover),
-		'shore.bin.gz': await gzip(s8),
-		'osm.json.gz': await gzip(JSON.stringify(osm)),
-	};
-	const meta = {
-		id, name, center, size,
-		bounds: regionBounds({ center, size }),
-		height: { file: 'height.bin.gz', res: n, min, max },
-		cover: { file: 'cover.bin.gz', res: coverRes, classes: COVER, percent },
-		shore: { file: 'shore.bin.gz', res: n, metersPerUnit: 3, zero: 128 },
-		osm: { file: 'osm.json.gz', counts },
-		places,
-		generated: { terrain, buildings, mapTiles: list.length, heightTiles: hList.length, downloadMB: +(bytes / 1e6).toFixed(1) },
-		bytes: Object.values(files).reduce((a, b) => a + b.size, 0),
-		sources: [
-			{ name: 'AWS Terrain Tiles (Terrarium)', license: 'różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd' },
-			{ name: 'OpenFreeMap (schemat OpenMapTiles)', license: '© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)' },
-		],
-		baked: new Date().toISOString(),
-	};
+	const files = {};
+	for (const [k, v] of Object.entries(data)) files[k] = await gzip(v);
+	meta.bytes = Object.values(files).reduce((a, b) => a + b.size, 0);
 	await saveRegion(meta, files);
 	progress(1, 'Gotowe');
 	return meta;

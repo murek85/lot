@@ -49,7 +49,8 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
-	{ v: '0.8', title: 'Generator regionów', items: [
+	{ v: '0.8', title: 'Generator regionów, Zabrze i Beskid Śląski', items: [
+		['Nowe regiony', 'Zabrze z Gliwicami i Katowicami (teraz na start) oraz Beskid Śląski ze Szczyrkiem i Wisłą – po 46 × 46 km.'],
 		['Generator', 'nowy region w grze: miejscowość z wyszukiwarki albo propozycja (Katowice, Beskid Śląski, Jura…), 20–60 km, rzeźba standardowa lub szczegółowa.'],
 		['Dane', 'kafle wektorowe OpenStreetMap (OpenFreeMap, z14) – drogi, budynki, tory, woda i pokrycie terenu; rzeźba z AWS Terrain Tiles.'],
 		['Pamięć', 'kafle i gotowe regiony w przeglądarce (IndexedDB) – latanie bez sieci, szybsze generowanie w tej samej okolicy.'],
@@ -252,7 +253,7 @@ export class GameMenu {
 	}
 
 	render_regions() {
-		return `<section class="menu-content menu-window">${this.head('Regiony.', 'Wbudowane Bory Tucholskie i regiony wygenerowane w grze – zapisane w przeglądarce, działają bez sieci.')}
+		return `<section class="menu-content menu-window">${this.head('Regiony.', 'Regiony wbudowane w grę i wygenerowane w generatorze – zapisane w przeglądarce, działają bez sieci.')}
 			<div class="menu-scroll"><div class="slots" id="region-list"><p class="lead">Odczyt pamięci przeglądarki…</p></div></div>
 			<div class="menu-window-actions">${this.btn('generator', 'Nowy region — generator', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}
 			<span class="spacer"></span><small style="color:var(--m-muted)" id="region-usage"></small></div></section>`;
@@ -262,6 +263,9 @@ export class GameMenu {
 		const el = this.root.querySelector('#region-list');
 		let list = [];
 		try { list = await listRegions(); } catch (e) { console.warn(e); }
+		// wbudowane: opis z meta.json (liczba budynków, źródła)
+		const builtin = await Promise.all(this.game.builtinRegions.map((r) => fetch(`data/regions/${r.id}/meta.json`).then((x) => (x.ok ? x.json() : null)).catch(() => null)
+			.then((m) => ({ r, m }))));
 		if (this.screen !== 'regions' || !el.isConnected) return;
 		const cur = this.game.region?.id;
 		list.sort((a, b) => (b.baked > a.baked ? 1 : -1));
@@ -269,7 +273,8 @@ export class GameMenu {
 				<span class="slot-no"><small>${id === cur ? 'TERAZ' : del ? 'GEN' : 'WBUD'}</small>${id === cur ? '●' : '◇'}</span><span><b>${esc(name)}</b><span class="meta">${esc(meta)}</span></span>
 				<span aria-hidden="true">${id === cur ? 'WCZYTANY' : 'LEĆ TUTAJ'}</span></button>${del ? `<button class="region-del" data-del="${esc(id)}" title="Usuń region z pamięci przeglądarki" aria-label="Usuń ${esc(name)}">✕</button>` : ''}</div>`;
 		const date = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`; };
-		el.innerHTML = row('bory-tucholskie', 'Bory Tucholskie', '46 × 46 km · ESA WorldCover i OpenStreetMap · wbudowany', false) +
+		const km = (m) => `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km`;
+		el.innerHTML = builtin.map(({ r, m }) => row(r.id, r.name, `${km(r)}${m?.osm ? ` · ${num(m.osm.counts.buildings)} budynków` : ''} · ${r.gen ? 'kafle OpenStreetMap' : 'ESA WorldCover i OpenStreetMap'} · wbudowany`, false)).join('') +
 			list.map((m) => row(m.id, m.name, `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km · ${num(m.osm.counts.buildings)} budynków · ${(m.bytes / 1e6).toFixed(0)} MB · ${date(m.baked)}`, true)).join('') +
 			(list.length ? '' : '<p class="lead" style="margin-top:14px">Nie ma jeszcze wygenerowanych regionów – zacznij od generatora, np. Katowice albo Beskid Śląski.</p>');
 		const u = await usage();

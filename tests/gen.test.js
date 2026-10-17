@@ -123,3 +123,17 @@ test('miejsca startu: miasta przed wsiami, z dala od krawędzi i od siebie', () 
 	];
 	assert.deepEqual(pickPlaces(places, 23000).map((p) => p.name), ['Miasto', 'Miasteczko']);
 });
+
+test('regiony wbudowane z kafli: wypieczone dane, miejsca startu z odmianą w kolejności z src/regions.js', async () => {
+	const { readFileSync, existsSync } = await import('node:fs');
+	const { REGIONS, DEFAULT_REGION } = await import('../src/regions.js');
+	assert.ok(REGIONS[DEFAULT_REGION]);
+	for (const r of Object.values(REGIONS).filter((x) => x.gen)) {
+		const dir = new URL(`../data/regions/${r.id}/`, import.meta.url);
+		const meta = JSON.parse(readFileSync(new URL('meta.json', dir), 'utf8'));
+		assert.equal(meta.id, r.id);
+		assert.deepEqual(meta.places.map((p) => p.id), r.gen.places.map((p) => p.id));
+		for (const p of meta.places) assert.ok(p.gen && p.instr, `odmiana dla ${p.name}`);
+		for (const f of [meta.height.file, meta.cover.file, meta.shore.file, meta.osm.file]) assert.ok(existsSync(new URL(f, dir)), f);
+	}
+});

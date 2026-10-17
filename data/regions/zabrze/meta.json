@@ -1,0 +1,139 @@
+{
+	"id": "zabrze",
+	"name": "Zabrze",
+	"center": {
+		"lon": 18.7857,
+		"lat": 50.3249
+	},
+	"size": 46000,
+	"bounds": {
+		"west": 18.46171367952202,
+		"north": 50.53174368365664,
+		"east": 19.109686320477977,
+		"south": 50.118056316343356
+	},
+	"height": {
+		"file": "height.bin.gz",
+		"res": 4096,
+		"min": 189,
+		"max": 396
+	},
+	"cover": {
+		"file": "cover.bin.gz",
+		"res": 4096,
+		"classes": {
+			"grass": 0,
+			"forest": 1,
+			"shrub": 2,
+			"crop": 3,
+			"built": 4,
+			"bare": 5,
+			"water": 6,
+			"wetland": 7
+		},
+		"percent": {
+			"grass": 10.8,
+			"forest": 33.1,
+			"shrub": 3.2,
+			"crop": 31.6,
+			"built": 19.3,
+			"bare": 0.1,
+			"water": 1.7,
+			"wetland": 0.3
+		}
+	},
+	"shore": {
+		"file": "shore.bin.gz",
+		"res": 4096,
+		"metersPerUnit": 3,
+		"zero": 128
+	},
+	"osm": {
+		"file": "osm.json.gz",
+		"counts": {
+			"roads": 188047,
+			"rails": 4539,
+			"buildings": 470212,
+			"waterways": 9122,
+			"power": 0,
+			"treeRows": 0,
+			"stations": 67,
+			"crossings": 0,
+			"platforms": 2735
+		}
+	},
+	"places": [
+		{
+			"id": "zabrze",
+			"name": "Zabrze",
+			"cls": "city",
+			"lon": 18.78637,
+			"lat": 50.30861,
+			"gen": "Zabrza",
+			"instr": "Zabrzem"
+		},
+		{
+			"id": "gliwice",
+			"name": "Gliwice",
+			"cls": "city",
+			"lon": 18.66573,
+			"lat": 50.29411,
+			"gen": "Gliwic",
+			"instr": "Gliwicami"
+		},
+		{
+			"id": "katowice",
+			"name": "Katowice",
+			"cls": "city",
+			"lon": 19.02158,
+			"lat": 50.2599,
+			"gen": "Katowic",
+			"instr": "Katowicami"
+		},
+		{
+			"id": "bytom",
+			"name": "Bytom",
+			"cls": "city",
+			"lon": 18.92318,
+			"lat": 50.34704,
+			"gen": "Bytomia",
+			"instr": "Bytomiem"
+		},
+		{
+			"id": "ruda",
+			"name": "Ruda Śląska",
+			"cls": "city",
+			"lon": 18.87479,
+			"lat": 50.2858,
+			"gen": "Rudy Śląskiej",
+			"instr": "Rudą Śląską"
+		},
+		{
+			"id": "chorzow",
+			"name": "Chorzów",
+			"cls": "city",
+			"lon": 18.95445,
+			"lat": 50.29788,
+			"gen": "Chorzowa",
+			"instr": "Chorzowem"
+		}
+	],
+	"generated": {
+		"terrain": "detailed",
+		"buildings": "all",
+		"mapTiles": 930,
+		"heightTiles": 289,
+		"downloadMB": 35.4
+	},
+	"sources": [
+		{
+			"name": "AWS Terrain Tiles (Terrarium)",
+			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
+		},
+		{
+			"name": "OpenFreeMap (schemat OpenMapTiles)",
+			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
+		}
+	],
+	"baked": "2026-10-17T18:26:30.641Z"
+}

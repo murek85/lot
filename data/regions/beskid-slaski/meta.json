@@ -1,0 +1,139 @@
+{
+	"id": "beskid-slaski",
+	"name": "Beskid Śląski",
+	"center": {
+		"lon": 19,
+		"lat": 49.7
+	},
+	"size": 46000,
+	"bounds": {
+		"west": 18.680199517356012,
+		"north": 49.906843683656646,
+		"east": 19.319800482643988,
+		"south": 49.49315631634336
+	},
+	"height": {
+		"file": "height.bin.gz",
+		"res": 4096,
+		"min": 241,
+		"max": 1549
+	},
+	"cover": {
+		"file": "cover.bin.gz",
+		"res": 4096,
+		"classes": {
+			"grass": 0,
+			"forest": 1,
+			"shrub": 2,
+			"crop": 3,
+			"built": 4,
+			"bare": 5,
+			"water": 6,
+			"wetland": 7
+		},
+		"percent": {
+			"grass": 7.8,
+			"forest": 48.1,
+			"shrub": 1,
+			"crop": 29.5,
+			"built": 11.7,
+			"bare": 0,
+			"water": 1.9,
+			"wetland": 0.1
+		}
+	},
+	"shore": {
+		"file": "shore.bin.gz",
+		"res": 4096,
+		"metersPerUnit": 3,
+		"zero": 128
+	},
+	"osm": {
+		"file": "osm.json.gz",
+		"counts": {
+			"roads": 92409,
+			"rails": 1000,
+			"buildings": 272257,
+			"waterways": 14361,
+			"power": 0,
+			"treeRows": 0,
+			"stations": 77,
+			"crossings": 0,
+			"platforms": 196
+		}
+	},
+	"places": [
+		{
+			"id": "szczyrk",
+			"name": "Szczyrk",
+			"cls": "town",
+			"lon": 19.02546,
+			"lat": 49.7166,
+			"gen": "Szczyrku",
+			"instr": "Szczyrkiem"
+		},
+		{
+			"id": "bielsko",
+			"name": "Bielsko-Biała",
+			"cls": "city",
+			"lon": 19.04489,
+			"lat": 49.82212,
+			"gen": "Bielska-Białej",
+			"instr": "Bielskiem-Białą"
+		},
+		{
+			"id": "wisla",
+			"name": "Wisła",
+			"cls": "town",
+			"lon": 18.87092,
+			"lat": 49.65237,
+			"gen": "Wisły",
+			"instr": "Wisłą"
+		},
+		{
+			"id": "ustron",
+			"name": "Ustroń",
+			"cls": "town",
+			"lon": 18.80283,
+			"lat": 49.71815,
+			"gen": "Ustronia",
+			"instr": "Ustroniem"
+		},
+		{
+			"id": "zywiec",
+			"name": "Żywiec",
+			"cls": "town",
+			"lon": 19.20305,
+			"lat": 49.68903,
+			"gen": "Żywca",
+			"instr": "Żywcem"
+		},
+		{
+			"id": "skoczow",
+			"name": "Skoczów",
+			"cls": "town",
+			"lon": 18.78776,
+			"lat": 49.7999,
+			"gen": "Skoczowa",
+			"instr": "Skoczowem"
+		}
+	],
+	"generated": {
+		"terrain": "detailed",
+		"buildings": "all",
+		"mapTiles": 900,
+		"heightTiles": 289,
+		"downloadMB": 25.6
+	},
+	"sources": [
+		{
+			"name": "AWS Terrain Tiles (Terrarium)",
+			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
+		},
+		{
+			"name": "OpenFreeMap (schemat OpenMapTiles)",
+			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
+		}
+	],
+	"baked": "2026-10-17T18:27:16.829Z"
+}

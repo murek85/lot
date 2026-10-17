@@ -12,6 +12,7 @@
 		"vendor": "node tools/vendor.js",
 		"bake": "node tools/bake-region.js",
 		"bake:osm": "node tools/bake-osm.js",
+		"bake:gen": "node tools/bake-gen.js",
 		"icon": "node tools/make-icon.js",
 		"web": "node tools/web.js",
 		"app": "electron .",
