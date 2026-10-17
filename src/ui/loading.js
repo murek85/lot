@@ -18,6 +18,7 @@ export const TIPS = [
 	'Latarnie zapalają się o zmierzchu, okna w domach – zależnie od godziny.',
 	'Księżyc ma prawdziwą fazę i położenie – w pełnię noc jest najjaśniejsza.',
 	'W kabinie przeciągnij myszą, by się rozejrzeć; dwuklik – widok na wprost.',
+	'Za samolotem przeciągnij myszą, by obejrzeć go z każdej strony; dwuklik lub X – z powrotem za ogon.',
 ];
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;

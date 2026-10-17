@@ -143,6 +143,10 @@ export class Clouds {
 				sceneDist.assign(select(dS.greaterThan(0), getViewPosition(st, dS, U.projInv).length(), float(1e9)));
 			}
 			const t1 = min(min(t1raw, t0.add(60000)), sceneDist);
+			// przeszkoda w warstwie; blisko kamery to zwykle sam samolot – porusza się z kamerą, więc reprojekcja
+			// historii po głębi chmury trafia w poprzedniej klatce gdzie indziej (smugi chmur na kabinie przy skręcie)
+			const clipped = sceneDist.lessThan(min(t1raw, t0.add(60000)));
+			const nearGeo = clipped.and(sceneDist.lessThan(400));
 
 			const L = vec3(0).toVar(), T = float(1).toVar(), depthSum = float(0).toVar(), wSum = float(0).toVar();
 			const sun = atmo.u.lightDir;
@@ -212,8 +216,11 @@ export class Clouds {
 			const prevUv = vec2(ndc.x.mul(0.5).add(0.5), float(0.5).sub(ndc.y.mul(0.5)));
 			const inside = prevUv.x.greaterThan(0).and(prevUv.x.lessThan(1)).and(prevUv.y.greaterThan(0)).and(prevUv.y.lessThan(1)).and(clip.w.greaterThan(0));
 			const hist = self.historyNode.sample(prevUv).level(0);
-			const k = select(inside.and(U.history.greaterThan(0.5)), float(0.9), float(0));
-			return mix(current, hist, k);
+			// historia z piksela zasłoniętego w poprzedniej klatce (a = 2) nie zna chmury – odsłonięte zaczynają od zera
+			const valid = inside.and(U.history.greaterThan(0.5)).and(hist.a.lessThan(1.5));
+			const k = select(valid, select(nearGeo, float(0.5), float(0.9)), float(0));
+			// całkiem zasłonięte (samolot / zbocze przed warstwą) – brak chmury, bez historii; a = 2 to znacznik
+			return select(seg.greaterThan(1), mix(current, hist, k), vec4(0, 0, 0, 2));
 		});
 
 		this.historyNode = texture(this.rtB.texture);
@@ -236,11 +243,31 @@ export class Clouds {
 			return mix(float(0.12), float(1), exp(od.negate()));
 		};
 		this.output = texture(this.rtA.texture);
-		/** Chmury w punkcie ekranu st: cztery próbki dwuliniowe (namiot 4×4) – wygładzają ziarno drgania kroku. */
+		/** Chmury w punkcie ekranu st: namiot 4×4 tekseli bufora (wygładza ziarno drgania kroku), ważony zgodnością
+		 *  głębi sceny – teksele liczone na tle nie rozlewają się na krawędzie samolotu (i odwrotnie). */
 		this.sample = (st) => {
-			const o = U.texel.mul(0.75);
-			return this.output.sample(st.add(vec2(o.x, o.y))).add(this.output.sample(st.add(vec2(o.x.negate(), o.y))))
-				.add(this.output.sample(st.add(vec2(o.x, o.y.negate())))).add(this.output.sample(st.sub(o))).mul(0.25);
+			const dist = (p) => {
+				const d = self.sceneDepth.sample(p).level(0).r;
+				return select(d.greaterThan(0), getViewPosition(p, d, U.projInv).length(), float(1e9));
+			};
+			const lc = dist(st).log();
+			const f = st.div(U.texel).sub(0.5);
+			const base = f.floor();
+			const fr = f.sub(base);
+			const acc = vec4(0).toVar(), wSum = float(0).toVar();
+			for (let j = -1; j <= 2; j++) {
+				const wy = max(0, float(1).sub(abs(fr.y.sub(j)).div(2)));
+				for (let i = -1; i <= 2; i++) {
+					const wx = max(0, float(1).sub(abs(fr.x.sub(i)).div(2)));
+					const p = base.add(vec2(i + 0.5, j + 0.5)).mul(U.texel);
+					const wd = exp(abs(dist(p).log().sub(lc)).mul(-6)).add(1e-4);
+					const w = wx.mul(wy).mul(wd);
+					const c = this.output.sample(p).level(0);
+					acc.addAssign(vec4(c.rgb, min(c.a, 1)).mul(w));
+					wSum.addAssign(w);
+				}
+			}
+			return acc.div(max(wSum, 1e-8));
 		};
 	}
 

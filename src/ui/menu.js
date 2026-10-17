@@ -1,11 +1,13 @@
 // Menu gry: ekrany składane z szablonów (jak w Pograniczu Galaktyki), nad żywą sceną 3D (jak w Maszyniście).
 // Ekrany: home (dowództwo lotu), newflight (plan lotu: miejsce, pora roku i dnia, pogoda, widok), slots (zapis /
-// odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash.
+// odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash, regions (lista
+// regionów: wbudowany i wygenerowane), generator (nowy region z kafli OpenStreetMap).
 // Esc cofa o jeden poziom; w locie otwiera pauzę, na pauzie wznawia. Gra dostarcza obiekt `game` z akcjami.
-import { PLACES, TIMES, SEASONS, WEATHER } from './places.js';
+import { TIMES, SEASONS, WEATHER } from './places.js';
+import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.7'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.8'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -23,10 +25,36 @@ const EYEBROWS = {
 	pause: 'LOT WSTRZYMANY · CZAS STOI',
 	pauseEnv: 'METEO / ZMIANA WARUNKÓW W LOCIE',
 	crash: 'ZDARZENIE LOTNICZE',
+	regions: 'MAPY / REGIONY LOTÓW',
+	generator: 'GENERATOR REGIONÓW / OPENSTREETMAP',
 };
+
+const SIZES = [
+	{ id: '20000', name: '20 × 20 km', note: 'jedno miasto z okolicą' },
+	{ id: '30000', name: '30 × 30 km', note: 'aglomeracja albo pasmo gór' },
+	{ id: '46000', name: '46 × 46 km', note: 'jak Bory Tucholskie' },
+	{ id: '60000', name: '60 × 60 km', note: 'największy – dłuższe wczytywanie' },
+];
+const TERRAINS = [
+	{ id: 'standard', name: 'Standardowa', note: 'siatka 2048², ok. 25 m' },
+	{ id: 'detailed', name: 'Szczegółowa', note: 'siatka 4096², ok. 12 m – góry' },
+];
+const BUILDINGS = [
+	{ id: 'all', name: 'Wszystkie', note: 'pełna zabudowa z mapy' },
+	{ id: 'large', name: 'Bez małych', note: 'bez szop i garaży – lżej' },
+	{ id: 'none', name: 'Bez budynków', note: 'sam teren, drogi i woda' },
+];
+const LOAD = { low: ['płynnie', 'ok'], medium: ['umiarkowane', 'mid'], high: ['duże – może zwalniać', 'hi'] };
+const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.8', title: 'Generator regionów', items: [
+		['Generator', 'nowy region w grze: miejscowość z wyszukiwarki albo propozycja (Katowice, Beskid Śląski, Jura…), 20–60 km, rzeźba standardowa lub szczegółowa.'],
+		['Dane', 'kafle wektorowe OpenStreetMap (OpenFreeMap, z14) – drogi, budynki, tory, woda i pokrycie terenu; rzeźba z AWS Terrain Tiles.'],
+		['Pamięć', 'kafle i gotowe regiony w przeglądarce (IndexedDB) – latanie bez sieci, szybsze generowanie w tej samej okolicy.'],
+		['Regiony', 'lista regionów z przełączaniem i usuwaniem, szacunek wielkości i obciążenia przed generowaniem, osobne zapisy lotów.'],
+	] },
 	{ v: '0.7', title: 'Menu, samoloty do wyboru, wczytywanie', items: [
 		['Menu', 'ekran startowy i menu nad żywą sceną, plan lotu z miejscem, porą dnia i roku, pogodą i widokiem.'],
 		['Pauza i zapisy', 'raport lotu, zmiana pogody w locie, 5 slotów i autozapis, „Kontynuuj lot”, okno kraksy.'],
@@ -68,7 +96,8 @@ const KEYS = [
 	['V', 'kabina i z powrotem'],
 	['L', 'reflektory do lądowania'],
 	['Kółko', 'odległość kamery; w kabinie – pole widzenia'],
-	['Prawy przycisk', 'kąt kamery; w kabinie przeciąganie – rozglądanie się, dwuklik – na wprost'],
+	['Przeciąganie myszą', 'obrót kamery wokół samolotu; w kabinie – rozglądanie się'],
+	['Dwuklik / X', 'kamera z powrotem za ogon; w kabinie – na wprost'],
 	['Esc', 'pauza i wznowienie, w menu – wstecz'],
 	['R', 'start od nowa z tego samego miejsca'],
 	['H', 'panel deweloperski (gdy włączony w ustawieniach)'],
@@ -85,6 +114,10 @@ export class GameMenu {
 		this.plan = { ...game.plan };
 		root.addEventListener('click', (e) => this.onClick(e));
 		root.addEventListener('input', (e) => this.onInput(e));
+		root.addEventListener('keydown', (e) => { if (e.code === 'Enter' && e.target.dataset?.gen === 'query') { e.preventDefault(); this.search(); } });
+		this.gen = { name: PRESETS[0].name, lon: PRESETS[0].lon, lat: PRESETS[0].lat, size: '46000', terrain: 'standard', buildings: 'all', query: '' };
+		this.genResults = null;
+		this.est = null;
 	}
 
 	get open() { return !this.root.hidden; }
@@ -115,6 +148,8 @@ export class GameMenu {
 		// fokus: na pierwszy przycisk ekranu (klawiatura od razu działa), bez przewijania
 		const first = this.root.querySelector('.menu-content .menu-action, .menu-content button');
 		first?.focus({ preventScroll: true });
+		if (screen === 'regions') this.fillRegions();
+		if (screen === 'generator') this.requestEstimate();
 	}
 
 	hide() {
@@ -136,14 +171,19 @@ export class GameMenu {
 
 	render_home() {
 		const cont = this.game.slotInfo('auto');
-		return `<section class="menu-content">${this.head('Gotowy do startu.', 'Bory Tucholskie z wysokości kilkuset metrów: jeziora rynnowe, Brda, lasy i miasteczka z prawdziwej mapy.')}
+		const r = this.game.region;
+		const lead = r?.places ? `${esc(r.name)} z wysokości kilkuset metrów: ${Math.round(r.size / 1000)} × ${Math.round(r.size / 1000)} km rzeźby terenu, dróg i zabudowy z OpenStreetMap.`
+			: 'Bory Tucholskie z wysokości kilkuset metrów: jeziora rynnowe, Brda, lasy i miasteczka z prawdziwej mapy.';
+		return `<section class="menu-content">${this.head('Gotowy do startu.', lead)}
 			<div class="menu-actions">
 				${cont ? this.btn('continue', `Kontynuuj lot <small style="opacity:.7;font-weight:400">· ${esc(cont.title)}</small>`, { prominent: true }) : ''}
 				${this.btn('quick', 'Szybki start', { prominent: !cont, hint: '<kbd>ENTER</kbd>' })}
 				${this.btn('new', 'Nowy lot — plan lotu')}
 				${this.btn('load', 'Wczytaj lot — sloty')}
+				${this.btn('regions', 'Regiony i generator map')}
 				${this.btn('settings', 'Ustawienia')}
 				${this.btn('help', 'Sterowanie i pomoc')}
+				${globalThis.desktop?.quit ? this.btn('quit', 'Wyjdź z gry', { subtle: true }) : ''}
 			</div></section>`;
 	}
 
@@ -161,7 +201,7 @@ export class GameMenu {
 		return `<section class="menu-content menu-window">${this.head('Plan lotu.', '')}
 			<div class="menu-scroll">
 				<h2>Samolot</h2>${tiles(Object.values(AIRCRAFT).map((a) => ({ id: a.id, name: a.name, note: `${a.note} · ${a.specs}` })), 'aircraft', true)}
-				<h2>Miejsce startu</h2>${tiles(PLACES, 'place', true)}
+				<h2>Miejsce startu · ${esc(this.game.regionName)}</h2>${tiles(this.game.places, 'place', true)}
 				<h2>Pora dnia</h2>${tiles(TIMES, 'time')}
 				<h2>Pora roku</h2>${tiles(SEASONS, 'season')}
 				<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}
@@ -197,7 +237,8 @@ export class GameMenu {
 			range('renderScale', 'Rozdzielczość obrazu', 0.5, 1, 0.05, FMT.renderScale, 'mniej – płynniej na słabszych kartach') +
 			range('relief', 'Przewyższenie rzeźby', 1, 4, 0.1, FMT.relief, 'pagórki morenowe wyraźniejsze z góry'),
 			check('invertPitch', 'Odwróć oś wznoszenia', 'W / ↑ – nos w dół, jak drążkiem') +
-			range('mouseSens', 'Czułość myszy w kabinie', 0.4, 2, 0.05, FMT.mouseSens) +
+			range('mouseSens', 'Czułość myszy', 0.4, 2, 0.05, FMT.mouseSens, 'obrót kamery za samolotem i rozglądanie się w kabinie') +
+			check('chaseReturn', 'Kamera wraca za ogon', 'po puszczeniu myszy kamera za samolotem łagodnie wraca do domyślnego ujęcia') +
 			range('cockpitFov', 'Pole widzenia w kabinie', 45, 90, 1, FMT.cockpitFov),
 			check('hud', 'Panel lotu', 'prędkość, wysokość, gaz w rogu ekranu') +
 			check('fps', 'Licznik klatek') +
@@ -208,6 +249,118 @@ export class GameMenu {
 			<div class="menu-tabs" role="tablist">${tabs.map(([t], i) => `<button role="tab" data-tab="${i}" aria-selected="${i === this.settingsTab}"><small>0${i + 1}</small>${t}</button>`).join('')}</div>
 			<div class="menu-scroll"><div class="tab-panel" role="tabpanel">${panels[this.settingsTab]}</div></div>
 			<div class="menu-window-actions">${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}<span class="spacer"></span><small style="color:var(--m-muted)">Zmiany działają od razu i są zapamiętywane.</small></div></section>`;
+	}
+
+	render_regions() {
+		return `<section class="menu-content menu-window">${this.head('Regiony.', 'Wbudowane Bory Tucholskie i regiony wygenerowane w grze – zapisane w przeglądarce, działają bez sieci.')}
+			<div class="menu-scroll"><div class="slots" id="region-list"><p class="lead">Odczyt pamięci przeglądarki…</p></div></div>
+			<div class="menu-window-actions">${this.btn('generator', 'Nowy region — generator', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}
+			<span class="spacer"></span><small style="color:var(--m-muted)" id="region-usage"></small></div></section>`;
+	}
+
+	async fillRegions() {
+		const el = this.root.querySelector('#region-list');
+		let list = [];
+		try { list = await listRegions(); } catch (e) { console.warn(e); }
+		if (this.screen !== 'regions' || !el.isConnected) return;
+		const cur = this.game.region?.id;
+		list.sort((a, b) => (b.baked > a.baked ? 1 : -1));
+		const row = (id, name, meta, del) => `<div class="region-row"><button class="menu-action slot${id === cur ? ' current' : ''}" data-region="${esc(id)}"${id === cur ? ' disabled' : ''}>
+				<span class="slot-no"><small>${id === cur ? 'TERAZ' : del ? 'GEN' : 'WBUD'}</small>${id === cur ? '●' : '◇'}</span><span><b>${esc(name)}</b><span class="meta">${esc(meta)}</span></span>
+				<span aria-hidden="true">${id === cur ? 'WCZYTANY' : 'LEĆ TUTAJ'}</span></button>${del ? `<button class="region-del" data-del="${esc(id)}" title="Usuń region z pamięci przeglądarki" aria-label="Usuń ${esc(name)}">✕</button>` : ''}</div>`;
+		const date = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`; };
+		el.innerHTML = row('bory-tucholskie', 'Bory Tucholskie', '46 × 46 km · ESA WorldCover i OpenStreetMap · wbudowany', false) +
+			list.map((m) => row(m.id, m.name, `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km · ${num(m.osm.counts.buildings)} budynków · ${(m.bytes / 1e6).toFixed(0)} MB · ${date(m.baked)}`, true)).join('') +
+			(list.length ? '' : '<p class="lead" style="margin-top:14px">Nie ma jeszcze wygenerowanych regionów – zacznij od generatora, np. Katowice albo Beskid Śląski.</p>');
+		const u = await usage();
+		const ue = this.root.querySelector('#region-usage');
+		if (u && ue) ue.textContent = `Pamięć przeglądarki: ${(u.used / 1e6).toFixed(0)} MB${u.quota ? ` z ${(u.quota / 1e9).toFixed(0)} GB` : ''}`;
+	}
+
+	render_generator() {
+		const g = this.gen;
+		const tiles = (list, key) => `<div class="tiles">${list.map((o, i) =>
+			`<button class="tile${g[key] === o.id ? ' sel' : ''}" data-genopt="${key}:${o.id}"><span class="num">${String(i + 1).padStart(2, '0')}</span><b>${esc(o.name)}</b><small>${esc(o.note)}</small></button>`).join('')}</div>`;
+		return `<section class="menu-content menu-window">${this.head('Generator regionów.', '')}
+			<div class="menu-scroll">
+				<h2>Środek regionu</h2>
+				<div class="gen-search"><input type="search" class="menu-input" data-gen="query" value="${esc(g.query)}" placeholder="Szukaj miejscowości, np. Szczyrk, Rybnik, Ustroń…" autocomplete="off" spellcheck="false">
+				${this.btn('geo', 'Szukaj', { hint: '⌕' })}</div>
+				<div class="tiles wide" id="gen-results">${this.resultTiles()}</div>
+				<h2>Nazwa</h2><input type="text" class="menu-input" data-gen="name" value="${esc(g.name)}" maxlength="40">
+				<h2>Wielkość</h2>${tiles(SIZES, 'size')}
+				<h2>Rzeźba terenu</h2>${tiles(TERRAINS, 'terrain')}
+				<h2>Budynki</h2>${tiles(BUILDINGS, 'buildings')}
+				<p class="gen-note">Dane: kafle wektorowe OpenFreeMap (© OpenMapTiles, © współtwórcy OpenStreetMap) i rzeźba AWS Terrain Tiles. Pobrane kafle zostają w pamięci przeglądarki – drugi region w tej samej okolicy powstaje szybciej.</p>
+			</div>
+			<div class="menu-window-actions">${this.btn('generate', 'Generuj region', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
+	}
+
+	resultTiles() {
+		const g = this.gen;
+		const list = this.genResults ?? PRESETS.map((p) => ({ ...p, label: `${p.lat.toFixed(2)}° N, ${p.lon.toFixed(2)}° E` }));
+		if (!list.length) return '<p class="gen-note">Nic nie znaleziono – spróbuj innej nazwy.</p>';
+		return list.map((p, i) => `<button class="tile${Math.abs(p.lon - g.lon) < 1e-6 && Math.abs(p.lat - g.lat) < 1e-6 ? ' sel' : ''}" data-genplace="${i}"><span class="num">${String(i + 1).padStart(2, '0')}</span><b>${esc(p.name)}</b><small>${esc(p.label)}</small></button>`).join('');
+	}
+
+	card_generator() {
+		return `<aside class="menu-card" id="gen-card">${this.estimateCard()}</aside>`;
+	}
+
+	estimateCard() {
+		const g = this.gen, e = this.est;
+		const km = Math.round(+g.size / 1000);
+		const head = `<div class="eyebrow">SZACUNEK</div><h2>${esc(g.name || 'Region')}</h2>
+			<dl><dt>Środek</dt><dd>${g.lat.toFixed(3)}° N · ${g.lon.toFixed(3)}° E</dd><dt>Obszar</dt><dd>${km} × ${km} km</dd>`;
+		if (this.estError) return `${head}</dl><span class="tag hi">${esc(this.estError)}</span>`;
+		if (!e) return `${head}<dt>Kafle</dt><dd>liczenie…</dd></dl><span class="tag">PRÓBKOWANIE MAPY</span>`;
+		const [loadName, cls] = LOAD[e.load];
+		return `${head}<dt>Kafle</dt><dd>${num(e.mapTiles)} mapy · ${num(e.heightTiles)} rzeźby</dd>
+			<dt>Pobranie</dt><dd>ok. ${e.downloadMB < 10 ? e.downloadMB.toFixed(1) : num(e.downloadMB)} MB</dd>
+			<dt>Budynki</dt><dd>ok. ${num(e.buildings)}</dd><dt>Drogi</dt><dd>ok. ${num(e.roads)} odcinków</dd>
+			<dt>Obciążenie</dt><dd>${loadName}</dd></dl><span class="tag ${cls}">${e.load === 'high' ? 'ROZWAŻ MNIEJSZY OBSZAR LUB „BEZ MAŁYCH”' : 'GOTOWY DO GENEROWANIA'}</span>`;
+	}
+
+	/** Szacunek po zmianie parametrów (z opóźnieniem – kliknięcia po kolei nie pobierają próbek wielokrotnie). */
+	requestEstimate() {
+		this.est = null;
+		this.estError = null;
+		const card = () => this.root.querySelector('#gen-card');
+		if (card()) card().innerHTML = this.estimateCard();
+		clearTimeout(this.estTimer);
+		const g = this.gen, key = `${g.lon},${g.lat},${g.size},${g.buildings},${g.terrain}`;
+		this.estTimer = setTimeout(async () => {
+			try {
+				const e = await estimate({ center: { lon: g.lon, lat: g.lat }, size: +g.size, buildings: g.buildings, terrain: g.terrain });
+				if (key !== `${this.gen.lon},${this.gen.lat},${this.gen.size},${this.gen.buildings},${this.gen.terrain}`) return;
+				this.est = e;
+			} catch (err) {
+				this.estError = navigator.onLine === false ? 'BRAK POŁĄCZENIA Z SIECIĄ' : `BŁĄD: ${err.message}`;
+			}
+			if (this.screen === 'generator' && card()) card().innerHTML = this.estimateCard();
+		}, 450);
+	}
+
+	async search() {
+		const q = this.gen.query.trim();
+		const box = this.root.querySelector('#gen-results');
+		if (!q) { this.genResults = null; if (box) box.innerHTML = this.resultTiles(); return; }
+		if (box) box.innerHTML = '<p class="gen-note">Szukanie…</p>';
+		try { this.genResults = await geocode(q); } catch (e) { this.genResults = []; console.warn(e); }
+		if (this.screen === 'generator') this.root.querySelector('#gen-results').innerHTML = this.resultTiles();
+	}
+
+	async startGenerate() {
+		const g = this.gen;
+		const name = (g.name || '').trim() || 'Region';
+		try {
+			const meta = await this.game.generateRegion({ name, center: { lon: g.lon, lat: g.lat }, size: +g.size, terrain: g.terrain, buildings: g.buildings });
+			if (meta) this.show('regions', 'home');
+		} catch (e) {
+			this.estError = `NIE UDAŁO SIĘ: ${e.message}`;
+			const card = this.root.querySelector('#gen-card');
+			if (card) card.innerHTML = this.estimateCard();
+		}
 	}
 
 	render_help() {
@@ -283,6 +436,28 @@ export class GameMenu {
 			this.root.querySelectorAll(`[data-env^="${k}:"]`).forEach((b) => b.classList.toggle('sel', b === t));
 			return;
 		}
+		if (t.dataset.genopt) {
+			const [k, v] = t.dataset.genopt.split(':');
+			this.gen[k] = v;
+			this.root.querySelectorAll(`[data-genopt^="${k}:"]`).forEach((b) => b.classList.toggle('sel', b === t));
+			return this.requestEstimate();
+		}
+		if (t.dataset.genplace) {
+			const list = this.genResults ?? PRESETS;
+			const p = list[+t.dataset.genplace];
+			Object.assign(this.gen, { lon: p.lon, lat: p.lat, name: p.name });
+			const nameEl = this.root.querySelector('[data-gen="name"]');
+			if (nameEl) nameEl.value = p.name;
+			this.root.querySelectorAll('[data-genplace]').forEach((b) => b.classList.toggle('sel', b === t));
+			return this.requestEstimate();
+		}
+		if (t.dataset.region) return g.switchRegion(t.dataset.region);
+		if (t.dataset.del) {
+			const row = t.closest('.region-row');
+			if (!t.classList.contains('armed')) { t.classList.add('armed'); t.textContent = 'Usuń?'; return; }
+			row.style.opacity = 0.4;
+			return Promise.resolve(g.deleteRegion(t.dataset.del)).then(() => this.screen === 'regions' && this.fillRegions());
+		}
 		if (t.dataset.slot) {
 			const id = t.dataset.slot === 'auto' ? 'auto' : +t.dataset.slot;
 			if (this.slotMode === 'save') { Promise.resolve(g.saveSlot(id)).then(() => this.screen === 'slots' && this.show('slots')); return; }
@@ -297,16 +472,26 @@ export class GameMenu {
 			case 'save': this.slotMode = 'save'; return this.show('slots', this.screen);
 			case 'settings': return this.show('settings', this.screen);
 			case 'help': return this.show('help', this.screen);
+			case 'regions': return this.show('regions', this.screen);
+			case 'generator': return this.show('generator', 'regions');
+			case 'geo': return this.search();
+			case 'generate': return this.startGenerate();
 			case 'env': return this.show('pauseEnv', 'pause');
 			case 'resume': return g.resume();
 			case 'restart': return g.restart();
 			case 'menu': return g.toMenu();
 			case 'back': return this.escape();
+			case 'quit': return globalThis.desktop?.quit(); // tylko aplikacja desktopowa (electron/preload.cjs)
 		}
 	}
 
 	onInput(e) {
 		const el = e.target;
+		if (el.dataset.gen) {
+			this.gen[el.dataset.gen] = el.value;
+			if (el.dataset.gen === 'name') { const h = this.root.querySelector('#gen-card h2'); if (h) h.textContent = el.value || 'Region'; }
+			return;
+		}
 		const key = el.dataset.set;
 		if (!key) return;
 		const v = el.type === 'checkbox' ? el.checked : +el.value;
@@ -341,7 +526,7 @@ export class GameMenu {
 
 	planInfo(plan) {
 		return {
-			place: PLACES.find((p) => p.id === plan.place) ?? PLACES[0],
+			place: this.game.places.find((p) => p.id === plan.place) ?? this.game.places[0],
 			time: TIMES.find((p) => p.id === plan.time) ?? TIMES[1],
 			season: SEASONS.find((p) => p.id === plan.season) ?? SEASONS[1],
 			weather: WEATHER.find((p) => p.id === plan.weather) ?? WEATHER[2],

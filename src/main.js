@@ -27,10 +27,15 @@ import { lonLatToLocal } from './geo.js';
 import { transmittance, ATMOSPHERE } from './atmosphere/model.js';
 import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
+import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta } from './gen/client.js';
 import { PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
 
 const $ = (id) => document.getElementById(id);
-const REGION = 'bory-tucholskie';
+const DEFAULT_REGION = 'bory-tucholskie';
+// wybrany region (wbudowany albo wygenerowany w grze) – zmiana regionu przeładowuje stronę
+const regionChoice = { get() { try { return localStorage.getItem('lot-region') || DEFAULT_REGION; } catch { return DEFAULT_REGION; } },
+	set(id) { try { if (id === DEFAULT_REGION) localStorage.removeItem('lot-region'); else localStorage.setItem('lot-region', id); } catch { /* bez pamięci */ } } };
+const PLACE_KIND = { city: 'miasto', town: 'miasteczko', village: 'wieś', suburb: 'dzielnica', hamlet: 'osada', centre: 'środek regionu' };
 const UTC_OFFSET = 2; // czas letni w Polsce
 const YEAR = 2026;
 // światło księżyca w pełni (natężenie poza atmosferą; słońce = 12). Około 1/200 słońca – wielokrotnie więcej niż
@@ -40,6 +45,19 @@ const MOON_E = 0.06;
 const MOON_SKY = 0.2;
 const MOON_TINT = [0.72, 0.84, 1.0];
 
+// szerokość geograficzna jak na mapie lotniczej: 53.64 → „53°38′ N”
+const latText = (lat) => {
+	const m = Math.round(Math.abs(lat) * 60);
+	return `${Math.floor(m / 60)}°${String(m % 60).padStart(2, '0')}′ ${lat < 0 ? 'S' : 'N'}`;
+};
+// napis nad logo na ekranie startowym: znaki samolotu z planu lotu, region i jego szerokość geograficzna
+const bootEyebrow = (meta) => {
+	const reg = aircraftById(load('plan', DEFAULT_PLAN).aircraft).reg;
+	document.querySelector('#boot .eyebrow').textContent = [reg, meta?.name, meta?.center && latText(meta.center.lat)].filter(Boolean).join(' · ');
+};
+// nazwa regionu do ekranów, zanim region zostanie wczytany (wygenerowane – z pamięci przeglądarki)
+const regionMeta = (id) => (isGenerated(id) ? getRegionMeta(id).catch(() => null) : fetch(`data/regions/${id}/meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+
 function fail(title, text) {
 	$('boot').hidden = true;
 	$('nogpu-title').textContent = title;
@@ -48,6 +66,7 @@ function fail(title, text) {
 }
 
 async function start() {
+	regionMeta(regionChoice.get()).then((meta) => { if (meta) bootEyebrow(meta); });
 	if (!navigator.gpu) {
 		return fail('Brak WebGPU', 'Ta przeglądarka nie obsługuje WebGPU. Użyj aktualnego Chrome lub Edge (Windows), Firefoksa 141+ albo Safari 26+.');
 	}
@@ -69,8 +88,21 @@ async function start() {
 
 	let loaded = 0;
 	$('boot-version').textContent = VERSION;
-	const region = await loadRegion(REGION, () => { $('boot-bar').style.width = `${(++loaded / 3) * 70}%`; });
+	const regionId = regionChoice.get();
+	const bootBar = () => { $('boot-bar').style.width = `${(++loaded / 3) * 70}%`; };
+	let region;
+	try {
+		region = await loadRegion(regionId, bootBar);
+	} catch (e) {
+		if (regionId === DEFAULT_REGION) throw e;
+		console.warn('Region niedostępny, powrót do domyślnego:', e);
+		regionChoice.set(DEFAULT_REGION);
+		region = await loadRegion(DEFAULT_REGION, bootBar);
+	}
+	const generated = isGenerated(region.meta.id);
+	if (generated) $('credits').textContent = 'Wysokości: AWS Terrain Tiles · Mapa: OpenFreeMap, © OpenMapTiles · Dane: © współtwórcy OpenStreetMap (ODbL)';
 	$('region-name').textContent = region.meta.name;
+	bootEyebrow(region.meta);
 
 	const scene = new Scene();
 	const camera = new PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.5, 1.2e6);
@@ -109,9 +141,9 @@ async function start() {
 	const post = createPost(renderer, scene, camera, atmo, clouds);
 
 	const view = new ViewCamera(camera, canvas, (x, z) => region.heightAt(x, z));
-	// start nad Tucholą, z widokiem na północny zachód (Brda i jeziora)
-	const tuchola = lonLatToLocal(17.86, 53.585, region.meta.center);
-	view.goal.target.set(tuchola.x - 3000, 0, tuchola.z - 2000);
+	// start nad pierwszym miejscem regionu (Tuchola), z widokiem na północny zachód
+	const first = lonLatToLocal((region.meta.places ?? PLACES)[0].lon, (region.meta.places ?? PLACES)[0].lat, region.meta.center);
+	view.goal.target.set(first.x - 3000, 0, first.z - 2000);
 	view.target.copy(view.goal.target);
 	view.goal.heading = view.heading = -0.6;
 	view.active = false;
@@ -119,15 +151,17 @@ async function start() {
 	// --- lot ---
 	const groundAt = (x, z) => region.heightAt(x, z);
 	// miejsca startu w układzie sceny; start 1,8 km na płd.-wsch. od miejsca, kursem na nie, 420 m nad terenem
-	const places = PLACES.map((p) => ({ ...p, ...lonLatToLocal(p.lon, p.lat, region.meta.center) }));
+	// regiony wygenerowane: miejscowości z mapy (bez odmiany nazw – opis położenia używa „nad miejscowością X”)
+	const placeList = region.meta.places ? region.meta.places.map((p) => ({ ...p, note: PLACE_KIND[p.cls] ?? 'miejscowość' })) : PLACES;
+	const places = placeList.map((p) => ({ ...p, ...lonLatToLocal(p.lon, p.lat, region.meta.center) }));
 	const placeById = (id) => places.find((p) => p.id === id) ?? places[0];
 	const startAt = (placeId, agl = 420) => {
 		const p = placeById(placeId);
 		const x = p.x + 1300, z = p.z + 1250;
 		return createFlight({ x, z, y: Math.max(groundAt(x, z), groundAt(p.x, p.z)) + agl, heading: Math.atan2(p.x - x, -(p.z - z)) });
 	};
-	let flight = startAt('tuchola');
-	const chase = new ChaseCamera(camera, canvas);
+	let flight = startAt(places[0].id);
+	const chase = new ChaseCamera(camera, canvas, groundAt);
 	chase.snap(flight);
 	const cockpitCam = new CockpitCamera(camera, canvas);
 	let mode = 'plane';
@@ -169,6 +203,7 @@ async function start() {
 		if (e.code === 'KeyR') restart();
 		if (e.code === 'KeyC') setMode({ plane: 'cockpit', cockpit: 'free', free: 'plane' }[mode]);
 		if (e.code === 'KeyV') setMode(mode === 'cockpit' ? 'plane' : 'cockpit');
+		if (e.code === 'KeyX') { if (mode === 'plane') chase.reset(); else if (mode === 'cockpit') cockpitCam.reset(); }
 		if (e.code === 'KeyL') plane.lights.landing = !plane.lights.landing;
 		if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 	});
@@ -180,6 +215,7 @@ async function start() {
 	const state = { hour: 7.25, day: dayOfYear(6, 29, YEAR), haze: 6, exposure: 1, relief: 1, cover: 0.42, mini: 1 };
 	const settings = load('settings', DEFAULT_SETTINGS);
 	let plan = load('plan', DEFAULT_PLAN);
+	if (!places.some((p) => p.id === plan.place)) plan.place = places[0].id;
 	const bind = (id, key, fmt, apply) => {
 		const el = $(id), out = $(`${id}-v`);
 		el.value = state[key];
@@ -241,7 +277,8 @@ async function start() {
 		if (k === 'hud') b.toggle('no-hud', !v);
 		if (k === 'dev') b.toggle('dev', v);
 		if (k === 'reducedMotion') b.toggle('reduced-motion', v);
-		if (k === 'mouseSens') cockpitCam.sens = v;
+		if (k === 'mouseSens') cockpitCam.sens = chase.sens = v;
+		if (k === 'chaseReturn') chase.autoReturn = v;
 		if (k === 'cockpitFov') { cockpitCam.fov = v; if (mode === 'cockpit') { camera.fov = v; camera.updateProjectionMatrix(); } }
 	};
 	const flightTitle = (f) => describePosition(f.x, f.z, places);
@@ -360,10 +397,48 @@ async function start() {
 		await warmUp(ls, 0.5, 0.95, 10, 'Kompilacja materiałów…');
 		ls.done('Maszyna gotowa');
 	};
+	// --- regiony: zmiana (zapis i przeładowanie strony) i generator z ekranem postępu ---
+	const switchRegion = async (id) => {
+		if (busy) return;
+		busy = true;
+		if (game === 'flying' || game === 'paused') save(slotKey('auto'), snapshot());
+		const name = (await regionMeta(id))?.name ?? 'Nowy region';
+		const ls = loadingScreen({ eyebrow: 'ZMIANA REGIONU', title: name, sub: 'Przelot na nowe lotnisko – gra wczyta mapę od nowa', stage: 'Zapis stanu…', minTime: 0.6 });
+		regionChoice.set(id);
+		await nextFrames(2);
+		ls.progress(0.3, 'Przeładowanie…');
+		location.reload();
+	};
+	const generateWithScreen = async (params) => {
+		if (busy) return null;
+		busy = true;
+		const ls = loadingScreen({
+			eyebrow: 'GENERATOR REGIONÓW · OPENSTREETMAP', title: params.name,
+			sub: `${Math.round(params.size / 1000)} × ${Math.round(params.size / 1000)} km · ${params.terrain === 'detailed' ? 'rzeźba szczegółowa' : 'rzeźba standardowa'} · kafle wektorowe z14`,
+			night: 0.08, stage: 'Łączenie z serwerem kafli…', minTime: 0.5,
+		});
+		const cancelBtn = document.createElement('button');
+		cancelBtn.className = 'scr-cancel';
+		cancelBtn.textContent = 'Przerwij';
+		cancelBtn.onclick = () => { cancelBtn.disabled = true; cancelBtn.textContent = 'Przerywanie…'; cancelGenerate(); };
+		ls.root.querySelector('.scr-card').append(cancelBtn);
+		try {
+			const meta = await generateRegion(params, (p, label) => ls.progress(p, label));
+			cancelBtn.remove();
+			await new Promise((r) => ls.done(`Region gotowy · ${meta.osm.counts.buildings.toLocaleString('pl')} budynków`, r));
+			return meta;
+		} catch (e) {
+			ls.close();
+			if (!e.cancelled) throw e;
+			return null;
+		} finally {
+			busy = false;
+		}
+	};
 	const pause = () => { if (game !== 'flying') return; game = 'paused'; keys.clear(); menu.show('pause'); };
 	const toMenu = () => {
 		if (busy) return;
-		if (game === 'flying' || game === 'paused') save('slot-auto', snapshot());
+		if (game === 'flying' || game === 'paused') save(slotKey('auto'), snapshot());
 		game = 'menu';
 		document.body.classList.remove('flying');
 		keys.clear();
@@ -376,11 +451,17 @@ async function start() {
 		menu.from = {};
 		menu.show('home');
 	};
-	const slotKey = (id) => `slot-${id}`;
+	// zapisy osobno dla każdego regionu (Bory Tucholskie – klucze sprzed generatora)
+	const slotKey = (id) => (generated ? `slot-${region.meta.id}-${id}` : `slot-${id}`);
 	const menuApi = {
 		get plan() { return plan; },
 		settings,
 		regionName: region.meta.name,
+		region: region.meta,
+		places: placeList,
+		switchRegion,
+		generateRegion: generateWithScreen,
+		deleteRegion: (id) => deleteRegion(id).then(() => { if (id === region.meta.id) switchRegion(DEFAULT_REGION); }),
 		inFlight: () => game !== 'menu',
 		startFlight,
 		restart,
@@ -510,7 +591,7 @@ async function start() {
 			crashAt = performance.now() + 1400;
 		}
 		if (game === 'crashed' && crashAt && performance.now() > crashAt) { crashAt = 0; keys.clear(); menu.show('crash'); }
-		if (game === 'flying' && performance.now() > autosaveAt) { autosaveAt = performance.now() + 30000; save('slot-auto', snapshot()); }
+		if (game === 'flying' && performance.now() > autosaveAt) { autosaveAt = performance.now() + 30000; save(slotKey('auto'), snapshot()); }
 		$('esc-hint').style.opacity = performance.now() < escHintUntil ? 1 : 0;
 		const ease = 1 - Math.exp(-dt * 7);
 		controls.roll += (input.roll - controls.roll) * ease;

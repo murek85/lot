@@ -12,6 +12,7 @@ import { hash12, hash22 } from './gfx/noise.js';
 import { forestStand, forestCover } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
 import { CASTER_LAYER } from './shadows.js';
+import { cityLight } from './gfx/ground.js';
 
 const EARTH_R = 6371000;
 const SPACING = 5;

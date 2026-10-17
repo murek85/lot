@@ -254,6 +254,39 @@ body.paused #menu {
 .slot .meta { display: block; color: var(--m-muted); font-size: 12px; }
 .slot.empty b { color: var(--m-muted); font-weight: 400; }
 
+/* regiony i generator */
+.region-row { display: flex; gap: 8px; align-items: stretch; }
+.region-row .slot { flex: 1; }
+.slot.current { border-color: var(--m-accent-dim); }
+#menu .slot.current[disabled] { opacity: 1; }
+.slot.current .slot-no { animation: blink 1.6s steps(2, start) infinite; }
+.region-del {
+	flex: none; width: 54px; border: 1px solid var(--m-line); background: rgba(10, 20, 30, 0.45); color: var(--m-muted);
+	font: 600 11px var(--m-mono); letter-spacing: 1px; transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.region-del:hover, .region-del:focus-visible { color: #ff9b8a; border-color: rgba(255, 120, 100, 0.45); }
+.region-del.armed { width: 84px; color: #1d0a06; background: #ff8f7a; border-color: #ff8f7a; }
+.gen-search { display: flex; gap: 8px; margin-bottom: 10px; }
+.gen-search .menu-input { flex: 1; }
+.gen-search .menu-action { width: auto; min-width: 130px; }
+#menu .menu-input {
+	width: 100%; box-sizing: border-box; padding: 11px 14px; font: inherit; font-size: 15px; color: var(--m-text);
+	background: rgba(6, 12, 20, 0.7); border: 1px solid var(--m-line); border-left: 2px solid var(--m-accent-dim); border-radius: 0;
+	outline: none; transition: border-color 0.15s, background 0.15s;
+}
+#menu .menu-input::placeholder { color: #5f7080; }
+#menu .menu-input:focus { border-color: var(--m-sky-dim); border-left-color: var(--m-accent); background: rgba(10, 18, 28, 0.85); }
+#menu .menu-input::-webkit-search-cancel-button { filter: grayscale(1) brightness(1.6); }
+.gen-note { color: var(--m-muted); font-size: 12px; line-height: 1.5; margin: 18px 0 0; }
+.menu-card .tag.ok { color: #9fe3b0; border-color: rgba(120, 220, 150, 0.3); }
+.menu-card .tag.mid { color: var(--m-accent-2); }
+.menu-card .tag.hi { color: #ffab98; border-color: rgba(255, 130, 110, 0.35); }
+.scr-cancel {
+	margin-top: 16px; padding: 7px 16px; font: 600 11px var(--m-mono); letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+	color: var(--m-muted); background: transparent; border: 1px solid var(--m-line);
+}
+.scr-cancel:hover { color: #ffab98; border-color: rgba(255, 130, 110, 0.4); }
+
 /* pomoc – klawisze */
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 7px 18px; font-size: 14px; }
 .keys dt { font: 12px var(--m-mono); color: var(--m-accent-2); white-space: nowrap; }

@@ -27,13 +27,16 @@ export class CockpitCamera {
 			this.pitch = MathUtils.clamp(this.pitch - (e.clientY - drag[1]) * k, -1.2, 0.9);
 			drag = [e.clientX, e.clientY];
 		});
-		dom.addEventListener('dblclick', () => { if (this.active) { this.yaw = 0; this.pitch = -0.1; } });
+		dom.addEventListener('dblclick', () => { if (this.active) this.reset(); });
 		dom.addEventListener('wheel', (e) => {
 			if (!this.active) return;
 			e.preventDefault();
 			this.fov = MathUtils.clamp(this.fov * Math.exp(e.deltaY * 0.001), 30, 95);
 		}, { passive: false });
 	}
+
+	/** Patrz przed siebie. */
+	reset() { this.yaw = 0; this.pitch = -0.1; }
 
 	update(model, s, dt, t, rpm) {
 		// przeciążenie z szybkości zmiany kąta ścieżki i przechyłu: n ≈ cos γ / cos φ + v·dγ/dt / g

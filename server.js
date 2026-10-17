@@ -1,10 +1,11 @@
 // Prosty serwer statyczny do podglądu gry: node server.js → http://localhost:4190
 // (moduły ES i dane regionów nie wczytują się z file://, więc gra potrzebuje serwera albo aplikacji).
+// node server.js web/lot – podgląd wersji przeglądarkowej zbudowanej przez npm run web.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ROOT = import.meta.dirname;
+const ROOT = path.resolve(import.meta.dirname, process.argv[2] ?? '.');
 const PORT = Number(process.env.PORT) || 4190;
 const TYPES = {
 	'.html': 'text/html; charset=utf-8',
@@ -14,6 +15,7 @@ const TYPES = {
 	'.png': 'image/png',
 	'.svg': 'image/svg+xml',
 	'.gz': 'application/octet-stream',
+	'.ico': 'image/x-icon',
 };
 
 http.createServer((req, res) => {
@@ -25,4 +27,4 @@ http.createServer((req, res) => {
 		res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
 		res.end(data);
 	});
-}).listen(PORT, () => console.log(`Lot: http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`Lot: http://localhost:${PORT}${process.argv[2] ? ` (${process.argv[2]})` : ''}`));

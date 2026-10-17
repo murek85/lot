@@ -1,11 +1,15 @@
-// Wczytuje wypieczony region (data/regions/<id>/) i zamienia go na tekstury GPU.
+// Wczytuje region – wypieczony (data/regions/<id>/) albo wygenerowany w grze (IndexedDB, id „gen-…”) – i zamienia
+// go na tekstury GPU. Oba mają te same pliki i meta.json.
+import { getRegionFiles, getRegionMeta, gunzipBlob } from './gen/store.js';
 import { DataTexture, RedFormat, HalfFloatType, UnsignedByteType, LinearFilter, NearestFilter, ClampToEdgeWrapping, DataUtils } from 'three/webgpu';
 
 async function gunzip(url, onProgress) {
 	const res = await fetch(url);
 	if (!res.ok) throw new Error(`Nie udało się wczytać ${url} (${res.status})`);
-	const stream = res.body.pipeThrough(new DecompressionStream('gzip'));
-	const buf = await new Response(stream).arrayBuffer();
+	// część serwerów stron podaje .gz z nagłówkiem Content-Encoding: gzip – przeglądarka sama go wtedy rozpakowuje
+	let buf = await res.arrayBuffer();
+	const head = new Uint8Array(buf, 0, 2);
+	if (head[0] === 0x1f && head[1] === 0x8b) buf = await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
 	onProgress?.();
 	return buf;
 }
@@ -31,14 +35,24 @@ export function downsample(src, n, factor) {
 	return out;
 }
 
-export async function loadRegion(id, onProgress) {
+/** Źródło plików regionu: { meta, file(name) → ArrayBuffer (rozpakowany) }. */
+async function regionSource(id) {
+	if (id.startsWith('gen-')) {
+		const [meta, files] = await Promise.all([getRegionMeta(id), getRegionFiles(id)]);
+		if (!meta || !files) throw new Error(`Brak wygenerowanego regionu ${id}`);
+		return { meta, file: (name) => gunzipBlob(files[name]) };
+	}
 	const base = `data/regions/${id}/`;
-	const meta = await (await fetch(base + 'meta.json')).json();
-	const [hBuf, cBuf, sBuf] = await Promise.all([
-		gunzip(base + meta.height.file, onProgress),
-		gunzip(base + meta.cover.file, onProgress),
-		gunzip(base + meta.shore.file, onProgress),
-	]);
+	const res = await fetch(base + 'meta.json');
+	if (!res.ok) throw new Error(`Nieznany region ${id}`);
+	return { meta: await res.json(), file: (name) => gunzip(base + name) };
+}
+
+export async function loadRegion(id, onProgress) {
+	const src = await regionSource(id);
+	const { meta } = src;
+	const step = (p) => p.then((b) => { onProgress?.(); return b; });
+	const [hBuf, cBuf, sBuf] = await Promise.all([step(src.file(meta.height.file)), step(src.file(meta.cover.file)), step(src.file(meta.shore.file))]);
 	const n = meta.height.res;
 	const h16 = new Uint16Array(hBuf);
 	const span = meta.height.max - meta.height.min;
@@ -65,7 +79,7 @@ export async function loadRegion(id, onProgress) {
 
 	// obiekty z OpenStreetMap (drogi, budynki, tory…), jeśli region je ma
 	let osm = null;
-	if (meta.osm) osm = JSON.parse(new TextDecoder().decode(await gunzip(base + meta.osm.file)));
+	if (meta.osm) osm = JSON.parse(new TextDecoder().decode(await src.file(meta.osm.file)));
 
 	return {
 		meta,

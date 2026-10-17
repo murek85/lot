@@ -4,8 +4,22 @@
 		{
 			"name": "lot",
 			"runtimeExecutable": "node",
-			"runtimeArgs": ["server.js"],
+			"runtimeArgs": [
+				"server.js"
+			],
 			"port": 4190
+		},
+		{
+			"name": "lot-web",
+			"runtimeExecutable": "node",
+			"runtimeArgs": [
+				"server.js",
+				"web/lot"
+			],
+			"port": 4191,
+			"env": {
+				"PORT": "4191"
+			}
 		}
 	]
 }

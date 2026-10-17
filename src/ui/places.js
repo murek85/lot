@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS = {
 	fps: false,
 	invertPitch: false,
 	mouseSens: 1,
+	chaseReturn: false, // kamera za samolotem wraca za ogon po puszczeniu myszy
 	cockpitFov: 62,
 	hud: true,
 	dev: false,
@@ -65,11 +66,11 @@ export function describePosition(x, z, places) {
 		if (d < bd) { bd = d; best = p; }
 	}
 	if (!best) return '';
-	if (bd < 1500) return `nad ${best.instr ?? best.name}`;
+	if (bd < 1500) return best.instr ? `nad ${best.instr}` : `nad miejscowością ${best.name}`;
 	// kierunek od miejsca do punktu: 0 = północ (−z), zgodnie z ruchem wskazówek zegara
 	const ang = (Math.atan2(x - best.x, -(z - best.z)) + 2 * Math.PI) % (2 * Math.PI);
 	const dir = DIRS[Math.round(ang / (Math.PI / 4)) % 8];
-	return `${Math.round(bd / 1000)} km na ${dir} od ${best.gen ?? best.name}`;
+	return `${Math.round(bd / 1000)} km na ${dir} od ${best.gen ?? `miejscowości ${best.name}`}`;
 }
 
 /** Kurs w stopniach (0–359) z kursu w radianach. */

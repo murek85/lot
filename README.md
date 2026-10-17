@@ -4,7 +4,7 @@ Historia wersji: [CHANGELOG.md](CHANGELOG.md) (w grze – „Co nowego”).
 
 Prototyp arcade'owej gry lotniczej nad prawdziwą mapą Polski, z widokiem z góry, na **WebGPU** (Three.js 0.186, `WebGPURenderer` i shadery w TSL). Gra nie ma trybu zapasowego WebGL2: bez WebGPU pokazuje okno z informacją.
 
-**Gotowe:** teren regionu, fizyczna atmosfera, chmury wolumetryczne z cieniami na ziemi, Dromader z arcade'owym modelem lotu i kamerą pościgową, wygładzanie czasowe (TAA), efekt miniatury (tilt-shift), jeziora z falami i odbiciami, las z pojedynczych drzew 3D, a z OpenStreetMap: drogi i dukty, budynki 3D, tory z peronami, mosty, aleje, linie energetyczne i cienie budynków oraz drzew. Region: Bory Tucholskie.
+**Gotowe:** teren regionu, fizyczna atmosfera, chmury wolumetryczne z cieniami na ziemi, Dromader z arcade'owym modelem lotu i kamerą pościgową, wygładzanie czasowe (TAA), efekt miniatury (tilt-shift), jeziora z falami i odbiciami, las z pojedynczych drzew 3D, a z OpenStreetMap: drogi i dukty, budynki 3D, tory z peronami, mosty, aleje, linie energetyczne i cienie budynków oraz drzew. Region: Bory Tucholskie, a w grze generator regionów z dowolnego miejsca w Polsce (kafle wektorowe OpenStreetMap).
 
 ## Uruchomienie
 
@@ -19,7 +19,7 @@ Wymagania: Chrome lub Edge (Windows/macOS), Firefox 141+ albo Safari 26+, z wł�
 
 Sterowanie:
 - **lot:** A/D (←/→) – przechył i skręt (puszczone – samolot sam się poziomuje), W/S (↑/↓) – wznoszenie i opadanie, E lub Shift – więcej gazu, Q – mniej, R – start od nowa po kraksie;
-- **kamera:** C przełącza kolejno: za samolotem, kabina, swobodny; V – wprost do kabiny i z powrotem. Za samolotem: kółko – odległość (od 14 m), prawy przycisk – kąt patrzenia. W kabinie: przeciąganie myszą – rozglądanie się, kółko – pole widzenia, dwuklik – na wprost;
+- **kamera:** C przełącza kolejno: za samolotem, kabina, swobodny; V – wprost do kabiny i z powrotem. Za samolotem: przeciąganie myszą (lewy lub prawy przycisk) – obrót wokół samolotu (pełny w poziomie, od spodu do widoku z góry), kółko – odległość (12–1500 m), dwuklik lub X – z powrotem za ogon; w ustawieniach można włączyć łagodny powrót za ogon po puszczeniu myszy. W kabinie: przeciąganie myszą – rozglądanie się, kółko – pole widzenia, dwuklik – na wprost;
 - **światła:** L włącza i wyłącza reflektory do lądowania (pozycyjne, stroboskopy i błyskacz świecą zawsze). Swobodny: lewy przycisk – przesuwanie, prawy – obrót, kółko – wysokość, WASD, Q/E, R/F, Shift;
 - H – panel.
 
@@ -30,6 +30,23 @@ Testy (Node 22+):
 ```bash
 npm test
 ```
+
+## Wersja przeglądarkowa i aplikacja desktopowa
+
+Jak w Maszyniście i Pograniczu Galaktyki:
+
+```bash
+npm run web        # web/lot/ i web/lot-<wersja>.zip – pliki strony do wgrania na serwer
+npm run app        # gra w oknie Electron (bez serwera)
+npm run app:check  # samosprawdzenie aplikacji: wczytanie, szybki start, raport błędów (LOT_SHOT=plik.png – zrzut)
+npm run dist       # instalator NSIS i wersja przenośna dla Windows w dist/
+npm run dist:dir   # tylko rozpakowana aplikacja w dist/win-unpacked
+npm run icon       # ikony: favicon.ico, icons/, build/icon.png
+```
+
+- **Web** (`tools/web.js`): `index.html`, `style.css`, ikony, `src/`, `vendor/three/` i `data/regions/` (bez podglądów i opisów), ok. 17 MB. Wystarczy dowolny serwer statyczny, ale WebGPU działa tylko w bezpiecznym kontekście – strona musi być podana przez HTTPS (albo z localhost). Dane `.gz` gra rozpakowuje sama; gdy serwer doda do nich `Content-Encoding: gzip`, też działa. Podgląd zbudowanej wersji: `node server.js web/lot`.
+- **Electron** (`electron/`): pliki gry podaje protokół `app://game` (moduły ES, mapa importów, `fetch` danych i `localStorage` działają jak na serwerze), proszona jest wydajna karta graficzna. F11 / Alt+Enter – pełny ekran, okno pamięta rozmiar i położenie, w menu głównym jest „Wyjdź z gry”. Izolacja kontekstu i piaskownica; stronie udostępnione jest tylko `window.desktop` (pełny ekran, wyjście). Ctrl+Shift+I – narzędzia deweloperskie (tylko wersja niespakowana).
+- **Pakowanie** (`tools/dist.js`, electron-builder): Electron brany z `node_modules/electron/dist` (bez pobierania). Dwuczęściowa wersja (0.7) jest na czas budowania zamieniana na trzyczęściową (0.7.0).
 
 ## Teren z prawdziwych danych
 
@@ -163,6 +180,31 @@ Regiony definiuje `src/regions.js`. Teraz jest jeden: **Bory Tucholskie**, kwadr
 
 Pomiar w przeglądarce: `await __lot.bench(30)` zwraca czas klatki w ms, także w ukrytej karcie. W 1416×1274 na AMD RDNA2 cała klatka (teren, woda, las 3D, drogi, budynki, kolej, mapa cieni, chmury, samolot, TAA, tilt-shift) zajmuje około 8–9 ms.
 
+## Generator regionów w grze
+
+Menu → **Regiony i generator map** buduje nowy region bez narzędzi i bez serwera – wszystko dzieje się w przeglądarce:
+
+1. Środek: wyszukiwarka miejscowości (Nominatim) albo gotowe propozycje; bok 20–60 km; rzeźba standardowa (siatka
+   2048², kafle Terrarium z12, ok. 25 m) albo szczegółowa (4096², z13 – na góry); budynki wszystkie, bez małych (< 60 m²)
+   albo żadne.
+2. Szacunek z 9 kafli rozłożonych po regionie: liczba kafli, rozmiar pobierania, budynki i drogi, obciążenie gry
+   (budynki to większość trójkątów sceny: Bory – 73 tys., centrum Katowic 20 × 20 km – 180 tys.).
+3. Worker (`src/gen/worker.js`) pobiera kafle wektorowe [OpenFreeMap](https://openfreemap.org) (schemat OpenMapTiles,
+   z14, ok. 1,5 km) i kafle wysokości, każdy od razu zapisuje w IndexedDB (`lot-gen`, magazyn `tiles`, klucz
+   `źródło/z/x/y`), dekoduje (`src/gen/mvt.js`), przycina do kwadratu kafla i przelicza na układ gry
+   (`src/gen/convert.js`): drogi, tory, perony, stacje, budynki (rodzaj z pola i wysokości), cieki, a wielokąty pokrycia
+   rastruje do mapy klas z ważnością (woda > mokradła > las > zabudowa > pola > łąki; reszta – pola).
+4. Dalej jak przy wypiekaniu: siatka wysokości, wyrównanie wody, odległość od brzegu (`src/gen/terrain.js`, wspólne z
+   `tools/bake-region.js`). Region trafia do magazynu `regions` jako te same pliki `.gz` co w `data/regions/`.
+
+Region wygenerowany ma identyfikator `gen-…`; `src/region.js` czyta go z IndexedDB zamiast z serwera. Wybór regionu
+jest zapamiętany (`lot-region`), zmiana przeładowuje stronę. Zapisy lotów są osobne dla każdego regionu. Kafle zostają
+w magazynie, więc kolejne regiony w tej okolicy powstają szybciej – to też podstawa późniejszego strumieniowania
+większych obszarów (np. całe województwo) kafel po kaflu.
+
+Czego kafle OpenMapTiles nie mają: linii energetycznych, szpalerów drzew, przejazdów kolejowych, kształtów dachów
+i rodzajów budynków – w regionach generowanych ich nie ma albo są wyprowadzane z wysokości i pola.
+
 ## Struktura
 
 ```
@@ -181,6 +223,7 @@ src/citylights.js          latarnie i okna nocą
 src/ui/menu.js             menu, pauza, plan lotu, zapisy, ustawienia
 src/ui/menu.css            styl menu, ekranu startowego i wczytywania
 src/ui/loading.js          ekrany wczytywania (tło 2D, karta, postęp)
+src/gen/                   generator regionów: worker, klient, dekoder MVT, kafle, konwersja, IndexedDB
 src/ui/places.js           miejsca startu, pory, pogoda, opis położenia, pamięć przeglądarki
 src/plane/model.js         model Dromadera
 src/plane/wilga.js         model PZL-104 Wilga 35
@@ -213,6 +256,12 @@ src/sun.js, src/geo.js     położenie słońca, układ współrzędnych
 src/gfx/noise.js           szumy i komórki Woronoja w TSL
 tools/bake-region.js       wypiekanie regionu (+ tools/lib: PNG, COG, obróbka siatek)
 tools/vendor.js            kopiuje Three.js z node_modules do vendor/three
+tools/web.js               wersja przeglądarkowa (web/lot/ i ZIP; + tools/lib/zip.js)
+tools/dist.js              pakowanie aplikacji desktopowej (electron-builder)
+tools/make-icon.js         ikony aplikacji i strony
+electron/main.cjs          aplikacja desktopowa: okno, protokół app://, samosprawdzenie
+electron/preload.cjs       window.desktop dla strony
+electron/assets.cjs        ścieżki i typy plików protokołu app://
 ```
 
 ## Licencje danych
@@ -220,4 +269,5 @@ tools/vendor.js            kopiuje Three.js z node_modules do vendor/three
 - Wysokości: [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/), z różnych otwartych źródeł (m.in. SRTM, EU-DEM).
 - Pokrycie terenu: © ESA WorldCover project 2021 / Copernicus Sentinel data 2021, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - Drogi, budynki, tory i inne obiekty: © współtwórcy [OpenStreetMap](https://www.openstreetmap.org/copyright), licencja ODbL.
+- Regiony generowane: kafle wektorowe [OpenFreeMap](https://openfreemap.org), © [OpenMapTiles](https://openmaptiles.org); wyszukiwanie miejscowości: [Nominatim](https://nominatim.org) (OSM).
 - Three.js: MIT (`vendor/three/LICENSE`).

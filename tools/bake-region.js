@@ -12,7 +12,7 @@ import { localToLonLat, lonToTileX, latToTileY, terrariumHeight, regionBounds } 
 import { fetchCached, pool } from './lib/net.js';
 import { decodePng } from './lib/png.js';
 import { openCog } from './lib/cog.js';
-import { COVER, worldCoverClass, flattenWater, signedShoreDistance } from './lib/terrain.js';
+import { COVER, worldCoverClass, packTerrain, SHORE_STEP } from './lib/terrain.js';
 
 const ZOOM = 12;
 const TERRARIUM = (x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${ZOOM}/${x}/${y}.png`;
@@ -113,41 +113,13 @@ async function bakeCover() {
 	return out;
 }
 
-function waterMask(cover, coverRes, n) {
-	const k = coverRes / n;
-	const mask = new Uint8Array(n * n);
-	for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-		let w = 0;
-		for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++) if (cover[(j * k + dy) * coverRes + i * k + dx] === COVER.water) w++;
-		mask[j * n + i] = w * 2 >= k * k ? 1 : 0;
-	}
-	return mask;
-}
-
 const gz = (arr) => zlib.gzipSync(Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength), { level: 9 });
 
 const rawHeight = await bakeHeight();
 const cover = await bakeCover();
-const n = region.heightRes, cell = region.size / n;
-const water = waterMask(cover, region.coverRes, n);
+const n = region.heightRes;
 log('Gładzenie tafli wody i odległość od brzegu');
-const height = flattenWater(rawHeight, water, n, Math.round(6000 / cell));
-const shore = signedShoreDistance(water, n);
-
-let hMin = Infinity, hMax = -Infinity;
-for (const h of height) { if (h < hMin) hMin = h; if (h > hMax) hMax = h; }
-hMin = Math.floor(hMin) - 1; hMax = Math.ceil(hMax) + 1;
-const h16 = new Uint16Array(n * n);
-for (let i = 0; i < h16.length; i++) h16[i] = Math.round(((height[i] - hMin) / (hMax - hMin)) * 65535);
-const SHORE_STEP = 3; // metry na jednostkę; 128 = brzeg
-const s8 = new Uint8Array(n * n);
-for (let i = 0; i < s8.length; i++) s8[i] = Math.max(0, Math.min(255, Math.round(128 + (shore[i] * cell) / SHORE_STEP)));
-
-const counts = Object.fromEntries(Object.keys(COVER).map((k) => [k, 0]));
-const names = Object.keys(COVER);
-for (const c of cover) counts[names[c]]++;
-for (const k of names) counts[k] = +((counts[k] / cover.length) * 100).toFixed(1);
-
+const { h16, s8, min: hMin, max: hMax, percent: counts } = packTerrain(rawHeight, cover, n, region.coverRes, region.size);
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, 'height.bin.gz'), gz(h16));
 fs.writeFileSync(path.join(OUT, 'cover.bin.gz'), gz(cover));

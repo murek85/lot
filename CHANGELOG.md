@@ -1,10 +1,29 @@
 # Dziennik zmian – Lot nad Polską
 
-Historia odtworzona z przebiegu prac nad prototypem (repozytorium nie ma jeszcze commitów). Numery 0.1–0.6 nadane
-wstecz kolejnym etapom; 0.7 to wersja pokazywana w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
+Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
+wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
+
+## 0.8 – generator regionów
+
+- **Generator regionów w grze** (menu → Regiony i generator map): środek z wyszukiwarki miejscowości (Nominatim) albo
+  z propozycji (Katowice, Gliwice, Beskid Śląski, Jura, Częstochowa, Tatry, Kraków, Trójmiasto, Warszawa, Wrocław),
+  bok 20 / 30 / 46 / 60 km, rzeźba standardowa (2048², z12) lub szczegółowa (4096², z13), budynki wszystkie / bez
+  małych / bez budynków.
+- **Kafle wektorowe OpenStreetMap** (OpenFreeMap, schemat OpenMapTiles, z14): drogi z mostami i nawierzchnią, tory,
+  perony i stacje, budynki z wysokością, cieki, woda i pokrycie terenu (las, łąki, pola, zabudowa, mokradła)
+  rastrowane do mapy pokrycia; miejsca startu z miast i wsi regionu.
+- Własny dekoder MVT i przycinanie obiektów do kafli – działa w workerze, gra nie zacina się podczas generowania.
+- **Kafel po kaflu w IndexedDB**: pobrane kafle zostają w przeglądarce (drugi region w tej samej okolicy i przyszłe
+  strumieniowanie bez ponownego pobierania), gotowe regiony – w tym samym formacie co wypieczone, działają bez sieci.
+- Szacunek przed generowaniem (kafle, pobranie, liczba budynków i dróg, obciążenie gry) z próbki 9 kafli.
+- Ekran postępu z możliwością przerwania; lista regionów z przełączaniem i usuwaniem; zapisy lotów osobno dla regionu.
+- Obróbka terenu (wygładzanie wody, odległość od brzegu) wspólna dla narzędzia wypiekania i generatora.
 
 ## 0.7 – menu, samoloty do wyboru, wczytywanie
 
+- **Wersja przeglądarkowa i aplikacja desktopowa** (jak w Maszyniście i Pograniczu Galaktyki): `npm run web` składa
+  pliki strony w `web/lot/` i ZIP, `npm run app` / `npm run dist` – gra w oknie Electron i instalator dla Windows;
+  ikona aplikacji i strony, „Wyjdź z gry” w aplikacji. Poprawka: brak światła latarni na drzewach (błąd shadera lasu).
 - **Menu w stylu Pogranicza Galaktyki i Maszynisty**: ekran startowy z logo i „Kliknij lub naciśnij dowolny klawisz”,
   menu nad żywą sceną (Dromader krąży na autopilocie, kamera go okrąża), rama z celownikami i pasem skanu.
 - **Plan lotu**: samolot, miejsce startu (Tuchola, Jezioro Charzykowskie, Chojnice, Rytel, Czersk, Człuchów), pora
