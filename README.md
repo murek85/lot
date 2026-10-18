@@ -161,8 +161,21 @@ zapisuje się z lotem. Pora dnia napędza słońce, księżyc, światła miast, 
   się głównie przed samolotem (150–1500 m – w kadrze kamery), te daleko za nim ustępują miejsca nowym.
 - **Samolot płoszy** stado bliżej niż ~140 m (ucieczka w bok i w dół, szybsze machanie); ptak bliżej niż ~3 m od
   kadłuba – **zderzenie** (uderzenie w dźwięku i komunikat).
-- **Obraz**: jedna bryła (tułów, skrzydła ze stawem) z instancjami, machanie i szybowanie w shaderze; z daleka co
-  najmniej ~12 pikseli rozpiętości.
+- **Modele** (`birdmodels.js`): osobna bryła każdego gatunku z parametrów (130–200 trójkątów) – tułów z przekrojów,
+  głowa, dziób, ogon-wachlarz, skrzydła z nasadą, nadgarstkiem i końcem; bocian z długą szyją, czerwonym dziobem
+  i nogami za ogonem; myszołów, wrona i bocian z rozcapierzonymi lotkami; mewa ze skrzydłami w „W”, szpak ze
+  spiczastymi. Barwy upierzenia w wierzchołkach (grzbiet, brzuch, skrzydło, tylna krawędź, końce).
+- **Animacja** (shader, `birdview.js`): skrzydło zgina się w barku i nadgarstku – szybkie uderzenie w dół, wolniejszy
+  powrót z ugiętą dłonią; tułów podskakuje w rytmie; w szybowaniu „V”. Rytm gatunku: szpak – serie machnięć
+  z krótkim szybowaniem, bocian i myszołów – głównie szybują, mewa – kołysze. Przechył w zakręcie (z prędkości
+  kątowej), dziób w górę przy wznoszeniu. Jedno rysowanie na gatunek.
+- **Z daleka – punkty** (`birddots.js`): poniżej ~4 pikseli rozpiętości bryła znika, od ~6 pikseli w dół pojawia się
+  kropka (~4 px) w barwie gatunku, migocząca w rytmie machania – stado szpaków z wysokości to ruchoma chmura kropek,
+  a nie sztucznie powiększone ptaki. Kropki w osobnej nakładce po wygładzaniu TRAA (drobne, szybkie punkty inaczej
+  rozmywają się do zera), zasłaniane z głębi sceny.
+- **Wektory ruchu ptaków** liczone w materiale (przesunięcie ptaka od poprzedniej klatki i poprzednia kamera) –
+  wbudowany wektor Three.js bierze poprzednie położenie z surowej bryły (bez instancji), więc wygładzanie dostawało
+  zły ruch; teraz skrzydła i tułów nie zostawiają smug.
 - **Dźwięk**: świergot szpaków, klekot bocianów, „kiii-ja” myszołowa, krzyk mew, krakanie wron, trzepot spłoszonego stada.
 - Ustawienia → Obraz → **Ptaki**.
 
@@ -385,7 +398,9 @@ src/traffic/render.js      ruch: pojazdy i ich światła na GPU
 src/traffic/trains.js      kolej: graf torów, pociągi, postoje
 src/traffic/trainview.js   kolej: wagony i światła na GPU
 src/fauna/birds.js         ptaki: gatunki, stada, płoszenie, zderzenia
-src/fauna/birdview.js      ptaki na GPU z machaniem skrzydeł
+src/fauna/birdmodels.js    ptaki: bryły gatunków z parametrów
+src/fauna/birdview.js      ptaki na GPU: stawy skrzydeł, przechył, wektory ruchu
+src/fauna/birddots.js      odległe ptaki jako kropki (nakładka po wygładzaniu)
 src/fauna/people.js        piesi: chodniki, ścieżki, perony
 src/fauna/peopleview.js    piesi na GPU z krokiem i parasolami
 src/weather/weather.js     pogoda: rodzaje, wiatr, turbulencja, błyskawice

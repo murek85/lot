@@ -3,6 +3,20 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.21 – ptaki z daleka
+
+- Odległe ptaki jako drobne, migoczące kropki w barwie gatunku (nakładka po wygładzaniu, zasłaniana przez budynki
+  i teren) zamiast sztucznie powiększonych brył; z bliska – pełne modele w naturalnej wielkości.
+- Poprawne wektory ruchu ptaków dla wygładzania TRAA – bez smug.
+
+## 0.20 – ptaki z bliska
+
+- Osobne modele gatunków: bocian (szyja, nogi, czerwony dziób), myszołów i wrona z rozcapierzonymi lotkami, mewa ze
+  skrzydłami w „W”, szpak ze spiczastymi; barwy upierzenia.
+- Animacja: zgięcie w barku i nadgarstku, szybkie uderzenie w dół, ugięta dłoń przy powrocie, podskok tułowia,
+  szybowanie w „V”; rytm machania zależny od gatunku.
+- Przechył w zakrętach i pochylenie przy wznoszeniu.
+
 ## 0.19 – duża mapa i cel lotu
 
 - Duża mapa regionu (Tab, menu pauzy): przesuwanie, powiększanie, nazwy, podziałka; kliknięcie – cel lotu.

@@ -35,3 +35,35 @@ test('ptaki: gatunek z miejsca, wysokość nad terenem, stado trzyma się razem,
 	assert.ok(sim.events.some((e) => e.type === 'scare'));
 	assert.ok(sim.events.some((e) => e.type === 'strike'));
 });
+
+test('modele ptaków: każdy gatunek, symetria skrzydeł, stawy, lotki u szybowników', async () => {
+	const { MODELS, buildBird } = await import('../src/fauna/birdmodels.js');
+	for (const id of Object.keys(SPECIES)) {
+		assert.ok(MODELS[id], `model ${id}`);
+		const b = buildBird(MODELS[id]);
+		assert.equal(b.pos.length / 3, b.col.length / 3);
+		assert.ok(b.idx.every((i) => i < b.pos.length / 3));
+		// rozpiętość 1: końce skrzydeł na ±0,5, symetrycznie
+		const xs = b.pos.filter((_, i) => i % 3 === 0);
+		assert.ok(Math.abs(Math.max(...xs) - 0.5) < 0.02 && Math.abs(Math.min(...xs) + 0.5) < 0.02, id);
+		assert.ok(b.joints.shoulder < b.joints.wrist && b.joints.wrist < 0.5);
+		assert.ok(b.idx.length / 3 < 300, 'lekkie bryły');
+	}
+	// szybowniki (bocian, myszołów, wrona) mają rozcapierzone lotki – więcej trójkątów niż mewa i szpak
+	assert.ok(buildBird(MODELS.buzzard).idx.length > buildBird(MODELS.gull).idx.length);
+});
+
+test('ptaki: kurs, przechył w zakręcie i pochylenie przy wznoszeniu', () => {
+	const sim = new BirdSim({ coverAt: () => 'crop', groundAt: () => 0, radius: 2000, seed: 4 });
+	sim.weights = speciesWeights(day);
+	for (let i = 0; i < 300; i++) sim.step(1 / 30, { x: 0, z: 0 });
+	const birds = sim.birds;
+	assert.ok(birds.length > 0);
+	for (const b of birds) {
+		assert.ok(Number.isFinite(b.yaw) && Number.isFinite(b.bank) && Number.isFinite(b.pitch));
+		assert.ok(Math.abs(b.bank) <= 1.11 && Math.abs(b.pitch) < 1.2);
+		assert.ok(b.glideK >= 0 && b.glideK <= 1);
+	}
+	// zakręcający ptak przechyla się w stronę zakrętu
+	assert.ok(birds.some((b) => Math.abs(b.bank) > 0.05));
+});

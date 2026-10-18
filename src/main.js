@@ -29,6 +29,7 @@ import { TrainSim } from './traffic/trains.js';
 import { createTrainView } from './traffic/trainview.js';
 import { BirdSim, speciesWeights } from './fauna/birds.js';
 import { createBirdView } from './fauna/birdview.js';
+import { BirdDots } from './fauna/birddots.js';
 import { PeopleSim, peopleByHour } from './fauna/people.js';
 import { createPeopleView } from './fauna/peopleview.js';
 import { weatherById, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt } from './weather/weather.js';
@@ -196,7 +197,11 @@ async function start() {
 	terrain.uniforms.treesFar.value = forest.uniforms.far.value;
 	// opady i błyskawice: osobna scena dodawana po wygładzaniu (src/weather/precip.js)
 	const precip = new Precipitation(atmo.u.pixelAngle);
-	const post = createPost(renderer, scene, camera, atmo, clouds, precip);
+	// odległe ptaki jako punkty – nakładka po wygładzaniu
+	const birdDots = new BirdDots(birdSim, atmo, atmo.u.pixelAngle);
+	// przebiegi z nakładkami czyszczone przezroczyście (krycie w kanale alfa); obraz końcowy i tak jest nieprzezroczysty
+	renderer.setClearColor(0x000000, 0);
+	const post = createPost(renderer, scene, camera, atmo, clouds, precip, birdDots);
 
 	const view = new ViewCamera(camera, canvas, (x, z) => region.heightAt(x, z));
 	// start nad pierwszym miejscem regionu (Tuchola), z widokiem na północny zachód
@@ -896,6 +901,7 @@ async function start() {
 			const fwd = game === 'flying' || game === 'menu' ? { x: pp.x, y: pp.y, z: pp.z } : null;
 			if (game !== 'paused' && game !== 'loading') birds.sim.step(dt, { x: pp.x, z: pp.z, hx: Math.sin(flight.heading), hz: -Math.cos(flight.heading) }, fwd);
 			birds.view.update(camera);
+			birdDots.update(camera);
 			const cp = camera.position;
 			for (const ev of birds.sim.events) {
 				if (ev.type === 'strike' && game !== 'flying') continue;
@@ -905,7 +911,7 @@ async function start() {
 					escHintUntil = performance.now() + 2200;
 				}
 			}
-		} else birds.view.objects.forEach((o) => (o.visible = false));
+		} else { birds.view.objects.forEach((o) => (o.visible = false)); if (birdDots.sprite) birdDots.sprite.visible = false; }
 		// piesi: gdy kamera nisko (poniżej ~350 m nad ziemią); gwar w pobliżu
 		let crowd = 0;
 		if (people) {
@@ -1064,7 +1070,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

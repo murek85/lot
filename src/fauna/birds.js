@@ -8,11 +8,11 @@
  * szybowanie (udział czasu bez machania), barwy [ciało, końce skrzydeł], gdzie (klasy pokrycia), kiedy.
  */
 export const SPECIES = {
-	starling: { span: 0.4, speed: 13, alt: [8, 70], count: [25, 70], flap: 9, glide: 0.1, col: [[0.06, 0.06, 0.07], [0.04, 0.04, 0.05]], cover: ['crop', 'grass'], flock: true },
-	stork: { span: 2.0, speed: 10, alt: [40, 200], count: [1, 4], flap: 2, glide: 0.7, col: [[0.85, 0.85, 0.83], [0.05, 0.05, 0.05]], cover: ['grass', 'wetland'], flock: false, season: [80, 250] },
-	buzzard: { span: 1.25, speed: 9, alt: [70, 320], count: [1, 2], flap: 3, glide: 0.9, col: [[0.32, 0.22, 0.14], [0.15, 0.1, 0.07]], cover: ['crop', 'grass', 'forest'], flock: false, thermal: true },
-	gull: { span: 1.2, speed: 11, alt: [10, 70], count: [4, 14], flap: 3.5, glide: 0.5, col: [[0.88, 0.88, 0.9], [0.35, 0.36, 0.4]], cover: ['water'], flock: true },
-	crow: { span: 0.95, speed: 11, alt: [15, 90], count: [6, 24], flap: 4, glide: 0.25, col: [[0.05, 0.05, 0.06], [0.03, 0.03, 0.035]], cover: ['built', 'crop'], flock: true },
+	starling: { span: 0.4, speed: 13, alt: [8, 70], count: [25, 70], flap: 9, glide: 0.3, glidePeriod: 2.2, col: [[0.06, 0.06, 0.07], [0.04, 0.04, 0.05]], cover: ['crop', 'grass'], flock: true },
+	stork: { span: 2.0, speed: 10, alt: [40, 200], count: [1, 4], flap: 2, glide: 0.7, glidePeriod: 14, col: [[0.85, 0.85, 0.83], [0.05, 0.05, 0.05]], cover: ['grass', 'wetland'], flock: false, season: [80, 250] },
+	buzzard: { span: 1.25, speed: 9, alt: [70, 320], count: [1, 2], flap: 3, glide: 0.9, glidePeriod: 20, col: [[0.32, 0.22, 0.14], [0.15, 0.1, 0.07]], cover: ['crop', 'grass', 'forest'], flock: false, thermal: true },
+	gull: { span: 1.2, speed: 11, alt: [10, 70], count: [4, 14], flap: 3.5, glide: 0.5, glidePeriod: 6, col: [[0.88, 0.88, 0.9], [0.35, 0.36, 0.4]], cover: ['water'], flock: true },
+	crow: { span: 0.95, speed: 11, alt: [15, 90], count: [6, 24], flap: 4, glide: 0.25, glidePeriod: 5, col: [[0.05, 0.05, 0.06], [0.03, 0.03, 0.035]], cover: ['built', 'crop'], flock: true },
 };
 export const SPECIES_IDS = Object.keys(SPECIES);
 
@@ -94,7 +94,7 @@ export class BirdSim {
 				species: id, span: S.span * rnd(r, 0.9, 1.1),
 				x: x + (r() - 0.5) * spread, z: z + (r() - 0.5) * spread, y: 0,
 				vx: Math.sin(heading) * S.speed, vy: 0, vz: -Math.cos(heading) * S.speed,
-				phase: r() * Math.PI * 2, flapK: rnd(r, 0.85, 1.15), glide: 0, group: g,
+				phase: r() * Math.PI * 2, flapK: rnd(r, 0.85, 1.15), glide: 0, group: g, offset: r() * 30,
 			};
 			b.y = this.groundAt(b.x, b.z) + alt + (r() - 0.5) * 8;
 			if (g.thermal) { b.ang = (i / n) * Math.PI * 2; b.ty = b.y; }
@@ -186,9 +186,21 @@ export class BirdSim {
 				b.vx *= k; b.vy *= k; b.vz *= k;
 				b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
 				if (b.y < ground + 2) { b.y = ground + 2; b.vy = Math.abs(b.vy); }
-				// machanie: szybowanie z przerwami (bocian, myszołów), wystraszony – machanie ciągłe
-				b.glide = g.scared > 0 ? 0 : (Math.sin(this.t * 0.4 + b.phase) * 0.5 + 0.5) < S.glide ? 1 : 0;
-				b.phase += dt * S.flap * b.flapK * Math.PI * 2 * (1 - b.glide * 0.97);
+				// machanie i szybowanie w rytmie gatunku (szpak – serie machnięć, bocian i myszołów – głównie szybują);
+				// wystraszony – machanie ciągłe; przejście płynne (glideK), faza staje w szybowaniu
+				const cyc = ((this.t + b.offset) / S.glidePeriod) % 1;
+				b.glide = g.scared > 0 || b.vy > 1.5 ? 0 : cyc > 1 - S.glide ? 1 : 0;
+				b.glideK = (b.glideK ?? b.glide) + (b.glide - (b.glideK ?? b.glide)) * Math.min(1, dt * 4);
+				b.phase += dt * S.flap * b.flapK * Math.PI * 2 * (1 - b.glideK * 0.97);
+				// kurs, pochylenie (wznoszenie – dziób w górę) i przechył w zakręcie (z prędkości kątowej kursu)
+				const yaw = Math.atan2(b.vx, -b.vz), hs = Math.hypot(b.vx, b.vz);
+				let dy = yaw - (b.yaw ?? yaw);
+				dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+				const rate = dt > 0 ? dy / dt : 0;
+				const bankT = Math.max(-1.1, Math.min(1.1, Math.atan((hs * rate) / 9.81)));
+				b.bank = (b.bank ?? 0) + (bankT - (b.bank ?? 0)) * Math.min(1, dt * 3);
+				b.pitch = (b.pitch ?? 0) + (Math.atan2(b.vy, hs) * 0.7 - (b.pitch ?? 0)) * Math.min(1, dt * 3);
+				b.yaw = yaw;
 			}
 			g.birds = g.birds.filter((b) => !b.dead);
 			if (g.birds.length && (cx - center.x) ** 2 + (cz - center.z) ** 2 < R2) keep.push(g);

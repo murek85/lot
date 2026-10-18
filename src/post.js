@@ -24,7 +24,7 @@ class CloudStepNode extends TempNode {
 	}
 }
 
-export function createPost(renderer, scene, camera, atmo, clouds, precip = null) {
+export function createPost(renderer, scene, camera, atmo, clouds, precip = null, overlay = null) {
 	const scenePass = pass(scene, camera);
 	scenePass.setMRT(mrt({ output, velocity }));
 	const color = scenePass.getTextureNode('output');
@@ -77,6 +77,12 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null)
 		precip.build(depth, projInv);
 		const precipPass = pass(precip.scene, camera);
 		outNode = vec4(ts.node.rgb.add(precipPass.getTextureNode('output').rgb), 1);
+	}
+	if (overlay) {
+		// nakładka po wygładzaniu (odległe ptaki jako punkty): barwa przemnożona przez krycie w kanale alfa
+		overlay.build(depth, projInv);
+		const ov = pass(overlay.scene, camera).getTextureNode('output');
+		outNode = vec4(outNode.rgb.mul(float(1).sub(ov.a)).add(ov.rgb), 1);
 	}
 	pipeline.outputNode = outNode;
 	return { pipeline, scenePass, saturation, flash, veil, veilColor, tiltShift: ts, render: () => pipeline.render() };
