@@ -30,8 +30,20 @@ test('„Co nowego”: wersje od bieżącej do 0.1, bieżąca zgodna z numerem w
 	const { readFileSync } = await import('node:fs');
 	const src = readFileSync(new URL('../src/ui/menu.js', import.meta.url), 'utf8');
 	const versions = [...src.matchAll(/\{ v: '(\d+\.\d+)'/g)].map((m) => m[1]);
-	assert.deepEqual(versions, ['0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
+	assert.deepEqual(versions, ['0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
 	assert.ok(src.includes(`'PROTOTYP ${versions[0]}'`));
 	const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 	assert.deepEqual([...log.matchAll(/^## (\d+\.\d+)/gm)].map((m) => m[1]), versions);
+});
+
+test('zegar: upływ z tempem, przez północ do następnego dnia, po 31 grudnia – 1 stycznia', async () => {
+	const { advanceClock, TIME_SPEEDS, DEFAULT_PLAN } = await import('../src/ui/places.js');
+	assert.deepEqual(advanceClock(12, 100, 60, 0), { hour: 12, day: 100 });
+	assert.ok(Math.abs(advanceClock(12, 100, 3600, 1).hour - 13) < 1e-9);
+	assert.ok(Math.abs(advanceClock(12, 100, 60, 60).hour - 13) < 1e-9, '×60: minuta = godzina');
+	const c = advanceClock(23.5, 100, 3600, 1);
+	assert.ok(Math.abs(c.hour - 0.5) < 1e-9 && c.day === 101);
+	assert.equal(advanceClock(23.9, 365, 3600, 1).day, 1);
+	assert.ok(TIME_SPEEDS.some((s) => s.id === DEFAULT_PLAN.timeSpeed));
+	assert.deepEqual(TIME_SPEEDS.map((s) => s.rate), [0, 1, 10, 60]);
 });

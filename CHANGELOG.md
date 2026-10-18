@@ -3,6 +3,12 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.16 – upływ czasu
+
+- Czas w locie płynie: zatrzymany, rzeczywisty, ×10, ×60; wybór w planie lotu i na pauzie, klawisze T (stop / start)
+  i Shift+T (przyspieszenie); przejście przez północ do następnego dnia.
+- Zegar z datą i tempem w panelu lotu.
+
 ## 0.15 – piesi
 
 - **Piesi** na chodnikach, deptakach i ścieżkach w zabudowie, czekający na peronach – widoczni z niska (poniżej

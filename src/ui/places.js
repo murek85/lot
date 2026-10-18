@@ -27,10 +27,25 @@ export const SEASONS = [
 	{ id: 'autumn', name: 'Wczesna jesień', day: 269, note: '26 września, pełnia' },
 ];
 
+/** Upływ czasu w locie: mnożnik czasu rzeczywistego (0 – zegar stoi). */
+export const TIME_SPEEDS = [
+	{ id: 'stop', name: 'Zatrzymany', rate: 0, note: 'pora dnia się nie zmienia' },
+	{ id: 'x1', name: 'Rzeczywisty', rate: 1, note: 'minuta to minuta' },
+	{ id: 'x10', name: 'Przyspieszony ×10', rate: 10, note: 'godzina w 6 minut' },
+	{ id: 'x60', name: 'Szybki ×60', rate: 60, note: 'godzina w minutę – zachód słońca na żywo' },
+];
+
+/** Zegar: godzina i dzień roku po dt sekund przy mnożniku rate (przez północ – następny dzień, po 365 – 1). */
+export function advanceClock(hour, day, dt, rate) {
+	let h = hour + (dt * rate) / 3600, d = day;
+	while (h >= 24) { h -= 24; d = d >= 365 ? 1 : d + 1; }
+	return { hour: h, day: d };
+}
+
 // pogoda i wiatr – src/weather/weather.js (tu ponownie dla menu)
 export { WEATHER, WINDS } from '../weather/weather.js';
 
-export const DEFAULT_PLAN = { aircraft: 'dromader', place: 'tuchola', time: 'morning', season: 'summer', weather: 'scattered', wind: 'light', view: 'plane' };
+export const DEFAULT_PLAN = { aircraft: 'dromader', place: 'tuchola', time: 'morning', season: 'summer', weather: 'scattered', wind: 'light', timeSpeed: 'x1', view: 'plane' };
 
 export const DEFAULT_SETTINGS = {
 	mini: 1, // efekt miniatury (tilt-shift)

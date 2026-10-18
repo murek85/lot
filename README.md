@@ -78,6 +78,14 @@ Regiony z polem `gen` wypieka `npm run bake:gen -- <id>` (`tools/bake-gen.js`) t
 (`src/gen/build.js`), z miejscami startu i odmianą nazw z `src/regions.js`; kafle zostają w `tools/.cache/tiles/`.
 Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 GB pamięci.
 
+## Czas w grze
+
+Zegar w locie płynie: **zatrzymany**, **rzeczywisty** (×1), **przyspieszony ×10** albo **szybki ×60** (godzina w minutę –
+zachód słońca na żywo). Tempo w planie lotu, w menu pauzy (Pogoda i pora) i klawiszami: **T** – zatrzymaj / wznów,
+**Shift+T** – następne przyspieszenie (×1 → ×10 → ×60). Przez północ zegar przechodzi do następnego dnia (data,
+faza Księżyca). W menu, na pauzie i podczas wczytywania czas stoi. Zegar z datą i tempem w panelu lotu; tempo
+zapisuje się z lotem. Pora dnia napędza słońce, księżyc, światła miast, ruch, ptaki i pieszych.
+
 ## Ruch uliczny
 
 `src/traffic/`: samochody, dostawczaki, ciężarówki i autobusy na drogach regionu.

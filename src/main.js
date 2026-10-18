@@ -42,7 +42,7 @@ import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
 import { DEFAULT_REGION, REGIONS } from './regions.js';
 import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta } from './gen/client.js';
-import { PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
+import { TIME_SPEEDS, advanceClock, PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
 
 const $ = (id) => document.getElementById(id);
 // wybrany region (wbudowany albo wygenerowany w grze) – zmiana regionu przeładowuje stronę
@@ -247,6 +247,17 @@ async function start() {
 			else if (game === 'flying') pause();
 			return;
 		}
+		// T – czas stop / start, Shift+T – następne przyspieszenie (×1 → ×10 → ×60)
+		if (e.code === 'KeyT' && !e.target.closest?.('input') && !e.repeat && game === 'flying') {
+			const running = ['x1', 'x10', 'x60'];
+			const next = e.shiftKey ? running[(running.indexOf(env.timeSpeed === 'stop' ? lastRunning : env.timeSpeed) + 1) % 3]
+				: env.timeSpeed === 'stop' ? lastRunning : 'stop';
+			setEnvironment('timeSpeed', next);
+			const sp = TIME_SPEEDS.find((s) => s.id === next);
+			$('esc-hint').textContent = next === 'stop' ? 'Czas zatrzymany · T' : `Czas: ${sp.name.toLowerCase()} · T / Shift+T`;
+			escHintUntil = performance.now() + 1800;
+			return;
+		}
 		// M – dźwięk wł./wył. (w menu i w locie; nie w polach tekstowych)
 		if (e.code === 'KeyM' && !e.target.closest?.('input') && !e.repeat) {
 			applySetting('sound', !settings.sound);
@@ -326,13 +337,16 @@ async function start() {
 	let lastStart = null; // do „Leć ponownie” i klawisza R: plan albo zapis
 	let autosaveAt = 0, crashAt = 0, escHintUntil = 0;
 	const timeName = () => TIMES.reduce((a, b) => (Math.abs(b.hour - state.hour) < Math.abs(a.hour - state.hour) ? b : a));
-	const env = { time: plan.time, season: plan.season, weather: plan.weather, wind: plan.wind ?? 'light' };
+	const env = { time: plan.time, season: plan.season, weather: plan.weather, wind: plan.wind ?? 'light', timeSpeed: plan.timeSpeed ?? 'x1' };
+	// upływ czasu w locie: ostatnie tempo „w ruchu” (do wznowienia klawiszem T)
+	let lastRunning = env.timeSpeed !== 'stop' ? env.timeSpeed : 'x1';
 	// pogoda w locie: śnieg na ziemi narasta powoli (cel), burza – harmonogram błyskawic, bieżące uderzenie
 	const wx = { snowTarget: 0, storm: lightning(), strike: null, thunder: [], wind: { x: 0, z: 0, speed: 0 } };
 	const setEnvironment = (kind, id, instant = false) => {
 		env[kind] = id;
 		if (kind === 'time') state.hour = (TIMES.find((t) => t.id === id) ?? TIMES[1]).hour;
 		if (kind === 'season') state.day = (SEASONS.find((t) => t.id === id) ?? SEASONS[1]).day;
+		if (kind === 'timeSpeed' && id !== 'stop') lastRunning = id;
 		if (kind === 'weather') {
 			const w = WEATHER.find((t) => t.id === id) ?? WEATHER[2];
 			state.cover = w.cover;
@@ -349,6 +363,7 @@ async function start() {
 	};
 	const applyPlanEnv = (p) => {
 		setEnvironment('time', p.time); setEnvironment('season', p.season); setEnvironment('weather', p.weather, true); setEnvironment('wind', p.wind ?? 'light');
+		setEnvironment('timeSpeed', p.timeSpeed ?? 'x1');
 	};
 	const applySetting = (k, v) => {
 		settings[k] = v;
@@ -634,6 +649,13 @@ async function start() {
 		timer.update();
 		const dt = Math.min(0.1, timer.getDelta());
 		const t = timer.getElapsed();
+		// zegar gry: w locie płynie z wybranym tempem (pauza, menu i wczytywanie – stoi)
+		const rate = (TIME_SPEEDS.find((s) => s.id === env.timeSpeed) ?? TIME_SPEEDS[1]).rate;
+		if (game === 'flying' && rate > 0 && !playing) {
+			const c = advanceClock(state.hour, state.day, dt, rate);
+			state.hour = c.hour;
+			state.day = c.day;
+		}
 		if (playing) {
 			state.hour = (state.hour + dt * 0.25) % 24;
 			$('hour').value = state.hour;
@@ -874,6 +896,10 @@ async function start() {
 			$('alt').textContent = Math.round(flight.y);
 			$('agl').textContent = Math.max(0, Math.round(agl));
 			$('thr').textContent = Math.round(flight.throttle * 100);
+			$('clock').textContent = `${hhmm(state.hour)} · ${dateText(state.day)}`;
+			$('clock-rate').textContent = rate === 0 ? '❚❚ stop' : `▶ ×${rate}`;
+			$('clock').parentElement.classList.toggle('stopped', rate === 0);
+			$('clock').parentElement.classList.toggle('fast', rate > 1);
 			frames = 0;
 			fpsTime = 0;
 		}

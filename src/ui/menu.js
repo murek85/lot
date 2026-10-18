@@ -3,11 +3,11 @@
 // odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash, regions (lista
 // regionów: wbudowany i wygenerowane), generator (nowy region z kafli OpenStreetMap).
 // Esc cofa o jeden poziom; w locie otwiera pauzę, na pauzie wznawia. Gra dostarcza obiekt `game` z akcjami.
-import { TIMES, SEASONS, WEATHER, WINDS } from './places.js';
+import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.15'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.16'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,10 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.16', title: 'Upływ czasu', items: [
+		['Zegar', 'czas w locie płynie – zatrzymany, rzeczywisty, ×10 albo ×60; przez północ do następnego dnia.'],
+		['Sterowanie', 'T – stop / start, Shift+T – przyspieszenie; wybór także w planie lotu i na pauzie; zegar w panelu lotu.'],
+	] },
 	{ v: '0.15', title: 'Piesi', items: [
 		['Ludzie', 'na chodnikach, deptakach i peronach – widoczni z niska; krok, różne ubrania, w deszczu parasole.'],
 		['Rytm dnia', 'więcej w południe i po południu, nocą i w burzy prawie nikt; gwar w dźwięku; przełącznik „Piesi”.'],
@@ -131,6 +135,7 @@ const KEYS = [
 	['C', 'kamera: za samolotem → kabina → swobodna'],
 	['V', 'kabina i z powrotem'],
 	['L', 'reflektory do lądowania'],
+	['T / Shift+T', 'czas: zatrzymaj i wznów / przyspieszenie ×1 → ×10 → ×60'],
 	['Kółko', 'odległość kamery; w kabinie – pole widzenia'],
 	['Przeciąganie myszą', 'obrót kamery wokół samolotu; w kabinie – rozglądanie się'],
 	['Dwuklik / X', 'kamera z powrotem za ogon; w kabinie – na wprost'],
@@ -246,6 +251,7 @@ export class GameMenu {
 				<h2>Samolot</h2>${tiles(Object.values(AIRCRAFT).map((a) => ({ id: a.id, name: a.name, note: `${a.note} · ${a.specs}` })), 'aircraft', true)}
 				<h2>Miejsce startu · ${esc(this.game.regionName)}</h2>${tiles(this.game.places, 'place', true)}
 				<h2>Pora dnia</h2>${tiles(TIMES, 'time')}
+				<h2>Upływ czasu</h2>${tiles(TIME_SPEEDS, 'timeSpeed')}
 				<h2>Pora roku</h2>${tiles(SEASONS, 'season')}
 				<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}
 				<h2>Wiatr</h2>${tiles(WINDS, 'wind')}
@@ -462,7 +468,7 @@ export class GameMenu {
 		const tiles = (list, kind) => `<div class="tiles">${list.map((o, i) =>
 			`<button class="tile${cur[kind] === o.id ? ' sel' : ''}" data-env="${kind}:${o.id}"><span class="num">${String(i + 1).padStart(2, '0')}</span><b>${esc(o.name)}</b><small>${esc(o.note)}</small></button>`).join('')}</div>`;
 		return `<section class="menu-content menu-window">${this.head('Pogoda i pora.', '')}
-			<div class="menu-scroll"><h2>Pora dnia</h2>${tiles(TIMES, 'time')}<h2>Pora roku</h2>${tiles(SEASONS, 'season')}<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}<h2>Wiatr</h2>${tiles(WINDS, 'wind')}</div>
+			<div class="menu-scroll"><h2>Pora dnia</h2>${tiles(TIMES, 'time')}<h2>Upływ czasu</h2>${tiles(TIME_SPEEDS, 'timeSpeed')}<h2>Pora roku</h2>${tiles(SEASONS, 'season')}<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}<h2>Wiatr</h2>${tiles(WINDS, 'wind')}</div>
 			<div class="menu-window-actions">${this.btn('resume', 'Wznów lot', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
 	}
 

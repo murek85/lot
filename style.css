@@ -71,6 +71,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 #flight b { font-size: 22px; font-weight: 650; margin-right: 5px; }
 #flight span { color: var(--muted); font-size: 11.5px; }
 #flight .mode { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; }
+#flight .clock { grid-column: 1 / -1; font-variant-numeric: tabular-nums; }
+#flight .clock span { margin-left: 4px; }
+#flight .clock.stopped b { opacity: 0.55; }
+#flight .clock.fast span { color: #f6c344; }
 #crash {
 	position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); text-align: center;
 	background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 28px;
