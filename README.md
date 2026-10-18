@@ -184,9 +184,13 @@ zapisuje się z lotem. Pora dnia napędza słońce, księżyc, światła miast, 
 `src/fauna/people.js` (logika, testowana w Node) i `peopleview.js` (obraz):
 
 - **Gdzie**: chodniki ulic (obok jezdni, po jednej stronie), deptaki i ścieżki – w zabudowie; ok. 12% czeka na
-  peronach. Po autostradach i duktach nikt nie chodzi; jednokierunkowe nie obowiązują, czasem ktoś zawraca.
-- **Kiedy**: widoczni tylko z niska, więc symulowani, gdy kamera jest poniżej ~350 m nad ziemią, w promieniu 800 m
-  (do 1500 osób); natężenie z godziny (południe i popołudnie) i pogody (w deszczu mniej, w burzy prawie nikt).
+  peronach. Drogi główne i zbiorcze – tylko w zabudowie i nie dwujezdniowe; poza zabudową – tylko nieliczne ścieżki
+  (`walkable`). Po autostradach, drogach ekspresowych i duktach nikt nie chodzi, a na skrzyżowaniach piesi skręcają
+  tylko w krawędzie dla pieszych; jednokierunkowe nie obowiązują, czasem ktoś zawraca.
+- **Ilu**: ~22 osoby na km chodnika w promieniu (`PER_KM`, długość części krawędzi w kole), najwyżej 1500 – na wsi
+  kilkunastu, w śródmieściu setki.
+- **Kiedy**: widoczni tylko z niska, więc symulowani, gdy kamera jest poniżej ~350 m nad ziemią, w promieniu 800 m;
+  natężenie z godziny (południe i popołudnie) i pogody (w deszczu mniej, w burzy prawie nikt).
 - **Sieć ścieżek** budowana na bieżąco w kwadratach 2 km wokół kamery – najwyżej jeden kwadrat na klatkę (do ~40 ms
   w centrum Zabrza przy pierwszym zejściu nisko), pamięć kilkunastu kwadratów.
 - **Obraz**: figurka (nogi, tułów, ręce, głowa) z instancjami, krok – wymach nóg i rąk w shaderze; losowe ubrania,

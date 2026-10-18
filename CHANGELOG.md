@@ -3,6 +3,16 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.32 – piesi tam, gdzie chodzą ludzie
+
+- **Liczba pieszych z długości chodników wokół** (~22 na km przy pełnym ruchu, najwyżej 1500): wieś – kilkunastu,
+  śródmieście – setki; wcześniej wszędzie ten sam cel (do 1500 w promieniu 800 m), więc poza miastami tłum
+  stłoczony na kilku ulicach. Długość – części krawędzi w kole (dokładnie, nie po środkach odcinków).
+- **Bez pieszych na drogach szybkiego ruchu**: ulice i ścieżki tylko w zabudowie (poza nią – nieliczne ścieżki),
+  drogi główne i zbiorcze tylko w zabudowie i nie dwujezdniowe (jednokierunkowe jezdnie tras ekspresowych); piesi
+  nie skręcają też na skrzyżowaniach w drogi poza zabudową (wcześniej rozchodzili się z osiedli po całej sieci).
+- Zabudowa krawędzi sprawdzana w jej środku wzdłuż (wcześniej – w drugim z jej punktów, czyli na końcu).
+
 ## 0.31 – obiekty kafli w wątkach, odrzucanie poza kadrem
 
 - Rzeki, tory, mosty i perony, aleje i linie energetyczne liczone w wątku kafli (`src/objgeo.js` – te same funkcje
