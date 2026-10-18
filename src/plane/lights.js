@@ -4,6 +4,8 @@
 // Każde światło to: świecący klosz w modelu (jasność HDR), poświata (sprite addytywny, który z daleka nie maleje
 // poniżej kilku pikseli – światło widać z odległości, jak w rzeczywistości) i lampa punktowa oświetlająca
 // samolot (skrzydło, kadłub, wnętrze kabiny). Reflektory oświetlają też teren (landingLight w shaderze terenu).
+// Samolot może nie mieć części świateł (model.userData.noLights – np. przedwojenny myśliwiec bez stroboskopów,
+// błyskacza i reflektorów): te są wygaszone, a ich klosze ukryte.
 import { Group, Sprite, SpriteNodeMaterial, PointLight, AdditiveBlending, Vector3, Matrix4, Quaternion, Color } from 'three/webgpu';
 import { uniform, uv, vec3, float, exp, length, abs, max, dot, smoothstep } from 'three/tsl';
 
@@ -85,6 +87,8 @@ export class PlaneLights {
 		this.model = model;
 		const A = (this.anchors = model.userData.anchors);
 		const lamps = model.userData.lamps;
+		this.absent = new Set(model.userData.noLights ?? []);
+		for (const name of this.absent) if (lamps[name]) lamps[name].visible = false;
 		for (const L of Object.values(this.lights)) {
 			L.anchor.set(...A[L.name]);
 			if (L.pl) {
@@ -100,6 +104,9 @@ export class PlaneLights {
 		model.add(this.cabin);
 		this.cabin.position.set(...A.cabinLight);
 	}
+
+	/** Czy samolot ma reflektory (klawisz L i światło na terenie). */
+	get hasLanding() { return !this.absent.has('landingL'); }
 
 	/** Natężenie oświetlenia reflektorami w punkcie p (świat) o normalnej N – dla shaderów terenu. */
 	landingLight(p, N) {
@@ -144,7 +151,7 @@ export class PlaneLights {
 				case 'strobeL': case 'strobeR': lamp = 400 * strobe + 0.3; glow = 600 * strobe; light = strobe; break;
 				case 'beacon': lamp = 120 * beacon + 0.4; glow = 200 * beacon * (0.5 + 0.5 * night); light = beacon; break;
 				case 'landingL': case 'landingR': {
-					const on = this.landing ? 1 : 0;
+					const on = this.landing && this.hasLanding ? 1 : 0;
 					const cosA = -toCam.z * 0.995 - toCam.y * 0.1;
 					lamp = 220 * on; glow = on * (700 * Math.pow(Math.max(0, cosA), 30) + 25 * Math.max(0, cosA)) * (0.25 + 0.75 * night);
 					break;
@@ -155,6 +162,7 @@ export class PlaneLights {
 				}
 			}
 			if (cockpit && (L.name === 'tail' || L.name === 'beacon')) glow *= 0; // z kabiny poza widokiem
+			if (this.absent.has(L.name)) lamp = glow = light = 0;
 			L.lampCol.value.copy(L.color).multiplyScalar(lamp);
 			L.col.value.copy(L.color).multiplyScalar(glow * adapt);
 			L.sprite.visible = glow > 1e-3;
@@ -176,6 +184,6 @@ export class PlaneLights {
 		ll.pos.value.set(0, this.anchors.landingL[1], this.anchors.landingL[2]).applyMatrix4(m.matrixWorld);
 		m.getWorldQuaternion(this._q);
 		ll.dir.value.set(0, -Math.sin(0.16), -Math.cos(0.16)).applyQuaternion(this._q);
-		ll.power.value = this.landing ? 60000 : 0;
+		ll.power.value = this.landing && this.hasLanding ? 60000 : 0;
 	}
 }

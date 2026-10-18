@@ -13,7 +13,8 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
   powyżej ~180 km/h i wypuszcza przy zwolnieniu; szachownice z obwódką na skrzydłach i stateczniku, numer 042.
 - **PZL P.11c** – przedwojenny myśliwiec: skrzydło mewie Puławskiego z zastrzałami, silnik Mercury w pierścieniu
   Townenda z widocznymi cylindrami, drewniane dwułopatowe śmigło, otwarta kabina z wiatrochronem i celownikiem;
-  khaki z błękitnym spodem, szachownice na skrzydłach i sterze kierunku.
+  khaki z błękitnym spodem, szachownice na skrzydłach i sterze kierunku; tylko światła pozycyjne (bez stroboskopów,
+  błyskacza i reflektorów).
 - Dźwięk: brzmienia nowych silników, gwizd turbiny Orlika.
 - Części wspólne: otwarta kabina w kadłubie z przekrojów, szachownica lotnicza.
 

@@ -629,7 +629,7 @@ async function start() {
 				agl: Math.max(0, Math.round(flight.y - 1.75 - groundAt(flight.x, flight.z))), heading: headingDeg(flight.heading),
 				throttle: Math.round(flight.throttle * 100), time: `${hhmm(state.hour)} · ${dateText(state.day)}`, weather: w.name,
 				wind: wx.wind.speed < 0.5 ? 'cisza' : `${Math.round(wx.wind.speed * 3.6)} km/h z ${windFrom(wx.wind.x, wx.wind.z)}`,
-				lights: plane.lights.landing ? 'REFLEKTORY WŁĄCZONE · L' : 'REFLEKTORY WYŁĄCZONE · L',
+				lights: !plane.lights.hasLanding ? 'BEZ REFLEKTORÓW' : plane.lights.landing ? 'REFLEKTORY WŁĄCZONE · L' : 'REFLEKTORY WYŁĄCZONE · L',
 				aircraft: `${plane.spec.name} · ${plane.spec.reg}`,
 			};
 		},

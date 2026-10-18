@@ -1,7 +1,7 @@
 // PZL P.11c – polski myśliwiec z lat 30.: skrzydło „mewie” Puławskiego (przy kadłubie zwężone i pocienione,
 // wznoszące się stromo, dalej prawie płaskie), podparte zastrzałami w kształcie „V”; silnik gwiazdowy Bristol
 // Mercury w pierścieniu Townenda z widocznymi cylindrami, dwułopatowe drewniane śmigło, otwarta kabina z małym
-// wiatrochronem i garbem za zagłówkiem, stałe podwozie, płoza ogonowa. Malowanie: khaki z góry, jasnoszary
+// wiatrochronem i garbem za zagłówkiem, stałe podwozie, płoza ogonowa; ze świateł tylko pozycyjne. Malowanie: khaki z góry, jasnoszary
 // błękit od spodu, szachownice na skrzydłach i sterze kierunku, biały numer na kadłubie.
 // Rozpiętość 10,72 m, długość 7,55 m. Oś x – w prawo, y – w górę, z – do tyłu.
 import { Group, CylinderGeometry, SphereGeometry, LatheGeometry, MeshStandardNodeMaterial, DoubleSide, Vector2, Vector3 } from 'three/webgpu';
@@ -214,6 +214,8 @@ export function createP11c(atmo) {
 
 	root.userData = {
 		prop: prop.prop, blades: prop.blades, disc: prop.disc, lamps, cockpit, pilot, ailerons, elevators, rudder, anchors: ANCHORS,
+		// lata 30.: tylko światła pozycyjne na końcach skrzydeł i ogonie – bez stroboskopów, błyskacza i reflektorów
+		noLights: ['strobeL', 'strobeR', 'beacon', 'landingL', 'landingR'],
 		animate(dt, rpm, controls) {
 			prop.spin(dt, rpm);
 			ailerons[0].deflect(controls.roll * 0.4);
