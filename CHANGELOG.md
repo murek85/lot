@@ -17,6 +17,8 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
   błyskacza i reflektorów).
 - Dźwięk: brzmienia nowych silników, gwizd turbiny Orlika.
 - Części wspólne: otwarta kabina w kadłubie z przekrojów, szachownica lotnicza.
+- Menu: „Zapisz lot” i „Wczytaj lot” połączone w jeden ekran „Zapisz / wczytaj” (jak w Maszyniście) – przy każdym
+  slocie przyciski Zapisz / Nadpisz, Wczytaj i usuń; nadpisanie, usunięcie i wczytanie w locie z potwierdzeniem.
 
 ## 0.21 – ptaki z daleka
 

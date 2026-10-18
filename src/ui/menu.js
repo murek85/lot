@@ -1,6 +1,6 @@
 // Menu gry: ekrany składane z szablonów (jak w Pograniczu Galaktyki), nad żywą sceną 3D (jak w Maszyniście).
-// Ekrany: home (dowództwo lotu), newflight (plan lotu: miejsce, pora roku i dnia, pogoda, widok), slots (zapis /
-// odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash, regions (lista
+// Ekrany: home (dowództwo lotu), newflight (plan lotu: miejsce, pora roku i dnia, pogoda, widok), slots (zapis i
+// odczyt w jednym – jak w Maszyniście; z menu głównego i po kraksie tylko odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash, regions (lista
 // regionów: wbudowany i wygenerowane), generator (nowy region z kafli OpenStreetMap).
 // Esc cofa o jeden poziom; w locie otwiera pauzę, na pauzie wznawia. Gra dostarcza obiekt `game` z akcjami.
 import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
@@ -53,6 +53,7 @@ export const NEWS = [
 		['An-2', 'wielki dwupłat z Mielca – słupki i cięgna między płatami, czterołopatowe śmigło, okrągłe okna kabiny; lata najwolniej w hangarze.'],
 		['Orlik', 'turbośmigłowy PZL-130 – akrobacja, podwozie chowa się samo powyżej ~180 km/h, gwizd turbiny, szachownice.'],
 		['P.11c', 'przedwojenny myśliwiec – skrzydło mewie, otwarta kabina, silnik gwiazdowy w pierścieniu, barwy z lat 30.'],
+		['Zapisy', 'jeden ekran „Zapisz / wczytaj” – przy każdym slocie zapis, wczytanie i usunięcie, z potwierdzeniem.'],
 	] },
 	{ v: '0.21', title: 'Ptaki z daleka', items: [
 		['Stada', 'z wysokości – ruchome chmury migoczących kropek; z bliska – pełne modele w naturalnej wielkości.'],
@@ -181,7 +182,6 @@ export class GameMenu {
 		this.screen = null;
 		this.from = {}; // skąd otwarto ekran (powrót klawiszem Esc i przyciskiem „Wróć”)
 		this.settingsTab = 0;
-		this.slotMode = 'load';
 		this.plan = { ...game.plan };
 		root.addEventListener('click', (e) => this.onClick(e));
 		// dźwięk wskazania: przy wejściu kursora na inny przycisk
@@ -290,18 +290,25 @@ export class GameMenu {
 	}
 
 	render_slots() {
-		const saving = this.slotMode === 'save';
+		// zapis tylko w trakcie lotu (z pauzy); autozapis robi sama gra. Nadpisanie, usunięcie i wczytanie w locie
+		// (bieżący lot przepada) – z potwierdzeniem: pierwsze kliknięcie uzbraja przycisk („NA PEWNO?”)
+		const saving = this.from.slots === 'pause';
+		const act = (kind, id, label, { confirm = false, primary = false, title = '' } = {}) =>
+			`<button class="slot-btn${primary ? ' primary' : ''}" data-slot="${kind}:${id}"${confirm ? ' data-confirm' : ''}${title ? ` title="${esc(title)}"` : ''}>${label}</button>`;
 		const row = (id, label) => {
-			const s = this.game.slotInfo(id);
-			const disabled = !saving && !s;
-			return `<button class="menu-action slot${s ? '' : ' empty'}" data-slot="${id}"${disabled || (saving && id === 'auto') ? ' disabled' : ''}>
-				<span class="slot-no">${label}</span><span><b>${s ? esc(s.title) : 'pusty slot'}</b><span class="meta">${s ? esc(s.meta) : saving ? 'zapisz tutaj bieżący lot' : '—'}</span></span>
-				<span aria-hidden="true">${saving ? 'ZAPISZ' : 'WCZYTAJ'}</span></button>`;
+			const s = this.game.slotInfo(id), auto = id === 'auto';
+			const gap = '<span></span>';
+			let btns = '';
+			if (saving) btns += auto ? gap : act('save', id, s ? 'NADPISZ' : 'ZAPISZ', { confirm: !!s, primary: true });
+			btns += s ? act('load', id, 'WCZYTAJ', { confirm: saving, primary: !saving, title: saving ? 'Bieżący lot bez zapisu przepadnie' : '' }) : gap;
+			btns += s ? act('del', id, '✕', { confirm: true, title: auto ? 'Usuń autozapis' : `Usuń zapis ze slotu ${id}` }) : gap;
+			return `<div class="slot-row${saving ? ' saving' : ''}"><div class="slot slot-card${s ? '' : ' empty'}${auto ? ' auto' : ''}">
+				<span class="slot-no">${label}</span><span><b>${s ? esc(s.title) : auto ? 'autozapis – pusty' : 'pusty slot'}</b><span class="meta">${s ? esc(s.meta) : saving && !auto ? 'zapisz tutaj bieżący lot' : '—'}</span></span></div>${btns}</div>`;
 		};
-		return `<section class="menu-content menu-window">${this.head(saving ? 'Zapisz lot.' : 'Wczytaj lot.', '')}
+		return `<section class="menu-content menu-window">${this.head(saving ? 'Zapisz albo wczytaj.' : 'Wczytaj lot.', '')}
 			<div class="menu-scroll"><div class="slots">${row('auto', '<small>AUTO</small>A')}${[1, 2, 3, 4, 5].map((n) => row(n, `<small>SLOT</small>${n}`)).join('')}</div></div>
 			<div class="menu-window-actions">${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}<span class="spacer"></span>
-			<small style="color:var(--m-muted)">${saving ? 'Autozapis powstaje przy wyjściu do menu.' : 'Zapis obejmuje położenie, porę i pogodę.'}</small></div></section>`;
+			<small style="color:var(--m-muted)">Zapis obejmuje maszynę, położenie, porę i pogodę. Autozapis – co 30 s lotu i przy wyjściu do menu.</small></div></section>`;
 	}
 
 	render_settings() {
@@ -479,8 +486,7 @@ export class GameMenu {
 				${this.btn('resume', 'Wznów lot', { prominent: true, hint: '<kbd>ESC</kbd>' })}
 				${this.btn('map', 'Mapa i cel lotu', { hint: '<kbd>TAB</kbd>' })}
 				${this.btn('env', 'Pogoda i pora dnia')}
-				${this.btn('save', 'Zapisz lot — sloty')}
-				${this.btn('load', 'Wczytaj lot — sloty')}
+				${this.btn('saves', 'Zapisz / wczytaj — sloty')}
 				${this.btn('settings', 'Ustawienia')}
 				${this.btn('help', 'Sterowanie i pomoc')}
 				${this.btn('menu', 'Menu główne')}
@@ -556,8 +562,12 @@ export class GameMenu {
 			return Promise.resolve(g.deleteRegion(t.dataset.del)).then(() => this.screen === 'regions' && this.fillRegions());
 		}
 		if (t.dataset.slot) {
-			const id = t.dataset.slot === 'auto' ? 'auto' : +t.dataset.slot;
-			if (this.slotMode === 'save') { Promise.resolve(g.saveSlot(id)).then(() => this.screen === 'slots' && this.show('slots')); return; }
+			if (t.hasAttribute('data-confirm') && !this.arm(t)) return;
+			const [kind, raw] = t.dataset.slot.split(':');
+			const id = raw === 'auto' ? 'auto' : +raw;
+			const refresh = () => this.screen === 'slots' && this.show('slots');
+			if (kind === 'save') return Promise.resolve(g.saveSlot(id)).then(refresh);
+			if (kind === 'del') { g.deleteSlot(id); return refresh(); }
 			return g.loadSlot(id);
 		}
 		switch (t.dataset.act) {
@@ -565,8 +575,7 @@ export class GameMenu {
 			case 'quick': return g.startFlight(this.plan);
 			case 'start': return g.startFlight(this.plan);
 			case 'new': return this.show('newflight', this.screen);
-			case 'load': this.slotMode = 'load'; return this.show('slots', this.screen);
-			case 'save': this.slotMode = 'save'; return this.show('slots', this.screen);
+			case 'load': case 'saves': return this.show('slots', this.screen);
 			case 'settings': return this.show('settings', this.screen);
 			case 'help': return this.show('help', this.screen);
 			case 'regions': return this.show('regions', this.screen);
@@ -581,6 +590,16 @@ export class GameMenu {
 			case 'back': return this.escape();
 			case 'quit': return globalThis.desktop?.quit(); // tylko aplikacja desktopowa (electron/preload.cjs)
 		}
+	}
+
+	/** Przycisk z potwierdzeniem: pierwsze kliknięcie uzbraja („NA PEWNO?” na 3 s), drugie – wykonuje. */
+	arm(t) {
+		if (t.classList.contains('armed')) return true;
+		const text = t.textContent;
+		t.classList.add('armed');
+		t.textContent = 'NA PEWNO?';
+		setTimeout(() => { if (t.isConnected) { t.classList.remove('armed'); t.textContent = text; } }, 3000);
+		return false;
 	}
 
 	onInput(e) {

@@ -613,6 +613,7 @@ async function start() {
 		setEnvironment,
 		setSetting: (k, v) => { applySetting(k, v); save('settings', settings); },
 		saveSlot: (id) => saveWithCard(id),
+		deleteSlot: (id) => save(slotKey(id), null),
 		openMap: () => openMap('pause'),
 		loadSlot: (id) => { const s = loadRaw(slotKey(id)); if (s?.flight) restoreSnapshot(s, id === 'auto' ? 'AUTOZAPIS' : `SLOT ${id}`); },
 		slotInfo: (id) => {

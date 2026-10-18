@@ -253,6 +253,26 @@ body.paused #menu {
 .slot b { font-weight: 550; }
 .slot .meta { display: block; color: var(--m-muted); font-size: 12px; }
 .slot.empty b { color: var(--m-muted); font-weight: 400; }
+/* wiersz zapisu: opis i kolumny przycisków (zapisz / nadpisz, wczytaj, usuń) – stałe szerokości, puste miejsca
+   wypełnione, więc opisy kończą się równo */
+.slot-row { display: grid; grid-template-columns: 1fr 104px 54px; gap: 8px; }
+.slot-row.saving { grid-template-columns: 1fr 104px 104px 54px; }
+.slot-card { min-width: 0; padding: 11px 18px 11px 0; border: 1px solid rgba(150, 190, 215, 0.28); background: rgba(10, 20, 30, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.slot-card .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot-card.auto { border-style: dashed; }
+#menu .slot-btn {
+	padding: 0 8px; border: 1px solid var(--m-line); background: rgba(10, 20, 30, 0.55); color: var(--m-muted);
+	font: 600 11px var(--m-mono); letter-spacing: 1px; transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+#menu .slot-btn:hover, #menu .slot-btn:focus-visible { color: var(--m-text); border-color: var(--m-accent); background: rgba(26, 44, 60, 0.85); }
+#menu .slot-btn.primary { color: var(--m-accent); border-color: rgba(246, 195, 68, 0.45); }
+#menu .slot-btn.armed { color: #1d0a06; background: #ff8f7a; border-color: #ff8f7a; letter-spacing: 0; }
+@media (max-width: 640px) {
+	.slot-row { grid-template-columns: 1fr 1fr 54px; }
+	.slot-row.saving { grid-template-columns: 1fr 1fr 1fr; }
+	.slot-card { grid-column: 1 / -1; }
+	#menu .slot-btn { padding: 9px 8px; }
+}
 
 /* regiony i generator */
 .region-row { display: flex; gap: 8px; align-items: stretch; }
