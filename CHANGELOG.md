@@ -3,6 +3,17 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.31 – obiekty kafli w wątkach, odrzucanie poza kadrem
+
+- Rzeki, tory, mosty i perony, aleje i linie energetyczne liczone w wątku kafli (`src/objgeo.js` – te same funkcje
+  używają regiony, `create…` = tablice + siatki z `…FromArrays`), sfery otaczające budynków też w wątku: budowa
+  obiektów kafla w wątku głównym 4,7 → 0,9 ms (najwyżej 2,2 ms).
+- **Odrzucanie poza kadrem w otwartym świecie**: kafle terenu, dalekiego terenu i wszystkie obiekty kafli mają sfery
+  otaczające (z zapasem na krzywiznę Ziemi) – three nie wysyła do karty tego, czego nie widać, a przebieg mapy cieni
+  rysuje tylko budowle w jej obszarze. Pomiar pokazał, że klatka była ograniczona procesorem (wysyłanie ~900 obiektów
+  ~20 ms, karta ~5 ms): teraz 569 wywołań rysowania, render 19,9 → 9,2 ms; klatka nad Katowicami 25 → 17,8 ms
+  (w locie 28 → 20,5 ms, 95% klatek 52 → 32 ms).
+
 ## 0.30 – drobne poprawki otwartego świata
 
 - **Bez uskoku na styku terenu bliskiego i dalekiego w górach**: daleki teren w obszarze własnych kafli też z GUGiK

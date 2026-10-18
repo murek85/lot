@@ -4,6 +4,8 @@
 import { fetchTile, gunzipBlob } from '../gen/store.js';
 import { tileKey } from '../gen/tiles.js';
 import { buildBuildingTiles } from '../buildgeo.js';
+import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
+import { COVER } from '../gen/terrain.js';
 import { densify, ribbon } from '../gfx/ribbon.js';
 import { gridHeightAt } from './streamer.js';
 import { CHUNK_Z, HEIGHT_Z, GRID, LOT_GRID, COVER_RES, lotHeights, fillHeights, shoreDistance, heightTilesFor, decodeTerrarium, chunkHeights, gridNormals, chunkObjects, chunkObjectsLot, chunkFrame, chunkMask } from './chunkdata.js';
@@ -111,7 +113,7 @@ async function chunkMsg(e) {
 			ms: performance.now() - t0, cached: mapT.cached, source: useLot ? 'lot' : 'ofm',
 		};
 		// dane do późniejszej budowy obiektów (wysokości – kopia, oryginał odchodzi do wątku głównego)
-		if (!far) remember(msg.key, { origin, osm, frame: msg.frame, n, heights: g.heights.slice() });
+		if (!far) remember(msg.key, { origin, osm, frame: msg.frame, n, heights: g.heights.slice(), cover: cover.slice() });
 		// quiet – wczytanie tylko na potrzeby obiektów (bez odpowiedzi do wątku głównego)
 		if (!e.quiet) self.postMessage(msg, [g.heights.buffer, g.normals.buffer, cover.buffer, mask.buffer, shore.buffer]);
 	} catch (err) {
@@ -163,15 +165,39 @@ async function objectsMsg(e) {
 		}
 		const hAt = (px, pz) => gridHeightAt(d, px, pz);
 		const b = buildBuildingTiles(d.osm.buildings, hAt);
+		// sfera otaczająca liczona tutaj (w wątku głównym computeBoundingSphere po setkach tysięcy wierzchołków to ~7 ms)
+		const sphere = (p) => {
+			let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+			for (let i = 0; i < p.length; i += 3) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); y0 = Math.min(y0, p[i + 1]); y1 = Math.max(y1, p[i + 1]); z0 = Math.min(z0, p[i + 2]); z1 = Math.max(z1, p[i + 2]); }
+			const c = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+			let r2 = 0;
+			for (let i = 0; i < p.length; i += 3) r2 = Math.max(r2, (p[i] - c[0]) ** 2 + (p[i + 1] - c[1]) ** 2 + (p[i + 2] - c[2]) ** 2);
+			return [...c, Math.sqrt(r2)];
+		};
 		const tiles = b.tiles.map((t) => ({
+			sphere: sphere(t.pos),
 			pos: new Float32Array(t.pos), nrm: new Float32Array(t.nrm), kind: new Float32Array(t.kind), uv: new Float32Array(t.uv),
 			wall: new Float32Array(t.wall), roof: new Float32Array(t.roof), light: new Float32Array(t.light), idx: new Uint32Array(t.idx),
 		}));
 		const roads = roadArrays(d.osm, hAt);
+		// rzeki, tory, mosty i perony, aleje i linie energetyczne (te same funkcje co w regionach – src/objgeo.js)
+		const R = COVER_RES, f = d.frame;
+		const coverAt = (px, pz) => {
+			const i = Math.floor(((px - f.x0) / f.w) * R), j = Math.floor(((pz - f.z0) / f.h) * R);
+			return i < 0 || j < 0 || i >= R || j >= R ? -1 : d.cover[j * R + i];
+		};
+		const rivers = riverArrays(d.osm.waterways, hAt).mesh;
+		const rails = railArrays(d.osm.rails, hAt).mesh;
+		const bridges = bridgeArrays(d.osm, hAt);
+		const details = detailArrays(d.osm, hAt, coverAt, COVER, Infinity, (x * 7919 + y) % 100000);
 		const transfer = [];
-		for (const t of tiles) for (const k of Object.keys(t)) transfer.push(t[k].buffer);
-		for (const k of ['pos', 'side', 'dist', 'width', 'surf', 'cls', 'idx']) transfer.push(roads[k].buffer);
-		self.postMessage({ type: 'objects', req, key, origin, buildings: { tiles, count: b.count, structures: b.structures, beacons: b.beacons }, roads, ms: performance.now() - t0 }, transfer);
+		const take = (o) => { for (const v of Object.values(o)) if (ArrayBuffer.isView(v)) transfer.push(v.buffer); };
+		for (const t of tiles) take(t);
+		for (const o of [roads, rivers, rails, bridges, details, details.pylons]) take(o);
+		self.postMessage({
+			type: 'objects', req, key, origin, buildings: { tiles, count: b.count, structures: b.structures, beacons: b.beacons },
+			roads, rivers: { mesh: rivers, lines: [] }, rails: { mesh: rails, lines: [] }, bridges, details, ms: performance.now() - t0,
+		}, transfer);
 	} catch (err) {
 		self.postMessage({ type: 'error', req, key, message: String(err?.message ?? err) });
 	}

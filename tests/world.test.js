@@ -264,3 +264,27 @@ test('Wysokości GUGiK: brak danych poza Polską (znacznik) uzupełniany z drugi
 	assert.equal(fillHeights(h, new Float32Array([1, 702.5, 3, 699])), 2);
 	assert.deepEqual([...h].map((v) => +v.toFixed(1)), [500, 702.5, 498, 699]);
 });
+
+import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../src/objgeo.js';
+
+test('Obiekty w tablicach (wątek kafli): rzeka, tor z mostem, peron ze zdegenerowanym obrysem, aleje i linia', () => {
+	const flat = () => 200;
+	const line = (pts) => pts.flatMap(([x, z]) => [x * 10, z * 10]);
+	const rv = riverArrays([[150, line([[0, 0], [300, 0]])], [10, line([[0, 50], [100, 50]])]], flat);
+	assert.ok(rv.mesh.count > 0 && rv.mesh.idx instanceof Uint32Array);
+	assert.equal(rv.lines.length, 2, 'rów 1 m – tylko linia maski');
+	const rl = railArrays([[0, 0, 1, 0, line([[0, 0], [100, 0]])]], (x) => 200 + x * 0.1);
+	const ys = [...rl.mesh.pos].filter((_, i) => i % 3 === 1);
+	assert.ok(Math.abs(ys[0] - 200.9) < 1e-3 && Math.abs(ys.at(-1) - 210.9) < 1e-3, 'most – prosta między przyczółkami');
+	const osm = { roads: [[3, 70, 0, 1, 0, line([[0, 0], [60, 0]]), 0]], rails: [], platforms: [[line([[5, 5], [5, 5], [5, 5], [5, 5]])]] };
+	const br = bridgeArrays(osm, flat);
+	assert.equal(br.bridges, 1);
+	assert.ok([...br.pos].every(Number.isFinite), 'bez NaN z peronu-punktu');
+	const det = { roads: [[3, 70, 0, 0, 0, line([[0, 0], [400, 0]]), 0]], treeRows: [[line([[0, 100], [200, 100]])]], power: [[0, line([[0, 300], [200, 300], [400, 300]])]] };
+	const a = detailArrays(det, flat, () => 0, { water: 6, built: 4, forest: 1 }, Infinity, 7);
+	const b = detailArrays(det, flat, () => 0, { water: 6, built: 4, forest: 1 }, Infinity, 7);
+	assert.ok(a.treeCount > 10);
+	assert.equal(a.trees.length, a.treeCount * 16);
+	assert.deepEqual([...a.trees.slice(0, 16)], [...b.trees.slice(0, 16)], 'ten sam los – te same drzewa');
+	assert.ok(a.pylons.count > 0 && a.wires.length > 0);
+});

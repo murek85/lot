@@ -2,7 +2,7 @@
 // dwuspadowe dla domów i budynków gospodarczych o kształcie bliskim prostokąta (kalenica wzdłuż dłuższego boku
 // najmniejszego prostokąta otaczającego), płaskie dla bloków, hal i obrysów nieregularnych. Kolory dachów i elewacji
 // losowane z typowych dla Pomorza, okna rysowane w shaderze z siatki pięter. Geometria scalona w kafelki 2 km.
-import { Mesh, BufferGeometry, BufferAttribute, Float32BufferAttribute, MeshBasicNodeMaterial, ShapeUtils, Vector2, DoubleSide, SpriteNodeMaterial, Sprite, InstancedBufferAttribute, AdditiveBlending } from 'three/webgpu';
+import { Mesh, BufferGeometry, BufferAttribute, Float32BufferAttribute, Sphere, Vector3, MeshBasicNodeMaterial, ShapeUtils, Vector2, DoubleSide, SpriteNodeMaterial, Sprite, InstancedBufferAttribute, AdditiveBlending } from 'three/webgpu';
 import {
 	Fn, float, vec2, vec3, floor, attribute, varying, positionLocal, uniform, max, mix, smoothstep, step, fract, dot, normalize,
 	cameraPosition, pow, select, fwidth, instancedBufferAttribute, uv, exp, clamp, length, time,
@@ -46,7 +46,9 @@ export function buildingMeshes(tiles, info, atmo, clouds, plane, worldShadow = n
 		g.setAttribute('aRoof', attr(b.roof, 3));
 		g.setAttribute('aLight', attr(b.light, 2));
 		g.setIndex(Array.isArray(b.idx) ? b.idx : new BufferAttribute(b.idx, 1));
-		g.computeBoundingSphere();
+		// sfera otaczająca z wątku kafli (gotowa) albo liczona tutaj
+		if (b.sphere) g.boundingSphere = new Sphere(new Vector3(b.sphere[0], b.sphere[1], b.sphere[2]), b.sphere[3]);
+		else g.computeBoundingSphere();
 		const m = new Mesh(g, material);
 		meshes.push(m);
 		const s = new Mesh(g, shadowMaterial);

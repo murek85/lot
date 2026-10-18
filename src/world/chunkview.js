@@ -4,7 +4,7 @@
 // obszaru. Geometria w metrach układu świata (początek origin) – materiały jak w regionach.
 import {
 	Mesh, Group, BufferGeometry, BufferAttribute, Float32BufferAttribute, MeshBasicNodeMaterial, DataArrayTexture, RedFormat,
-	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry, DataTexture, RepeatWrapping, RGFormat,
+	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry, DataTexture, RepeatWrapping, RGFormat, Sphere, Vector3,
 } from 'three/webgpu';
 import {
 	Fn, float, vec2, vec3, vec4, int, ivec2, attribute, varying, uniform, textureLoad, max, abs, clamp, normalize, floor, fract,
@@ -18,10 +18,10 @@ import { gridHeightAt } from './streamer.js';
 import { buildingMeshes } from '../buildings.js';
 import { lonLatToLocal } from '../geo.js';
 import { makeRoadMaterial, densify, ribbon } from '../roads.js';
-import { createRivers } from '../rivers.js';
-import { createRails } from '../rails.js';
-import { createBridges } from '../bridges.js';
-import { createDetails } from '../details.js';
+import { riversFromArrays } from '../rivers.js';
+import { railsFromArrays } from '../rails.js';
+import { bridgesFromArrays } from '../bridges.js';
+import { detailsFromArrays } from '../details.js';
 import { COVER } from '../gen/terrain.js';
 
 const SLOTS = 256;
@@ -74,6 +74,17 @@ function terrainGeometry(ch, layer, skirt = 0, stride = 1) {
 	g.setAttribute('aLayer', new BufferAttribute(lay, 1));
 	g.setIndex(new BufferAttribute(idx, 1));
 	return g;
+}
+
+/**
+ * Sfera otaczająca kafel (rama, zakres wysokości) z zapasem na krzywiznę Ziemi (wierzchołki opadają o d²/2R
+ * względem kamery – daleki teren o setki metrów): z nią three pomija kafle poza kadrem i poza obszarem mapy cieni,
+ * zamiast wysyłać do karty wszystkie (to głównie czas procesora – ~20 µs na obiekt).
+ */
+function chunkSphere(ch, extra = 30) {
+	const f = ch.frame;
+	const lo = (ch.min ?? 0) - 60, hi = (ch.max ?? 0) + 150; // fartuchy w dół, budynki i słupy w górę
+	return new Sphere(new Vector3(f.x0 + f.w / 2, (lo + hi) / 2, f.z0 + f.h / 2), Math.hypot(f.w / 2, f.h / 2, (hi - lo) / 2) + extra);
 }
 
 /** Pokrycie i odległość od brzegu kafla do warstwy tekstury RG (R – klasa, G – metry od brzegu w wodzie). */
@@ -228,8 +239,8 @@ export class ChunkView {
 		packCover(this.coverTex, ch, layer);
 		ch.stride = this.strideFor(ch, 1);
 		ch.terrain = new Mesh(terrainGeometry(ch, layer, 40, ch.stride), this.terrainMat);
+		ch.terrain.geometry.boundingSphere = chunkSphere(ch);
 		this.loaded.add(ch);
-		ch.terrain.frustumCulled = false;
 		this.group.add(ch.terrain);
 		this.stats.chunks++;
 	}
@@ -277,7 +288,10 @@ export class ChunkView {
 			const p = lonLatToLocal(cur.lon, cur.lat, o);
 			const sh = (a) => { for (let i = 0; i < a.length; i += 3) { a[i] -= p.x; a[i + 2] -= p.z; } };
 			sh(d.roads.pos);
-			for (const t of d.buildings.tiles) sh(t.pos);
+			for (const t of d.buildings.tiles) { sh(t.pos); t.sphere[0] -= p.x; t.sphere[2] -= p.z; }
+			for (const a of [d.rivers.mesh.pos, d.rails.mesh.pos, d.bridges.pos, d.details.pylons.pos, d.details.wires]) sh(a);
+			const m = d.details.trees;
+			for (let i = 0; i < m.length; i += 16) { m[i + 12] -= p.x; m[i + 14] -= p.z; }
 			for (const b of d.buildings.beacons) { b[0] -= p.x; b[2] -= p.z; }
 		}
 		// drogi: jedna siatka na kafel (z wątku)
@@ -296,23 +310,16 @@ export class ChunkView {
 			m.frustumCulled = false;
 			list.push(m);
 		}
-		// rzeki i strugi, tory, mosty i perony – moduły regionów, wspólne materiały
-		const reg = { size: 1e8 }, ter = { meshHeightAt: hAt };
+		// rzeki i strugi, tory, mosty i perony, aleje i linie energetyczne – geometria z wątku, siatki modułów regionów
 		const A = [this.atmo, this.clouds, this.plane, this.worldShadow];
-		const rv = createRivers(ch.osm, reg, ter, ...A, this.shared.rivers);
+		const rv = riversFromArrays(d.rivers, ...A, this.shared.rivers);
 		if (rv.material) this.shared.rivers ??= { material: rv.material };
-		const rl = createRails(ch.osm, reg, ter, ...A, this.shared.rails);
+		const rl = railsFromArrays(d.rails, ...A, this.shared.rails);
 		if (rl.material) this.shared.rails ??= { material: rl.material };
-		const br = createBridges(ch.osm, reg, ter, ...A, this.shared.bridges);
+		const br = bridgesFromArrays(d.bridges, ...A, this.shared.bridges);
 		if (br.material) this.shared.bridges ??= { material: br.material, shadowMaterial: br.shadowMaterial };
 		list.push(...rv.objects, ...rl.objects, ...br.objects, ...br.shadowCasters);
-		// aleje (szpalery z danych i drzewa wzdłuż części dróg lokalnych), linie energetyczne ze słupami
-		const R = COVER_RES, f = ch.frame;
-		const coverAt = (x, z) => {
-			const i = Math.floor(((x - f.x0) / f.w) * R), j = Math.floor(((z - f.z0) / f.h) * R);
-			return i < 0 || j < 0 || i >= R || j >= R ? -1 : ch.cover[j * R + i];
-		};
-		const det = createDetails(ch.osm, reg, ter, ...A, { coverAt, classes: COVER, shared: this.shared.details, seed: (ch.x * 7919 + ch.y) % 100000 });
+		const det = detailsFromArrays(d.details, ...A, this.shared.details);
 		// zasięg widoczności szczegółów (drzewa przydrożne i przewody z daleka są poniżej piksela; słupy widać dalej)
 		for (const o of [...det.objects, ...det.shadowCasters]) o.userData.detailRange = o.isInstancedMesh ? 2200 : o.isLineSegments ? 2500 : 6000;
 		list.push(...det.objects, ...det.shadowCasters);
@@ -321,6 +328,13 @@ export class ChunkView {
 			const b = buildingMeshes(d.buildings.tiles, d.buildings, this.atmo, this.clouds, this.plane, this.worldShadow, this.buildingShared);
 			if (!this.buildingShared) this.buildingShared = { material: b.material, shadowMaterial: b.shadowMaterial };
 			list.push(...b.objects, ...b.shadowCasters);
+		}
+		// odrzucanie poza kadrem (i poza obszarem mapy cieni) – sfera kafla dla wszystkiego, co jej nie ma
+		const sphere = chunkSphere(ch);
+		for (const o of list) {
+			if (o.isInstancedMesh) o.boundingSphere = sphere.clone();
+			else if (!o.geometry.boundingSphere) o.geometry.boundingSphere = sphere.clone();
+			o.frustumCulled = true;
 		}
 		for (const o of list) this.scene.add(o);
 		ch.objs = { list };
@@ -345,6 +359,7 @@ export class ChunkView {
 				ch.stride = s2;
 				ch.terrain.geometry.dispose();
 				ch.terrain.geometry = terrainGeometry(ch, ch.layer, 40, s2);
+				ch.terrain.geometry.boundingSphere = chunkSphere(ch);
 			}
 		}
 		this.camXZ.value.set(camera.position.x, camera.position.z);
@@ -394,6 +409,7 @@ export class ChunkView {
 			for (const o of ch.objs?.list ?? []) {
 				// drzewa przydrożne: położenie w macierzach instancji (geometria to kształt drzewa)
 				if (o.isInstancedMesh) {
+					if (o.boundingSphere) { o.boundingSphere.center.x -= dx; o.boundingSphere.center.z -= dz; }
 					const a = o.instanceMatrix.array;
 					for (let i = 0; i < o.count; i++) { a[i * 16 + 12] -= dx; a[i * 16 + 14] -= dz; }
 					o.instanceMatrix.needsUpdate = true;
@@ -465,7 +481,8 @@ export class FarView {
 		ch.layer = layer;
 		packCover(this.coverTex, ch, layer);
 		ch.terrain = new Mesh(terrainGeometry(ch, layer, 60), this.material);
-		ch.terrain.frustumCulled = false;
+		// zapas na krzywiznę: do ~60 km od kamery opadanie do ~300 m
+		ch.terrain.geometry.boundingSphere = chunkSphere(ch, 320);
 		ch.terrain.renderOrder = 1; // po kaflach z14 – piksele pod nimi odpadają na teście głębi przed kosztownym cieniowaniem
 		this.group.add(ch.terrain);
 		this.stats.tiles++;
@@ -484,6 +501,8 @@ export class FarView {
 			const a = pos.array;
 			for (let i = 0; i < a.length; i += 3) { a[i] -= dx; a[i + 2] -= dz; }
 			pos.needsUpdate = true;
+			const bs = ch.terrain.geometry.boundingSphere;
+			if (bs) { bs.center.x -= dx; bs.center.z -= dz; }
 		}
 	}
 }

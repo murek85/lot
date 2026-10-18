@@ -1,53 +1,32 @@
 // Tory z OpenStreetMap: nasyp z tłuczniem, podkłady co 0,65 m i dwie szyny (rozstaw 1435 mm) rysowane w shaderze
 // na wstędze położonej na terenie. Nieczynne – zarośnięte, rdzawe; rozebrane – sam nasyp z trawą. Do tego perony
 // (podniesione płyty) i linie torów dla maski lasu.
-import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
+import { Mesh, BufferGeometry, BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
 import { Fn, float, vec3, attribute, varying, positionLocal, uniform, abs, max, min, mix, smoothstep, step, fract, fwidth, dot, select, pow, normalize, cameraPosition, clamp } from 'three/tsl';
 import { onGround, cityLight, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
-import { densify, ribbon } from './roads.js';
+import { railArrays, BED } from './objgeo.js';
 
 const EARTH_R = 6371000;
-const BED = 4.4; // szerokość nasypu z tłuczniem (m)
 
 /** shared – { material } wspólny dla wielu wywołań (kafle otwartego świata). */
 export function createRails(osm, region, terrain, atmo, clouds, plane, worldShadow, shared = null) {
-	const half = region.size / 2 - 30;
-	const g = { pos: [], side: [], dist: [], kind: [], idx: [], count: 0 };
-	const lines = [];
-	const clip = (c) => {
-		const pts = [];
-		for (let i = 0; i < c.length; i += 2) {
-			const x = c[i] / 10, z = c[i + 1] / 10;
-			if (Math.abs(x) < half && Math.abs(z) < half) pts.push(x, z);
-		}
-		return pts.length >= 4 ? densify(pts, 10) : null;
-	};
-	for (const [kind, , bridge, , c] of osm.rails) {
-		const pts = clip(c);
-		if (!pts) continue;
-		lines.push({ pts, half: BED / 2, bridge });
-		let hAt = (x, z) => terrain.meshHeightAt(x, z) + (kind === 3 ? 0.15 : 0.35);
-		if (bridge) {
-			const n = pts.length / 2;
-			const h0 = terrain.meshHeightAt(pts[0], pts[1]), h1 = terrain.meshHeightAt(pts[(n - 1) * 2], pts[(n - 1) * 2 + 1]);
-			let i = 0;
-			hAt = () => h0 + (h1 - h0) * (n > 1 ? i++ / (n - 1) : 0) + 0.9;
-		}
-		const rb = ribbon(pts, BED / 2, hAt, g.count);
-		g.pos.push(...rb.pos); g.side.push(...rb.side); g.dist.push(...rb.dist); g.idx.push(...rb.idx);
-		for (let i = 0; i < rb.side.length; i++) g.kind.push(kind);
-		g.count += rb.side.length;
-	}
+	const a = railArrays(osm.rails, (x, z) => terrain.meshHeightAt(x, z), region.size / 2 - 30);
+	return railsFromArrays(a, atmo, clouds, plane, worldShadow, shared);
+}
+
+/** Siatka torów z tablic (railArrays – w wątku głównym albo w wątku kafli). */
+export function railsFromArrays(a, atmo, clouds, plane, worldShadow, shared = null) {
+	const g = a.mesh;
 	let mat = shared?.material ?? null;
 	const objects = [];
 	if (g.count) {
 		const geo = new BufferGeometry();
-		geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
-		geo.setAttribute('aSide', new Float32BufferAttribute(g.side, 1));
-		geo.setAttribute('aDist', new Float32BufferAttribute(g.dist, 1));
-		geo.setAttribute('aKind', new Float32BufferAttribute(g.kind, 1));
-		geo.setIndex(g.idx);
+		geo.setAttribute('position', new BufferAttribute(g.pos, 3));
+		geo.setAttribute('aSide', new BufferAttribute(g.side, 1));
+		geo.setAttribute('aDist', new BufferAttribute(g.dist, 1));
+		geo.setAttribute('aKind', new BufferAttribute(g.kind, 1));
+		geo.setIndex(new BufferAttribute(g.idx, 1));
 		const mesh = new Mesh(geo, (mat ??= makeMaterial(atmo, clouds, plane, worldShadow)));
 		mesh.renderOrder = 12;
 		mesh.frustumCulled = false;
@@ -55,7 +34,7 @@ export function createRails(osm, region, terrain, atmo, clouds, plane, worldShad
 	}
 	return {
 		objects,
-		lines,
+		lines: a.lines,
 		get material() { return mat; },
 		update(camera) { for (const o of objects) o.material.userData.camXZ.value.set(camera.position.x, camera.position.z); },
 	};

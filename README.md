@@ -468,7 +468,10 @@ Regiony działają jak dotąd.
 - **Obiekty w wątkach**: przy wejściu kafla w pierścień obiektów wątek kafli liczy geometrię budynków
   (`buildBuildingTiles`, `src/buildgeo.js` – bez Three.js poza triangulacją z `three.core.js`) i dróg (`ribbon`,
   `src/gfx/ribbon.js`) z zapamiętanych danych kafla i oddaje tablice bez kopiowania; wątek główny tworzy z nich
-  siatki (~5 ms na kafel); rzeki, tory, mosty, aleje i linie energetyczne – nadal w wątku głównym.
+  siatki; rzeki, tory, mosty i perony, aleje i linie energetyczne – też w wątku (`src/objgeo.js`, wspólne z regionami),
+  razem z sferami otaczającymi budynków – w wątku głównym ~1 ms na kafel. Kafle i ich obiekty mają sfery otaczające
+  (z zapasem na krzywiznę Ziemi) – odrzucanie poza kadrem i poza obszarem mapy cieni (klatka była ograniczona
+  procesorem: wysyłanie obiektów do karty).
 
 ## Struktura
 

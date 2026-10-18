@@ -1,7 +1,8 @@
 // Wspólny materiał dla prostych brył (mosty, perony, słupy): kolor z atrybutu, normalne z geometrii, światło
 // słońca po atmosferze, niebo, cienie chmur, samolotu i mapy cieni; krzywizna Ziemi jak u terenu.
 // Do tego zbieracz geometrii z gotowymi bryłami (prostopadłościan wzdłuż odcinka, pionowa ściana).
-import { BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DoubleSide } from 'three/webgpu';
+import { BufferGeometry, BufferAttribute, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DoubleSide } from 'three/webgpu';
+import { GeoArrays } from './geobuilder.js';
 import { Fn, vec3, attribute, varying, positionLocal, uniform, max, dot, normalize, mix, float } from 'three/tsl';
 import { onGround, cityLight, worldOffset } from './ground.js';
 import { valueNoise } from './noise.js';
@@ -35,36 +36,19 @@ export function makeLitMaterial({ atmo, clouds, plane, worldShadow, doubleSide =
 	return m;
 }
 
-/** Zbieracz geometrii: płaskie ściany i prostopadłościany z kolorem. */
-export class GeoBuilder {
-	constructor() { this.pos = []; this.nrm = []; this.col = []; this.idx = []; this.count = 0; }
+/** Zbieracz geometrii (src/gfx/geobuilder.js) z siatką Three.js. */
+export class GeoBuilder extends GeoArrays {
+	geometry() { return litGeometry(this); }
+}
 
-	quad(a, b, c, d, n, color) {
-		const i = this.count;
-		for (const p of [a, b, c, d]) { this.pos.push(...p); this.nrm.push(...n); this.col.push(...color); }
-		this.idx.push(i, i + 1, i + 2, i, i + 2, i + 3);
-		this.count += 4;
-	}
-
-	/** Prostopadłościan wzdłuż odcinka (x0,z0)→(x1,z1), szerokość w, od y0 do y1. */
-	beam(x0, z0, x1, z1, w, y0, y1, color, caps = true) {
-		const len = Math.hypot(x1 - x0, z1 - z0) || 1;
-		const tx = (x1 - x0) / len, tz = (z1 - z0) / len, nx = -tz * (w / 2), nz = tx * (w / 2);
-		const A = [x0 + nx, z0 + nz], B = [x1 + nx, z1 + nz], C = [x1 - nx, z1 - nz], D = [x0 - nx, z0 - nz];
-		const side = (p, q, n) => this.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, color);
-		side(A, B, [-tz, 0, tx]);
-		side(C, D, [tz, 0, -tx]);
-		if (caps) { side(B, C, [tx, 0, tz]); side(D, A, [-tx, 0, -tz]); }
-		this.quad([A[0], y1, A[1]], [B[0], y1, B[1]], [C[0], y1, C[1]], [D[0], y1, D[1]], [0, 1, 0], color);
-	}
-
-	geometry() {
-		const g = new BufferGeometry();
-		g.setAttribute('position', new Float32BufferAttribute(this.pos, 3));
-		g.setAttribute('normal', new Float32BufferAttribute(this.nrm, 3));
-		g.setAttribute('aColor', new Float32BufferAttribute(this.col, 3));
-		g.setIndex(this.idx);
-		g.computeBoundingSphere();
-		return g;
-	}
+/** Siatka z tablic zbieracza (zwykłych albo typowanych z wątku kafli). */
+export function litGeometry(a) {
+	const g = new BufferGeometry();
+	const attr = (v, n) => (v instanceof Float32Array ? new BufferAttribute(v, n) : new Float32BufferAttribute(v, n));
+	g.setAttribute('position', attr(a.pos, 3));
+	g.setAttribute('normal', attr(a.nrm, 3));
+	g.setAttribute('aColor', attr(a.col, 3));
+	g.setIndex(Array.isArray(a.idx) ? a.idx : new BufferAttribute(a.idx, 1));
+	g.computeBoundingSphere();
+	return g;
 }

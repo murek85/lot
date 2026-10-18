@@ -2,65 +2,37 @@
 // WorldCover najwyżej szczątkowo – bez tego las rósłby nad korytem, a mosty stałyby nad drzewami. Woda: ciemna
 // toń, odbicie nieba z Fresnelem, drobne zmarszczki i odblask słońca; brzegi wygładzone przezroczystością.
 // Do tego linie koryt (z pasem nadbrzeżnym) dla maski lasu.
-import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
+import { Mesh, BufferGeometry, BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
 import { Fn, float, vec2, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, pow, dot, normalize, reflect, fwidth, cameraPosition } from 'three/tsl';
 import { onGround, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
 import { COL } from './gfx/palette.js';
-import { densify, ribbon } from './roads.js';
-
-const MIN_DRAWN = 2; // rowy węższe niż 2 m tylko w masce lasu
+import { riverArrays } from './objgeo.js';
 
 /** shared – { material } wspólny dla wielu wywołań (kafle otwartego świata). */
 export function createRivers(osm, region, terrain, atmo, clouds, plane, worldShadow, shared = null) {
-	const half = region.size / 2 - 30;
-	const g = { pos: [], side: [], width: [], idx: [], count: 0 };
-	const lines = [];
-	for (const [w10, c] of osm.waterways ?? []) {
-		let pts = [];
-		for (let i = 0; i < c.length; i += 2) {
-			const x = c[i] / 10, z = c[i + 1] / 10;
-			if (Math.abs(x) < half && Math.abs(z) < half) pts.push(x, z);
-			else if (pts.length >= 4) break;
-		}
-		if (pts.length < 4) continue;
-		pts = densify(pts, 10);
-		const width = Math.min(60, w10 / 10);
-		// pas nadbrzeżny bez drzew: łęgi przy rzekach szersze niż przy strugach
-		lines.push({ pts, half: width / 2 + (width >= 8 ? 7 : width >= 2 ? 3 : 1) });
-		if (width < MIN_DRAWN) continue;
-		// lustro wody: wysokość terenu wygładzona wzdłuż koryta (DEM w wąskiej dolinie jest poszarpany)
-		const n = pts.length / 2, raw = [];
-		for (let i = 0; i < n; i++) raw.push(terrain.meshHeightAt(pts[i * 2], pts[i * 2 + 1]));
-		let i = 0;
-		const hAt = () => {
-			let s = 0, k = 0;
-			for (let j = Math.max(0, i - 3); j <= Math.min(n - 1, i + 3); j++) { s += raw[j]; k++; }
-			const own = raw[i++];
-			return Math.min(own, s / k) + 0.12;
-		};
-		// trochę szerzej niż koryto – brzeg rozmywa przezroczystość
-		const rb = ribbon(pts, width / 2 + 1, hAt, g.count);
-		g.pos.push(...rb.pos); g.side.push(...rb.side); g.idx.push(...rb.idx);
-		for (let k = 0; k < rb.side.length; k++) g.width.push(width + 2);
-		g.count += rb.side.length;
-	}
+	const a = riverArrays(osm.waterways, (x, z) => terrain.meshHeightAt(x, z), region.size / 2 - 30);
+	return riversFromArrays(a, atmo, clouds, plane, worldShadow, shared);
+}
+
+/** Siatka wody z tablic (riverArrays – w wątku głównym albo w wątku kafli). */
+export function riversFromArrays(a, atmo, clouds, plane, worldShadow, shared = null) {
+	const g = a.mesh;
 	let mat = shared?.material ?? null;
-	const material = () => (mat ??= makeMaterial(atmo, clouds, plane, worldShadow));
 	const objects = [];
 	if (g.count) {
 		const geo = new BufferGeometry();
-		geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
-		geo.setAttribute('aSide', new Float32BufferAttribute(g.side, 1));
-		geo.setAttribute('aWidth', new Float32BufferAttribute(g.width, 1));
-		geo.setIndex(g.idx);
-		const mesh = new Mesh(geo, material());
+		geo.setAttribute('position', new BufferAttribute(g.pos, 3));
+		geo.setAttribute('aSide', new BufferAttribute(g.side, 1));
+		geo.setAttribute('aWidth', new BufferAttribute(g.width, 1));
+		geo.setIndex(new BufferAttribute(g.idx, 1));
+		const mesh = new Mesh(geo, (mat ??= makeMaterial(atmo, clouds, plane, worldShadow)));
 		mesh.renderOrder = 5; // pod drogami
 		mesh.frustumCulled = false;
 		objects.push(mesh);
 	}
 	return {
-		objects, lines,
+		objects, lines: a.lines,
 		get material() { return mat; },
 		update(camera) {
 			for (const o of objects) {
