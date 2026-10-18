@@ -39,6 +39,8 @@ export class BigMap {
 		cv.addEventListener('pointerup', (e) => {
 			if (drag && !drag.moved && e.button === 0) {
 				const p = this.pick(e.offsetX, e.offsetY);
+				// Shift+klik (tryb deweloperski) – skok samolotu w to miejsce zamiast celu
+				if (e.shiftKey && this.onJump?.(p)) { drag = null; return; }
 				this.target = p;
 				this.onTarget?.(p);
 				this.draw();
@@ -73,6 +75,11 @@ export class BigMap {
 	/** Otwarcie: widok wyśrodkowany na samolocie w skali ~25 km na ekran. */
 	show(plane, target) {
 		this.root.hidden = false;
+		// podpowiedź skoku – tylko w trybie deweloperskim
+		if (this.info) {
+			this.baseInfo ??= this.info.textContent;
+			this.info.textContent = document.body.classList.contains('dev') ? `${this.baseInfo} · Shift+klik – skok w to miejsce (tryb deweloperski)` : this.baseInfo;
+		}
 		this.plane = plane;
 		this.target = target;
 		this.fit();

@@ -47,6 +47,24 @@ export function cancel() { worker?.postMessage({ type: 'cancel' }); }
 
 /** Wyszukiwanie miejsca w Polsce (Nominatim, OpenStreetMap; najwyżej 1 zapytanie na sekundę). */
 let lastQuery = 0;
+// rodzaj miejsca z Nominatim (addresstype / type) po polsku – do rozróżnienia wyników o tej samej nazwie
+const KIND = {
+	city: 'miasto', town: 'miasto', village: 'wieś', hamlet: 'osada', suburb: 'dzielnica', quarter: 'dzielnica',
+	neighbourhood: 'osiedle', isolated_dwelling: 'przysiółek', municipality: 'gmina', county: 'powiat', state: 'województwo',
+	river: 'rzeka', stream: 'potok', canal: 'kanał', lake: 'jezioro', reservoir: 'zbiornik', water: 'woda', peak: 'szczyt',
+	mountain_range: 'pasmo górskie', forest: 'las', wood: 'las', park: 'park', airport: 'lotnisko', aerodrome: 'lotnisko',
+	station: 'stacja', island: 'wyspa', valley: 'dolina', nature_reserve: 'rezerwat', national_park: 'park narodowy',
+};
+/** Rodzaj miejsca po polsku (np. „miasto”, „rzeka”) albo ogólny – z typu i kategorii Nominatim. */
+export function placeKind(addresstype, type, category) {
+	return KIND[addresstype] ?? KIND[type] ?? (category === 'boundary' ? 'gmina / obszar' : category === 'waterway' ? 'ciek' : category === 'natural' ? 'obiekt przyrodniczy' : category === 'highway' ? 'droga' : '');
+}
+/** Krótki opis położenia z adresu: powiat i województwo (bez „Polska”, bez samej nazwy), „województwo” skrócone. */
+export function placeArea(displayName) {
+	const parts = String(displayName).split(',').map((t) => t.trim()).slice(1).filter((t) => t && t !== 'Polska');
+	return parts.slice(-2).map((t) => t.replace(/^województwo /, 'woj. ')).join(', ');
+}
+
 export async function geocode(q) {
 	const wait = lastQuery + 1100 - Date.now();
 	if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -56,9 +74,15 @@ export async function geocode(q) {
 	if (!res.ok) throw new Error(`Wyszukiwanie: ${res.status}`);
 	const out = [];
 	for (const r of await res.json()) {
-		const p = { name: r.name || r.display_name.split(',')[0], label: r.display_name, lon: +r.lon, lat: +r.lat };
-		// ten sam obiekt bywa kilka razy (granica gminy, miasto, węzeł) – jeden wpis na nazwę w promieniu ~3 km
-		if (!out.some((q) => q.name === p.name && Math.abs(q.lon - p.lon) < 0.04 && Math.abs(q.lat - p.lat) < 0.03)) out.push(p);
+		const p = {
+			name: r.name || r.display_name.split(',')[0], label: r.display_name, lon: +r.lon, lat: +r.lat,
+			kind: placeKind(r.addresstype, r.type, r.category), area: placeArea(r.display_name),
+		};
+		// ten sam obiekt bywa kilka razy (granica gminy, miasto, węzeł) – jeden wpis na nazwę w promieniu ~3 km albo
+		// z tym samym adresem; zostaje miejscowość, nie obszar administracyjny
+		const i = out.findIndex((q) => q.name === p.name && (q.label === p.label || (Math.abs(q.lon - p.lon) < 0.04 && Math.abs(q.lat - p.lat) < 0.03)));
+		if (i < 0) out.push(p);
+		else if (out[i].kind === 'gmina / obszar' && p.kind !== 'gmina / obszar') out[i] = p;
 	}
 	return out;
 }

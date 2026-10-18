@@ -3,6 +3,22 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.33 – skok w dowolne miejsce (tryb deweloperski)
+
+- **Panel H – pole „Skok do”**: nazwa miejscowości (wyszukiwarka jak w generatorze; kilka wyników – lista z rodzajem
+  miejsca, powiatem i województwem oraz odległością i kierunkiem od samolotu, np. Wisła – rzeka albo miasto; dubel
+  gmina/miasto scalony)
+- Poprawka: skok w miejsce bez kafli w pamięci (np. Wisła → Zabrze) – w trakcie doczytywania pętla gry cofała
+  przesunięcie początku układu i samolot lądował w starym miejscu; teraz w czasie skoku przesunięcia nie ma.
+  albo współrzędne (`50.06, 19.94`, `50,06 19,94`, `50.06N 19.94E`, odwrócona kolejność dla Polski też); przyciski
+  „Start”, „+10 km” (w kierunku lotu) i 5 ostatnich skoków (pamiętane w przeglądarce).
+- **Duża mapa (Tab) – Shift+klik**: skok w wskazane miejsce (zwykły klik – nadal cel lotu); podpowiedź w pasku mapy
+  tylko w trybie deweloperskim.
+- Skok: 400 m nad terenem, kurs i prędkość bez zmian. Otwarty świat do 150 km – na miejscu (przesunięcie początku
+  układu, doczytanie okolicy pod małą kartą; ~0,5 s z pamięci kafli), dalej – otwarty świat od nowa w tym miejscu
+  (skala rzutu Mercatora z nowej szerokości); region – w jego granicach, poza nimi – otwarty świat w tym miejscu.
+  W trakcie wczytywania – komunikat „Poczekaj…” zamiast cichego pominięcia.
+
 ## 0.32 – piesi tam, gdzie chodzą ludzie
 
 - **Liczba pieszych z długości chodników wokół** (~22 na km przy pełnym ruchu, najwyżej 1500): wieś – kilkunastu,

@@ -46,6 +46,15 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e12; col
 .row input { flex: 1; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .hint { margin: 2px 0 0; color: var(--muted); font-size: 11.5px; }
+/* panel deweloperski: skok w dowolne miejsce */
+.jump { display: grid; gap: 4px; color: var(--muted); }
+.jump input[type=text] { flex: 1; min-width: 0; background: rgba(0, 0, 0, 0.25); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; font: inherit; font-size: 12.5px; }
+.jump input[type=text]:focus { outline: none; border-color: var(--accent); }
+.jump-list { display: flex; flex-wrap: wrap; gap: 4px; }
+#hud .jump-list button { width: auto; height: auto; padding: 2px 7px; font-size: 11.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#hud .jump-list button.result { width: 100%; display: grid; text-align: left; padding: 3px 7px; white-space: normal; }
+#hud .jump-list button.result b { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud .jump-list button.result small { color: var(--muted); font-size: 10.5px; line-height: 1.3; }
 
 #fps, #credits {
 	position: fixed; bottom: 12px; padding: 4px 8px; border-radius: 6px; background: var(--panel);

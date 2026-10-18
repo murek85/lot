@@ -47,7 +47,8 @@ import { transmittance, ATMOSPHERE } from './atmosphere/model.js';
 import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
 import { DEFAULT_REGION, REGIONS } from './regions.js';
-import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta } from './gen/client.js';
+import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta, geocode } from './gen/client.js';
+import { parseCoords, pushRecent, coordName, distDir } from './ui/jump.js';
 import { TIME_SPEEDS, advanceClock, PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
 
 const $ = (id) => document.getElementById(id);
@@ -794,6 +795,8 @@ async function start() {
 		minimap.scale = st.scale; minimap.rotate = st.rotate;
 		minimap.target = target;
 		bigMap = new BigMap($('bigmap'), base, region.size, labels, places, (t) => setTarget(t));
+		// tryb deweloperski: Shift+klik na dużej mapie – skok samolotu w to miejsce
+		bigMap.onJump = (p) => { if (!settings.dev) return false; closeMap(); jumpTo(p); return true; };
 		console.info(`Lot: mapa bazowa ${Math.round(performance.now() - t0)} ms`);
 	}, 300);
 	// środek układu (otwarty świat przesuwa go razem z początkiem układu – region.meta.center)
@@ -825,6 +828,106 @@ async function start() {
 		post.resetHistory(); // wygładzanie bez historii z poprzedniego układu (bez smug i mignięcia)
 		console.info(`Lot: początek układu przesunięty o ${(dx / 1000).toFixed(1)}, ${(dz / 1000).toFixed(1)} km (${ms.toFixed(1)} ms)`);
 	};
+
+	// --- skok w dowolne miejsce (narzędzie deweloperskie: panel H – pole „Skok do”, duża mapa – Shift+klik) ---
+	const JUMP_KEY = 'lot-jumps';
+	let jumps = (() => { try { return JSON.parse(localStorage.getItem(JUMP_KEY)) ?? []; } catch { return []; } })();
+	const hint = (text, ms = 3500) => { $('esc-hint').textContent = text; escHintUntil = performance.now() + ms; };
+	let jumping = false;
+	/**
+	 * Samolot w punkt { lon, lat } albo { x, z } (układ gry), z nazwą: wysokość 400 m nad terenem, kurs i prędkość bez
+	 * zmian. Otwarty świat: do 150 km – na miejscu (przesunięcie początku układu, doczytanie okolicy pod kartą), dalej –
+	 * otwarty świat od nowa w tym miejscu (rzut Mercatora ma skalę z szerokości startu); region – tylko w jego granicach,
+	 * poza nimi – otwarty świat w tym miejscu.
+	 */
+	const jumpTo = async (p) => {
+		if (jumping || busy) { hint(jumping ? 'Poczekaj – trwa poprzedni skok' : 'Poczekaj – trwa wczytywanie'); return; }
+		const ll = p.lon != null ? { lon: p.lon, lat: p.lat } : localToLonLat(p.x, p.z, region.meta.center);
+		const name = p.name ?? coordName(ll);
+		let { x, z } = p.lon != null ? lonLatToLocal(p.lon, p.lat, region.meta.center) : p;
+		const far = world ? Math.hypot(x - flight.x, z - flight.z) > 150000 : Math.max(Math.abs(x), Math.abs(z)) > region.size / 2 - 300;
+		jumps = pushRecent(jumps, { name, lon: ll.lon, lat: ll.lat });
+		try { localStorage.setItem(JUMP_KEY, JSON.stringify(jumps)); } catch { /* bez pamięci */ }
+		renderJumps();
+		if (far) {
+			// daleko (albo poza regionem) – otwarty świat od nowa w tym miejscu
+			hint(world ? `${name}: ponad 150 km – otwarty świat od nowa` : `${name}: poza regionem – otwarty świat`);
+			worldStart.set({ name, lon: ll.lon, lat: ll.lat });
+			return switchRegion(WORLD_ID);
+		}
+		jumping = true;
+		try {
+			if (world) {
+				// początek układu pod nowe miejsce (czyste przesunięcie), potem kafle wokół
+				if (Math.hypot(x, z) > REBASE_AT) {
+					const dx = Math.round(x / REBASE_STEP) * REBASE_STEP, dz = Math.round(z / REBASE_STEP) * REBASE_STEP;
+					shiftOrigin(dx, dz);
+					x -= dx; z -= dz;
+				}
+				if (world.streamer.missing(x, z, 2500)) {
+					const ls = loadingScreen({ compact: true, eyebrow: 'SKOK · TRYB DEWELOPERSKI', title: name, sub: coordName(ll), stage: 'Wczytywanie okolicy…', minTime: 0.3 });
+					await nextFrames(1);
+					await world.ready(x, z, 2500, (f) => ls.progress(f * 0.95, 'Wczytywanie okolicy…'));
+					ls.done('Na miejscu');
+				}
+			}
+			flight.x = x; flight.z = z;
+			flight.y = groundAt(x, z) + 400;
+			flight.crashed = false; flight.onGround = false;
+			if (mode === 'free') { view.goal.target.set(x, groundAt(x, z), z); view.target.copy(view.goal.target); }
+			chase.snap(flight);
+			post.resetHistory();
+			hint(`Skok: ${name}`);
+		} finally {
+			jumping = false;
+		}
+	};
+	// panel H: pole „Skok do” (miejscowość z wyszukiwarki albo współrzędne), przyciski: start, +10 km, ostatnie
+	const jumpInput = $('jump-q'), jumpList = $('jump-list');
+	const jumpButton = (label, title, fn) => {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.textContent = label;
+		b.title = title;
+		b.onclick = fn;
+		return b;
+	};
+	function renderJumps(results = null) {
+		jumpList.replaceChildren(...(results
+			? results.map((r) => {
+				// wynik wyszukiwania: nazwa, a pod nią rodzaj, położenie (powiat, województwo) i odległość od samolotu
+				const { x, z } = lonLatToLocal(r.lon, r.lat, region.meta.center);
+				const b = jumpButton('', r.label ?? r.name, () => { jumpInput.value = ''; jumpTo(r); renderJumps(); });
+				b.className = 'result';
+				const sub = [r.kind, r.area, distDir(x - flight.x, z - flight.z)].filter(Boolean).join(' · ');
+				b.append(Object.assign(document.createElement('b'), { textContent: r.name }), Object.assign(document.createElement('small'), { textContent: sub }));
+				return b;
+			})
+			: [
+				jumpButton('Start', 'Miejsce startu tego świata', () => jumpTo({ ...places[0], name: places[0].name })),
+				jumpButton('+10 km', '10 km dalej w kierunku lotu', () => jumpTo({ x: flight.x + Math.sin(flight.heading) * 10000, z: flight.z - Math.cos(flight.heading) * 10000 })),
+				...jumps.map((j) => jumpButton(j.name, coordName(j), () => jumpTo(j))),
+			]));
+	}
+	const jumpQuery = async () => {
+		const q = jumpInput.value.trim();
+		if (!q) return renderJumps();
+		const c = parseCoords(q);
+		if (c) { jumpInput.value = ''; return jumpTo({ ...c, name: coordName(c) }); }
+		jumpList.replaceChildren(Object.assign(document.createElement('span'), { className: 'hint', textContent: 'Szukanie…' }));
+		let found = [];
+		try { found = await geocode(q); } catch (e) { console.warn(e); }
+		if (!found.length) { jumpList.replaceChildren(Object.assign(document.createElement('span'), { className: 'hint', textContent: 'Nic nie znaleziono' })); return; }
+		if (found.length === 1) { jumpInput.value = ''; renderJumps(); return jumpTo(found[0]); }
+		renderJumps(found);
+	};
+	jumpInput.addEventListener('keydown', (e) => {
+		e.stopPropagation(); // klawisze lotu (W, A, S, D…) nie sterują samolotem podczas pisania
+		if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); jumpQuery(); }
+		if (e.code === 'Escape') { jumpInput.value = ''; jumpInput.blur(); renderJumps(); }
+	});
+	$('jump-go').onclick = jumpQuery;
+	renderJumps();
 
 	const frame = () => {
 		timer.update();
@@ -1057,8 +1160,10 @@ async function start() {
 		atmo.update(sun, camera.position.y);
 		renderer.toneMappingExposure = state.exposure * autoExposure(sun.y);
 		terrain.update(camera, t);
-		// otwarty świat: daleko od początku układu – początek pod samolot (czyste przesunięcie, bez wczytywania)
-		if (world && Math.hypot(flight.x, flight.z) > REBASE_AT) {
+		// otwarty świat: daleko od początku układu – początek pod samolot (czyste przesunięcie, bez wczytywania); nie w trakcie
+		// skoku – początek jest już pod celem, a samolot do końca doczytywania został w starym miejscu (cofnięcie przesunięcia
+		// postawiłoby go po skoku w złym miejscu)
+		if (world && !jumping && Math.hypot(flight.x, flight.z) > REBASE_AT) {
 			const dx = Math.round(flight.x / REBASE_STEP) * REBASE_STEP, dz = Math.round(flight.z / REBASE_STEP) * REBASE_STEP;
 			shiftOrigin(dx, dz);
 		}
@@ -1178,7 +1283,7 @@ async function start() {
 		out.sort((a, b) => a - b);
 		return out[n >> 1];
 	};
-	window.__lot = { gpuTime, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { gpuTime, jumpTo, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

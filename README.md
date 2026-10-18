@@ -104,6 +104,17 @@ Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 G
   Beskid Śląski 900, Bory Tucholskie 560), generator w grze zapisuje je od razu. Do nich – odmiana nazw miejsc
   startu z `src/regions.js`.
 
+## Skok w dowolne miejsce (tryb deweloperski)
+
+Ustawienia → **Panel deweloperski** (klawisz H): pole **Skok do** – nazwa miejscowości (Nominatim, jak generator;
+kilka wyników – lista: rodzaj miejsca, powiat i województwo, odległość i kierunek od samolotu – `placeKind`,
+`placeArea`, `distDir`) albo współrzędne (`src/ui/jump.js`: `parseCoords` – „50.06, 19.94”, przecinki dziesiętne,
+litery N/E, odwrócona kolejność dla Polski); przyciski **Start**, **+10 km** w kierunku lotu i 5 ostatnich skoków
+(`lot-jumps` w pamięci przeglądarki). Na **dużej mapie** (Tab) **Shift+klik** – skok w to miejsce. Samolot ląduje
+400 m nad terenem z tym samym kursem i prędkością. Otwarty świat: do 150 km – przesunięcie początku układu i doczytanie
+okolicy (karta wczytywania), dalej – otwarty świat od nowa w tym miejscu; region – tylko w jego granicach, poza nimi
+– otwarty świat w tym miejscu. W konsoli: `await __lot.jumpTo({ lat, lon, name })`.
+
 ## Czas w grze
 
 Zegar w locie płynie: **zatrzymany**, **rzeczywisty** (×1), **przyspieszony ×10** albo **szybki ×60** (godzina w minutę –

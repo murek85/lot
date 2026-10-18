@@ -30,7 +30,7 @@ test('„Co nowego”: wersje od bieżącej do 0.1, bieżąca zgodna z numerem w
 	const { readFileSync } = await import('node:fs');
 	const src = readFileSync(new URL('../src/ui/menu.js', import.meta.url), 'utf8');
 	const versions = [...src.matchAll(/\{ v: '(\d+\.\d+)'/g)].map((m) => m[1]);
-	assert.deepEqual(versions, ['0.32', '0.31', '0.30', '0.29', '0.28', '0.27', '0.26', '0.25', '0.24', '0.23', '0.22', '0.21', '0.20', '0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
+	assert.deepEqual(versions, ['0.33', '0.32', '0.31', '0.30', '0.29', '0.28', '0.27', '0.26', '0.25', '0.24', '0.23', '0.22', '0.21', '0.20', '0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
 	assert.ok(src.includes(`'PROTOTYP ${versions[0]}'`));
 	const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 	assert.deepEqual([...log.matchAll(/^## (\d+\.\d+)/gm)].map((m) => m[1]), versions);
@@ -93,4 +93,38 @@ test('cel lotu: odległość, kurs do celu, skręt, czas dolotu', async () => {
 	assert.ok(targetInfo(0, 0, 0, 50, 0, -5000).text.includes('na kursie'));
 	assert.ok(targetInfo(0, 0, 0, 50, -3000, 0).text.includes('w lewo'));
 	assert.ok(targetInfo(0, 0, 0, 50, 100, 100).text.includes('nad celem'));
+});
+
+import { parseCoords, pushRecent, coordName, distDir } from '../src/ui/jump.js';
+import { placeKind, placeArea } from '../src/gen/client.js';
+
+test('skok: współrzędne z tekstu w różnych zapisach, zamienione dla Polski, błędne – null', () => {
+	assert.deepEqual(parseCoords('50.06, 19.94'), { lat: 50.06, lon: 19.94 });
+	assert.deepEqual(parseCoords('50,06 19,94'), { lat: 50.06, lon: 19.94 });
+	assert.deepEqual(parseCoords('50.06N 19.94E'), { lat: 50.06, lon: 19.94 });
+	assert.deepEqual(parseCoords('19.94E, 50.06N'), { lat: 50.06, lon: 19.94 });
+	assert.deepEqual(parseCoords('19.94, 50.06'), { lat: 50.06, lon: 19.94 }, 'długość pierwsza – rozpoznana dla Polski');
+	assert.equal(parseCoords('Kraków'), null);
+	assert.equal(parseCoords('120, 400'), null);
+	assert.equal(coordName({ lat: 50.06123, lon: 19.9371 }), '50.061° N 19.937° E');
+});
+
+test('skok: ostatnie miejsca – nowe na początku, bez powtórzeń, najwyżej 5', () => {
+	let l = [];
+	for (const [n, lat] of [['A', 50], ['B', 51], ['C', 52], ['D', 53], ['E', 54], ['F', 49.5]]) l = pushRecent(l, { name: n, lat, lon: 19 });
+	assert.deepEqual(l.map((p) => p.name), ['F', 'E', 'D', 'C', 'B']);
+	l = pushRecent(l, { name: 'C2', lat: 52.0005, lon: 19.0005 });
+	assert.deepEqual(l.map((p) => p.name), ['C2', 'F', 'E', 'D', 'B'], 'to samo miejsce pod inną nazwą – raz');
+});
+
+test('wyniki wyszukiwania: rodzaj, położenie, odległość i kierunek', () => {
+	assert.equal(placeKind('river', 'river', 'waterway'), 'rzeka');
+	assert.equal(placeKind('town', 'administrative', 'boundary'), 'miasto');
+	assert.equal(placeKind('administrative', 'administrative', 'boundary'), 'gmina / obszar');
+	assert.equal(placeArea('Wisła, powiat cieszyński, województwo śląskie, Polska'), 'powiat cieszyński, woj. śląskie');
+	assert.equal(placeArea('Wisła, Polska'), '');
+	assert.equal(distDir(0, -34000), '34 km na płn.');
+	assert.equal(distDir(2000, 2000), '2,8 km na płd.-wsch.');
+	assert.equal(distDir(-50000, 0), '50 km na zach.');
+	assert.equal(distDir(100, 100), 'tutaj');
 });
