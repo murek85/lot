@@ -2,7 +2,7 @@
 // R według gęstości klasy drogi i pory dnia, jadą po krawędziach grafu (src/traffic/graph.js) z prędkością drogi,
 // trzymają odstęp od poprzedzającego na tym samym pasie, na skrzyżowaniach wybierają dalszą drogę (wolą podobną
 // lub ważniejszą, nie zawracają, chyba że ślepa uliczka), daleko od kamery – znikają. Ruch prawostronny.
-import { SPEED, DENSITY, pointAt } from './graph.js';
+import { SPEED, DENSITY, CAR_MAX_CLASS, pointAt, projectToGraph } from './graph.js';
 
 /** Rodzaje pojazdów: długość, szerokość (m), udział w ruchu (autostrada / miasto) i mnożnik prędkości. */
 export const VEHICLES = [
@@ -193,6 +193,32 @@ export class TrafficSim {
 			keep.push(a);
 		}
 		this.agents = keep;
+	}
+
+	/**
+	 * Nowa sieć (otwarty świat – graf z kafli wokół samolotu): pojazdy przepięte na najbliższą krawędź nowego grafu
+	 * w tym samym kierunku jazdy; te, których nie da się przepiąć (droga poza nową siecią), znikają.
+	 */
+	rebind(graph, grid) {
+		const old = this.agents;
+		this.g = graph;
+		this.grid = grid;
+		this.lanes = new Map();
+		this.cellCache.clear();
+		this.lastCell = '';
+		this.wayEnds.clear();
+		this.agents = [];
+		for (const a of old) {
+			const hit = projectToGraph(graph, grid, a.x, a.z, a.hx, a.hz, Math.max(6, a.edge.width / 2 + 2));
+			if (!hit) continue;
+			const e = graph.edges[hit.edge];
+			if (e.cls > CAR_MAX_CLASS || (e.oneway && hit.dir !== e.oneway)) continue;
+			a.edge = e;
+			a.dir = hit.dir;
+			a.s = hit.dir === 1 ? hit.s : e.len - hit.s;
+			this.addToLane(a);
+			this.agents.push(a);
+		}
 	}
 
 	/** Położenie i kierunek pojazdu: prawy pas (dwukierunkowe), na jednokierunkowych – losowy pas. */

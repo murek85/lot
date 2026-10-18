@@ -380,13 +380,49 @@ większych obszarów (np. całe województwo) kafel po kaflu.
 Czego kafle OpenMapTiles nie mają: linii energetycznych, szpalerów drzew, przejazdów kolejowych, kształtów dachów
 i rodzajów budynków – w regionach generowanych ich nie ma albo są wyprowadzane z wysokości i pola.
 
+## Otwarty świat (wersja rozwojowa)
+
+Osobny tryb obok regionów: zamiast wycinka wczytanego w całości – kafle doczytywane w locie wokół samolotu, z tych
+samych źródeł co generator (OpenFreeMap z14, Terrarium z12) i z tą samą pamięcią kafli w IndexedDB. Wejście: generator
+→ **Otwarty świat stąd** (środek z wyszukiwarki albo propozycji), potem z listy regionów („Otwarty świat · …”).
+Regiony działają jak dotąd.
+
+- **Kafel** (`src/world/chunkdata.js`) = kafel Web Mercator z14 (~1,5 km): siatka wysokości 65² z marginesem (normalne
+  ze wspólnych punktów – bez szwów światła), raster pokrycia 128² (~12 m), obiekty z `convertTile` w metrach świata.
+- **Wątki** (`src/world/chunkworker.js`, 2–4): pobranie lub odczyt z pamięci, dekodowanie PNG wysokości (bufor 48
+  kafli z12), złożenie kafla; bufory przekazywane bez kopiowania. Ok. 160 ms na kafel z pamięci, ~250 ms z sieci.
+- **Doczytywanie** (`src/world/streamer.js`): teren w promieniu 9 km (~150 kafli), drogi i budynki w 4 km, najbliższe
+  najpierw, zwalnianie za 1,25 × promienia, histereza obiektów; wysokość na trójkątach siatki kafla (`gridHeightAt`).
+- **Widok** (`src/world/chunkview.js`): teren kafli tym samym shaderem gruntu co regiony (`shadeGround` w
+  `src/terrain.js` – pola w pasach z miedzami, bory, zabudowa, woda z odbiciem nieba), pokrycie w jednej teksturze
+  warstwowej (256 warstw), drogi (`ribbon` z `src/roads.js`) i budynki (`createBuildings`) budowane po jednym kaflu na
+  klatkę, ze wspólnymi materiałami; pod wszystkim daleka „podłoga” ze światem zastępczym. W tym samym kroku rzeki
+  i strugi, tory, mosty i perony (`createRivers`, `createRails`, `createBridges` z parametrem `shared`).
+- **Drzewa 3D** (`src/world/window.js`): las regionów (`createForest`) czyta zamiast tekstur regionu „okno gruntu”
+  2,8 × 2,8 km wokół kamery (512², połowa precyzji, adresowane w kółko): R – gęstość lasu z rastra pokrycia, G –
+  wysokość na trójkątach siatki kafla, B – maska dróg, torów i cieków z wątku kafli (256² na kafel). Przesunięcie
+  okna przepisuje tylko pasy, które do niego weszły (~1 ms), nowy kafel – swój prostokąt. Teren kafli liczy brzeg
+  lasu tym samym wzorem (`forestCover`) – korony z daleka i drzewa z bliska się pokrywają.
+- **Ruch** (`src/world/networker.js`): co ~2 km lotu osobny wątek czyta kafle z pamięci, buduje graf dróg (5 km)
+  i torów ze stacjami (9 km) i oddaje je spakowane w tablicach (`packNetwork` / `unpackNetwork` w
+  `src/traffic/graph.js` – krawędzie i węzły jako leniwe widoki). Samochody i pociągi są przepinane na nowy graf
+  (`TrafficSim.rebind`, `TrainSim.rebind`, rzut na najbliższą krawędź w kierunku jazdy – `projectToGraph`), więc nie
+  znikają; piesi dostają drogi i perony z kafli do 3 km (`PeopleSim.setRoads`). Podmiana w wątku głównym ~20–30 ms.
+- Pomiar: przelot 15 km w 10 s (~20 × szybciej niż samolot) – doczytywanie nadąża, klatka: mediana 13,5 ms, p95 21 ms;
+  z drzewami i ruchem nad Katowicami ~75 kl./s.
+
+Jeszcze nie ma (kolejne etapy): minimapy i dużej mapy, świateł osad nocą, szpalerów drzew i linii energetycznych
+(kafle ich nie mają), przesuwania początku układu (lot w promieniu ~150 km od startu), dalekiego terenu z rzeźbą
+za 9 km.
+
 ## Struktura
 
 ```
 index.html, style.css      strona, panel, ekran wczytywania i okno „brak WebGPU”
 src/main.js                start, pętla, panel, automatyczna ekspozycja
 src/region.js              wczytanie regionu → tekstury
-src/terrain.js             siatka terenu i materiał TSL
+src/terrain.js             siatka terenu i materiał TSL (shadeGround – wspólny z otwartym światem)
+src/world/                 otwarty świat: dane kafla, wątki kafli i sieci ruchu, doczytywanie, widok kafli, okno gruntu, tryb w grze
 src/atmosphere/model.js    stałe atmosfery, przepuszczalność na CPU
 src/atmosphere/gpu.js      tablice LUT, niebo, perspektywa powietrzna (TSL)
 src/post.js                przebieg końcowy: niebo, mgiełka, chmury, gradacja

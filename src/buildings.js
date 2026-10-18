@@ -171,7 +171,7 @@ export function addCoolingTower(b, cx, cz, r0, base, h, wall) {
 	}
 }
 
-export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null) {
+export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null, shared = null) {
 	const half = region.size / 2 - 30;
 	const tiles = new Map();
 	const r = rng(77);
@@ -267,8 +267,9 @@ export function createBuildings(osm, region, terrain, atmo, clouds, plane, world
 		count++;
 	}
 
-	const material = makeMaterial(atmo, clouds, plane, worldShadow);
-	const shadowMaterial = makeShadowMaterial(material.userData.camXZ);
+	// shared – wspólne materiały (kafle otwartego świata: jeden shader na wszystkie kafle)
+	const material = shared?.material ?? makeMaterial(atmo, clouds, plane, worldShadow);
+	const shadowMaterial = shared?.shadowMaterial ?? makeShadowMaterial(material.userData.camXZ);
 	const meshes = [], shadowCasters = [];
 	for (const b of tiles.values()) {
 		const g = new BufferGeometry();
@@ -293,6 +294,8 @@ export function createBuildings(osm, region, terrain, atmo, clouds, plane, world
 		count,
 		structures,
 		beacons,
+		material, shadowMaterial,
+		dispose() { for (const m of [...meshes, ...shadowCasters]) m.geometry.dispose(); },
 		/** Czerwone światła przeszkodowe na kominach i chłodniach – nocą, migające; jeden sprite z instancjami. */
 		createBeacons(pixelAngle) {
 			return beacons.length ? beaconSprite(beacons, material.userData.camXZ, pixelAngle) : null;

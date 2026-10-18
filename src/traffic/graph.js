@@ -213,3 +213,109 @@ export function edgeGrid(edges, cell = 250) {
 	}
 	return { cell, map: g, cellsOf };
 }
+
+/**
+ * Najbliższy punkt sieci (do tol m) zgodny z kierunkiem (hx, hz) – do przepięcia pojazdów i pociągów na nowy graf
+ * (otwarty świat przebudowuje sieć z kafli wokół samolotu). Zwraca { edge, s (od początku krawędzi), dir } albo null.
+ */
+export function projectToGraph(g, grid, x, z, hx, hz, tol = 6) {
+	const c = grid.cell, ci = Math.floor(x / c), cj = Math.floor(z / c);
+	let best = null, bd = tol * tol;
+	const seen = new Set();
+	// sąsiednie komórki tylko, gdy punkt leży bliżej ich granicy niż tol
+	const fx = x - ci * c, fz = z - cj * c;
+	const d0 = fx < tol ? -1 : 0, d1 = c - fx < tol ? 1 : 0, e0 = fz < tol ? -1 : 0, e1 = c - fz < tol ? 1 : 0;
+	for (let dj = e0; dj <= e1; dj++) for (let di = d0; di <= d1; di++) for (const id of grid.map.get(`${ci + di},${cj + dj}`) ?? []) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		const e = g.edges[id], p = e.pts;
+		for (let i = 0; i + 3 < p.length; i += 2) {
+			const ax = p[i], az = p[i + 1], dx = p[i + 2] - ax, dz = p[i + 3] - az, L2 = dx * dx + dz * dz || 1;
+			const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+			const ex = ax + dx * t - x, ez = az + dz * t - z, d2 = ex * ex + ez * ez;
+			if (d2 >= bd) continue;
+			const L = Math.sqrt(L2), dot = (dx * hx + dz * hz) / L;
+			if (Math.abs(dot) < 0.7) continue; // poprzeczna droga na skrzyżowaniu
+			bd = d2;
+			best = { edge: id, s: e.cum[i / 2] + t * L, dir: dot > 0 ? 1 : -1 };
+		}
+	}
+	return best;
+}
+
+/**
+ * Graf i siatka krawędzi w kilku tablicach liczbowych (przekazanie z wątku bez kopiowania i bez kosztownego
+ * odtwarzania tysięcy małych obiektów) – packNetwork w wątku, unpackNetwork w wątku głównym.
+ */
+export function packNetwork(g, grid) {
+	const E = g.edges.length, N = g.nodes.length, W = g.ways.length;
+	let nPts = 0, nOut = 0, nCell = 0;
+	for (const e of g.edges) nPts += e.pts.length / 2;
+	for (const n of g.nodes) nOut += n.out.length;
+	for (const ids of grid.map.values()) nCell += ids.length;
+	const eI = new Int32Array(E * 7), eF = new Float32Array(E * 3), pts = new Float32Array(nPts * 2), cum = new Float32Array(nPts);
+	let p = 0;
+	g.edges.forEach((e, i) => {
+		const m = e.pts.length / 2;
+		eI.set([e.a, e.b, e.cls, e.oneway, e.bridge ? 1 : 0, e.way, p], i * 7);
+		eF.set([e.len, e.width, e.wayS0], i * 3);
+		pts.set(e.pts, p * 2);
+		cum.set(e.cum, p);
+		p += m;
+	});
+	const nXZ = new Float32Array(N * 2), outOff = new Int32Array(N + 1), out = new Int32Array(nOut * 2);
+	let o = 0;
+	g.nodes.forEach((n, i) => {
+		nXZ[i * 2] = n.x; nXZ[i * 2 + 1] = n.z;
+		outOff[i] = o;
+		for (const q of n.out) { out[o * 2] = q.edge; out[o * 2 + 1] = q.dir; o++; }
+	});
+	outOff[N] = o;
+	const wI = new Int32Array(W * 3), wF = new Float32Array(W);
+	g.ways.forEach((w, i) => { wI.set([w.first, w.last, w.bridge ? 1 : 0], i * 3); wF[i] = w.len; });
+	const keys = [...grid.map.keys()], cellOff = new Int32Array(keys.length + 1), cellIds = new Int32Array(nCell);
+	let c = 0;
+	keys.forEach((k, i) => { cellOff[i] = c; for (const id of grid.map.get(k)) cellIds[c++] = id; });
+	cellOff[keys.length] = c;
+	const packed = { E, N, W, eI, eF, pts, cum, nXZ, outOff, out, wI, wF, keys, cell: grid.cell, cellOff, cellIds, cellsOf: grid.cellsOf };
+	return { packed, transfer: [eI, eF, pts, cum, nXZ, outOff, out, wI, wF, cellOff, cellIds, grid.cellsOf].map((a) => a.buffer) };
+}
+
+/** Krawędź z tablic packNetwork: pola liczbowe od razu, pts i cum – widoki tworzone przy pierwszym użyciu. */
+class PackedEdge {
+	constructor(P, i) {
+		const k = i * 7;
+		this.P = P; this.id = i;
+		this.a = P.eI[k]; this.b = P.eI[k + 1]; this.cls = P.eI[k + 2]; this.oneway = P.eI[k + 3]; this.bridge = P.eI[k + 4]; this.way = P.eI[k + 5];
+		this.len = P.eF[i * 3]; this.width = P.eF[i * 3 + 1]; this.wayS0 = P.eF[i * 3 + 2];
+		this._pts = null; this._cum = null;
+	}
+
+	range() { const P = this.P, k = this.id * 7; return [P.eI[k + 6], this.id + 1 < P.E ? P.eI[k + 13] : P.cum.length]; }
+	get pts() { if (!this._pts) { const [p, q] = this.range(); this._pts = this.P.pts.subarray(p * 2, q * 2); } return this._pts; }
+	get cum() { if (!this._cum) { const [p, q] = this.range(); this._cum = this.P.cum.subarray(p, q); } return this._cum; }
+}
+
+/** Węzeł z tablic packNetwork: lista wyjazdów tworzona przy pierwszym użyciu. */
+class PackedNode {
+	constructor(P, i) { this.P = P; this.id = i; this.x = P.nXZ[i * 2]; this.z = P.nXZ[i * 2 + 1]; this._out = null; }
+	get out() {
+		if (!this._out) {
+			const P = this.P, o = [];
+			for (let k = P.outOff[this.id]; k < P.outOff[this.id + 1]; k++) o.push({ edge: P.out[k * 2], dir: P.out[k * 2 + 1] });
+			this._out = o;
+		}
+		return this._out;
+	}
+}
+
+/** Odwrotność packNetwork: { graph, grid } w postaci z buildRoadGraph i edgeGrid (krawędzie i węzły – widoki tablic). */
+export function unpackNetwork(P) {
+	const edges = new Array(P.E), nodes = new Array(P.N), ways = new Array(P.W);
+	for (let i = 0; i < P.E; i++) edges[i] = new PackedEdge(P, i);
+	for (let i = 0; i < P.N; i++) nodes[i] = new PackedNode(P, i);
+	for (let i = 0; i < P.W; i++) ways[i] = { len: P.wF[i], bridge: P.wI[i * 3 + 2], first: P.wI[i * 3], last: P.wI[i * 3 + 1] };
+	const map = new Map();
+	P.keys.forEach((k, i) => map.set(k, P.cellIds.subarray(P.cellOff[i], P.cellOff[i + 1])));
+	return { graph: { nodes, edges, ways }, grid: { cell: P.cell, map, cellsOf: P.cellsOf } };
+}

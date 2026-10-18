@@ -10,7 +10,8 @@ import { densify, ribbon } from './roads.js';
 const EARTH_R = 6371000;
 const BED = 4.4; // szerokość nasypu z tłuczniem (m)
 
-export function createRails(osm, region, terrain, atmo, clouds, plane, worldShadow) {
+/** shared – { material } wspólny dla wielu wywołań (kafle otwartego świata). */
+export function createRails(osm, region, terrain, atmo, clouds, plane, worldShadow, shared = null) {
 	const half = region.size / 2 - 30;
 	const g = { pos: [], side: [], dist: [], kind: [], idx: [], count: 0 };
 	const lines = [];
@@ -38,6 +39,7 @@ export function createRails(osm, region, terrain, atmo, clouds, plane, worldShad
 		for (let i = 0; i < rb.side.length; i++) g.kind.push(kind);
 		g.count += rb.side.length;
 	}
+	let mat = shared?.material ?? null;
 	const objects = [];
 	if (g.count) {
 		const geo = new BufferGeometry();
@@ -46,7 +48,7 @@ export function createRails(osm, region, terrain, atmo, clouds, plane, worldShad
 		geo.setAttribute('aDist', new Float32BufferAttribute(g.dist, 1));
 		geo.setAttribute('aKind', new Float32BufferAttribute(g.kind, 1));
 		geo.setIndex(g.idx);
-		const mesh = new Mesh(geo, makeMaterial(atmo, clouds, plane, worldShadow));
+		const mesh = new Mesh(geo, (mat ??= makeMaterial(atmo, clouds, plane, worldShadow)));
 		mesh.renderOrder = 12;
 		mesh.frustumCulled = false;
 		objects.push(mesh);
@@ -54,6 +56,7 @@ export function createRails(osm, region, terrain, atmo, clouds, plane, worldShad
 	return {
 		objects,
 		lines,
+		get material() { return mat; },
 		update(camera) { for (const o of objects) o.material.userData.camXZ.value.set(camera.position.x, camera.position.z); },
 	};
 }

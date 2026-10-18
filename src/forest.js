@@ -68,10 +68,14 @@ export function treeGeometry(sides) {
 	return g;
 }
 
-export function createForest(region, atmo, clouds, terrain, roadMask = null, worldShadow = null, plane = null) {
+/**
+ * win – zamiast tekstur regionu (otwarty świat): { tex (R – gęstość lasu, G – wysokość − base, B – maska dróg),
+ * size (bok okna, adresowanie w kółko), base (uniform) }.
+ */
+export function createForest(region, atmo, clouds, terrain, roadMask = null, worldShadow = null, plane = null, win = null) {
 	const size = region.size;
-	const forestTex = texture(region.forestTex);
-	const hTex = texture(region.heightTex);
+	const forestTex = texture(win ? win.tex : region.forestTex);
+	const hTex = win ? null : texture(region.heightTex);
 	const maskTex = roadMask ? texture(roadMask) : null;
 	const U = {
 		cam: uniform(new Vector2()),
@@ -80,8 +84,8 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 		near: uniform(380), // granica bliskiego poziomu szczegółów
 		far: uniform(1100), // zasięg drzew 3D
 	};
-	const regionUv = (xz) => xz.div(size).add(0.5);
-	const heightAt = (xz) => {
+	const regionUv = win ? (xz) => xz.div(win.size) : (xz) => xz.div(size).add(0.5);
+	const heightAt = win ? (xz) => forestTex.sample(regionUv(xz)).level(0).g.add(win.base) : (xz) => {
 		const uvR = regionUv(xz);
 		const e = terrain.uniforms.edgeH, rl = terrain.uniforms.relief;
 		const edge = min(min(uvR.x, float(1).sub(uvR.x)), min(uvR.y, float(1).sub(uvR.y))).mul(size);
@@ -102,11 +106,11 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const h2 = hash22(cell);
 			const xz = cell.add(0.15).add(h2.mul(0.7)).mul(SPACING);
 			const uvR = regionUv(xz);
-			const inside = step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
+			const inside = win ? float(1) : step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
 			const fw = forestCover(forestTex, uvR, xz);
 			const st = forestStand(xz);
 			// z danymi OSM drzewa omijają prawdziwe drogi (maska), bez nich – wymyślone dukty na granicach oddziałów
-			const notLane = maskTex ? step(maskTex.sample(uvR).level(0).r, 0.4) : step(4, st.toEdge);
+			const notLane = win ? step(forestTex.sample(uvR).level(0).b, 0.4) : maskTex ? step(maskTex.sample(uvR).level(0).r, 0.4) : step(4, st.toEdge);
 			const keep = step(hash12(cell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(notLane).mul(inside);
 			// zasięg: bliski poziom do `near`, daleki od `near` do `far` (te same komórki – bez przeskoków drzew)
 			const d = length(xz.sub(U.cam));

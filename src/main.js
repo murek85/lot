@@ -11,6 +11,7 @@ import { createRails } from './rails.js';
 import { createRivers } from './rivers.js';
 import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
+import { WORLD_ID, worldStart, worldRegion, createWorld } from './world/world.js';
 import { setTerrainUniforms, setCityLights, snowCover } from './gfx/ground.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
@@ -73,7 +74,7 @@ const bootEyebrow = (meta) => {
 	document.querySelector('#boot .eyebrow').textContent = [reg, meta?.name, meta?.center && latText(meta.center.lat)].filter(Boolean).join(' · ');
 };
 // nazwa regionu do ekranów, zanim region zostanie wczytany (wygenerowane – z pamięci przeglądarki)
-const regionMeta = (id) => (isGenerated(id) ? getRegionMeta(id).catch(() => null) : fetch(`data/regions/${id}/meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+const regionMeta = (id) => (id === WORLD_ID ? Promise.resolve(worldRegion(worldStart.get()).meta) : isGenerated(id) ? getRegionMeta(id).catch(() => null) : fetch(`data/regions/${id}/meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
 
 function fail(title, text) {
 	$('boot').hidden = true;
@@ -109,7 +110,7 @@ async function start() {
 	const bootBar = () => { $('boot-bar').style.width = `${(++loaded / 3) * 70}%`; };
 	let region;
 	try {
-		region = await loadRegion(regionId, bootBar);
+		region = regionId === WORLD_ID ? worldRegion(worldStart.get()) : await loadRegion(regionId, bootBar);
 	} catch (e) {
 		if (regionId === DEFAULT_REGION) throw e;
 		console.warn('Region niedostępny, powrót do domyślnego:', e);
@@ -134,8 +135,10 @@ async function start() {
 	// nocne światła osad: przed materiałami (teren, drogi, budynki doliczają plamy światła latarni)
 	const cityLights = region.osm ? createCityLights(region.osm, region) : null;
 	setCityLights(cityLights);
-	const terrain = createTerrain(region, atmo, clouds, plane, worldShadow);
-	setTerrainUniforms(terrain.uniforms, region.heightTex, region.size);
+	// otwarty świat (wersja rozwojowa): kafle doczytywane wokół samolotu zamiast terenu regionu
+	const world = region.world ? createWorld(region, scene, atmo, clouds, plane, worldShadow) : null;
+	const terrain = world ? world.terrain : createTerrain(region, atmo, clouds, plane, worldShadow);
+	if (!world) setTerrainUniforms(terrain.uniforms, region.heightTex, region.size);
 	if (cityLights) scene.add(cityLights.createGlows(terrain, atmo.u.pixelAngle));
 	scene.add(terrain.object);
 	const rails = region.osm ? createRails(region.osm, region, terrain, atmo, clouds, plane, worldShadow) : null;
@@ -156,10 +159,12 @@ async function start() {
 	if (beacons) scene.add(beacons);
 	// ruch uliczny: graf dróg z danych regionu, pojazdy wokół kamery (src/traffic/)
 	let traffic = null;
-	if (region.osm) {
+	// otwarty świat: sieci puste na starcie, wypełnia je world.updateNetwork z kafli wokół samolotu
+	const simOsm = region.osm ?? (world ? { roads: [], rails: [], stations: [], platforms: [] } : null);
+	if (simOsm) {
 		$('boot-stage').textContent = 'Sieć dróg i ruch uliczny…';
 		await new Promise((r) => setTimeout(r, 0));
-		const graph = buildRoadGraph(region.osm.roads, { half: region.size / 2 - 50 });
+		const graph = buildRoadGraph(simOsm.roads, { half: region.size / 2 - 50 });
 		const sim = new TrafficSim(graph, edgeGrid(graph.edges), { heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 2500, max: 2500 });
 		const view = createTrafficView(sim, atmo, clouds, plane, atmo.u.pixelAngle, 2500);
 		scene.add(...view.objects);
@@ -167,8 +172,8 @@ async function start() {
 	}
 	// ptaki: gatunek z pokrycia terenu (src/fauna/birds.js)
 	const coverNames = Object.fromEntries(Object.entries(region.meta.cover.classes).map(([k, v]) => [v, k]));
-	const coverData = region.coverTex.image.data, coverRes = region.meta.cover.res;
-	const coverAt = (x, z) => {
+	const coverData = region.coverTex?.image.data, coverRes = region.meta.cover.res;
+	const coverAt = world ? (x, z) => coverNames[world.coverAt(x, z)] ?? 'crop' : (x, z) => {
 		const i = Math.floor((x / region.size + 0.5) * coverRes), j = Math.floor((z / region.size + 0.5) * coverRes);
 		return i < 0 || j < 0 || i >= coverRes || j >= coverRes ? 'crop' : coverNames[coverData[j * coverRes + i]];
 	};
@@ -177,23 +182,22 @@ async function start() {
 	scene.add(...birds.view.objects);
 	// piesi: chodniki, deptaki, perony – tylko z niska (src/fauna/people.js)
 	let people = null;
-	if (region.osm) {
-		const sim = new PeopleSim(region.osm.roads, region.osm.platforms, { coverAt, heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 800, max: 1500 });
+	if (simOsm) {
+		const sim = new PeopleSim(simOsm.roads, simOsm.platforms, { coverAt, heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 800, max: 1500 });
 		const view = createPeopleView(sim, atmo, clouds, plane, atmo.u.pixelAngle);
 		scene.add(...view.objects);
 		people = { sim, view };
 	}
 	// ruch kolejowy: pociągi na torach regionu, postoje na stacjach (src/traffic/trains.js)
 	let trains = null;
-	if (region.osm?.rails?.length) {
-		const sim = new TrainSim(region.osm.rails, region.osm.stations, { half: region.size / 2 - 50, heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 6000, max: 10 });
+	if (simOsm?.rails?.length || world) {
+		const sim = new TrainSim(simOsm.rails, simOsm.stations, { half: region.size / 2 - 50, heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 6000, max: 10 });
 		const view = createTrainView(sim, atmo, clouds, plane, atmo.u.pixelAngle);
 		scene.add(...view.objects);
 		trains = { sim, view };
 	}
-	const forest = createForest(region, atmo, clouds, terrain, roads?.maskTex, worldShadow, plane);
-	scene.add(...forest.shadowCasters);
-	scene.add(...forest.objects);
+	const forest = world ? world.forest : createForest(region, atmo, clouds, terrain, roads?.maskTex, worldShadow, plane);
+	if (forest.objects.length) scene.add(...forest.shadowCasters, ...forest.objects);
 	terrain.uniforms.treesFar.value = forest.uniforms.far.value;
 	// opady i błyskawice: osobna scena dodawana po wygładzaniu (src/weather/precip.js)
 	const precip = new Precipitation(atmo.u.pixelAngle);
@@ -226,6 +230,11 @@ async function start() {
 		const x = p.x + 1300, z = p.z + 1250;
 		return createFlight({ x, z, y: Math.max(groundAt(x, z), groundAt(p.x, p.z)) + agl, heading: Math.atan2(p.x - x, -(p.z - z)) });
 	};
+	if (world) {
+		$('boot-stage').textContent = 'Kafle mapy wokół miejsca startu…';
+		const p = places[0];
+		await world.ready(p.x, p.z, 2500, (f, left) => { $('boot-bar').style.width = `${10 + f * 70}%`; $('boot-stage').textContent = `Kafle mapy wokół miejsca startu… zostało ${left}`; });
+	}
 	let flight = startAt(places[0].id);
 	const chase = new ChaseCamera(camera, canvas, groundAt);
 	chase.snap(flight);
@@ -398,7 +407,7 @@ async function start() {
 		if (k === 'renderScale') resize();
 		if (k === 'fps') b.toggle('no-fps', !v);
 		if (k === 'hud') b.toggle('no-hud', !v);
-		if (k === 'minimap') b.toggle('no-minimap', !v);
+		if (k === 'minimap') b.toggle('no-minimap', !v || !!world);
 		if (k === 'dev') b.toggle('dev', v);
 		if (k === 'reducedMotion') b.toggle('reduced-motion', v);
 		if (k === 'mouseSens') cockpitCam.sens = chase.sens = v;
@@ -470,6 +479,7 @@ async function start() {
 			applyPlanEnv(plan);
 			ls.progress(0.45, `Podejście nad ${place.instr ?? place.name}…`);
 			await nextFrames(1);
+			if (world) await world.ready(place.x, place.z, 2500, (f) => ls.progress(0.45 + f * 0.12, 'Kafle mapy wokół miejsca startu…'));
 			flight = startAt(plan.place);
 			flight.speed = plane.spec.flight.cruise;
 			lastStart = { plan: { ...plan } };
@@ -494,6 +504,7 @@ async function start() {
 			syncPanel();
 			ls.progress(0.45, 'Odtwarzanie położenia maszyny…');
 			await nextFrames(1);
+			if (world) await world.ready(s.flight.x, s.flight.z, 2500, (f) => ls.progress(0.45 + f * 0.12, 'Kafle mapy wokół samolotu…'));
 			flight = { ...s.flight, crashed: false, onGround: false };
 			plane.lights.landing = s.landing ?? true;
 			setTarget(s.target ?? null, true);
@@ -590,6 +601,10 @@ async function start() {
 		region: region.meta,
 		places: placeList,
 		switchRegion,
+		// otwarty świat (wersja rozwojowa): miejsce startu zapamiętane, przeładowanie jak przy zmianie regionu
+		openWorld: (p) => { worldStart.set(p); return switchRegion(WORLD_ID); },
+		worldStart: worldStart.get(),
+		inWorld: !!region.world,
 		uiSound: (name) => audio.ui(name),
 		builtinRegions: Object.values(REGIONS),
 		generateRegion: generateWithScreen,
@@ -735,6 +750,7 @@ async function start() {
 	mmCanvas.width = mmCanvas.height = Math.round(208 * Math.min(2, window.devicePixelRatio || 1));
 	setTimeout(async () => {
 		const t0 = performance.now();
+		if (world) { document.body.classList.add('no-minimap'); return; } // otwarty świat: mapy jeszcze nie ma (etap 2c)
 		const base = await buildBaseMap(region, region.osm, 4096);
 		const labels = positionPlaces.map((p) => ({ name: p.name, cls: p.cls ?? 'town', x: p.x, z: p.z }));
 		minimap = new Minimap(mmCanvas, base, region.size, labels, places);
@@ -745,6 +761,7 @@ async function start() {
 		console.info(`Lot: mapa bazowa ${Math.round(performance.now() - t0)} ms`);
 	}, 300);
 	const { center } = region.meta;
+	const worldFocus = { x: 0, z: 0 };
 
 	const frame = () => {
 		timer.update();
@@ -977,6 +994,13 @@ async function start() {
 		atmo.update(sun, camera.position.y);
 		renderer.toneMappingExposure = state.exposure * autoExposure(sun.y);
 		terrain.update(camera, t);
+		if (world) {
+			// doczytywanie wokół samolotu (w widoku swobodnym – wokół środka widoku)
+			const f = mode === 'free' && game !== 'menu' ? view.target : flight;
+			worldFocus.x = f.x; worldFocus.z = f.z;
+			world.update(camera, worldFocus, t);
+			world.updateNetwork(worldFocus.x, worldFocus.z, { traffic, trains, people });
+		}
 		clouds.update(game === 'paused' ? 0 : dt);
 		forest.update(camera);
 		roads?.update(camera);
@@ -1071,7 +1095,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { world, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

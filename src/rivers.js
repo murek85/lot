@@ -11,7 +11,8 @@ import { densify, ribbon } from './roads.js';
 
 const MIN_DRAWN = 2; // rowy węższe niż 2 m tylko w masce lasu
 
-export function createRivers(osm, region, terrain, atmo, clouds, plane, worldShadow) {
+/** shared – { material } wspólny dla wielu wywołań (kafle otwartego świata). */
+export function createRivers(osm, region, terrain, atmo, clouds, plane, worldShadow, shared = null) {
 	const half = region.size / 2 - 30;
 	const g = { pos: [], side: [], width: [], idx: [], count: 0 };
 	const lines = [];
@@ -44,6 +45,8 @@ export function createRivers(osm, region, terrain, atmo, clouds, plane, worldSha
 		for (let k = 0; k < rb.side.length; k++) g.width.push(width + 2);
 		g.count += rb.side.length;
 	}
+	let mat = shared?.material ?? null;
+	const material = () => (mat ??= makeMaterial(atmo, clouds, plane, worldShadow));
 	const objects = [];
 	if (g.count) {
 		const geo = new BufferGeometry();
@@ -51,13 +54,14 @@ export function createRivers(osm, region, terrain, atmo, clouds, plane, worldSha
 		geo.setAttribute('aSide', new Float32BufferAttribute(g.side, 1));
 		geo.setAttribute('aWidth', new Float32BufferAttribute(g.width, 1));
 		geo.setIndex(g.idx);
-		const mesh = new Mesh(geo, makeMaterial(atmo, clouds, plane, worldShadow));
+		const mesh = new Mesh(geo, material());
 		mesh.renderOrder = 5; // pod drogami
 		mesh.frustumCulled = false;
 		objects.push(mesh);
 	}
 	return {
 		objects, lines,
+		get material() { return mat; },
 		update(camera) {
 			for (const o of objects) {
 				o.material.userData.camXZ.value.set(camera.position.x, camera.position.z);

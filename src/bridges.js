@@ -8,7 +8,8 @@ import { CASTER_LAYER } from './shadows.js';
 
 const CONCRETE = [0.42, 0.41, 0.39], STEEL = [0.2, 0.22, 0.24], RUST = [0.25, 0.12, 0.07], PLATFORM = [0.36, 0.35, 0.33];
 
-export function createBridges(osm, region, terrain, atmo, clouds, plane, worldShadow) {
+/** shared – { material, shadowMaterial } wspólne dla wielu wywołań (kafle otwartego świata). */
+export function createBridges(osm, region, terrain, atmo, clouds, plane, worldShadow, shared = null) {
 	const half = region.size / 2 - 30;
 	const b = new GeoBuilder();
 	const decks = [];
@@ -76,19 +77,21 @@ export function createBridges(osm, region, terrain, atmo, clouds, plane, worldSh
 		}
 	}
 	const objects = [], shadowCasters = [];
+	let material = shared?.material ?? null, shadowMaterial = shared?.shadowMaterial ?? null;
 	if (b.count) {
-		const material = makeLitMaterial({ atmo, clouds, plane, worldShadow });
+		material ??= makeLitMaterial({ atmo, clouds, plane, worldShadow });
+		shadowMaterial ??= makeLitMaterial({ atmo, clouds, plane, worldShadow: null });
 		const geo = b.geometry();
 		const mesh = new Mesh(geo, material);
 		mesh.frustumCulled = false;
 		objects.push(mesh);
-		const s = new Mesh(geo, makeLitMaterial({ atmo, clouds, plane, worldShadow: null }));
+		const s = new Mesh(geo, shadowMaterial);
 		s.layers.set(CASTER_LAYER);
 		s.frustumCulled = false;
 		shadowCasters.push(s);
 	}
 	return {
-		objects, shadowCasters, count,
+		objects, shadowCasters, count, material, shadowMaterial,
 		update(camera) {
 			for (const o of [...objects, ...shadowCasters]) o.material.userData.camXZ.value.set(camera.position.x, camera.position.z);
 		},

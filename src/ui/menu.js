@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.22'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.23'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,12 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.23', title: 'Otwarty świat (wersja rozwojowa)', items: [
+		['Otwarty świat', 'generator → „Otwarty świat stąd”: mapa doczytywana w locie wokół samolotu – bez granic regionu (na razie ok. 150 km od startu).'],
+		['Teren', 'ten sam wygląd co w regionach – pola w pasach, bory z drzewami 3D, zabudowa, rzeki, tory, mosty.'],
+		['Ruch', 'samochody, pociągi i piesi także w otwartym świecie – sieć dróg i torów doczytywana wraz z mapą.'],
+		['W budowie', 'minimapa, duża mapa i światła osad nocą – w kolejnych etapach; regiony działają jak dotąd.'],
+	] },
 	{ v: '0.22', title: 'Nowe samoloty', items: [
 		['An-2', 'wielki dwupłat z Mielca – słupki i cięgna między płatami, czterołopatowe śmigło, okrągłe okna kabiny; lata najwolniej w hangarze.'],
 		['Orlik', 'turbośmigłowy PZL-130 – akrobacja, podwozie chowa się samo powyżej ~180 km/h, gwizd turbiny, szachownice.'],
@@ -368,11 +374,17 @@ export class GameMenu {
 		const row = (id, name, meta, del) => `<div class="region-row"><button class="menu-action slot${id === cur ? ' current' : ''}" data-region="${esc(id)}"${id === cur ? ' disabled' : ''}>
 				<span class="slot-no"><small>${id === cur ? 'TERAZ' : del ? 'GEN' : 'WBUD'}</small>${id === cur ? '●' : '◇'}</span><span><b>${esc(name)}</b><span class="meta">${esc(meta)}</span></span>
 				<span aria-hidden="true">${id === cur ? 'WCZYTANY' : 'LEĆ TUTAJ'}</span></button>${del ? `<button class="region-del" data-del="${esc(id)}" title="Usuń region z pamięci przeglądarki" aria-label="Usuń ${esc(name)}">✕</button>` : ''}</div>`;
+		// otwarty świat (wersja rozwojowa): ostatnie miejsce startu; nowe – w generatorze („Otwarty świat stąd”)
+		const ws = this.game.worldStart;
+		const worldRow = ws ? `<div class="region-row"><button class="menu-action slot${this.game.inWorld ? ' current' : ''}" data-act="world-last"${this.game.inWorld ? ' disabled' : ''}>
+				<span class="slot-no"><small>${this.game.inWorld ? 'TERAZ' : 'DEV'}</small>${this.game.inWorld ? '●' : '◇'}</span><span><b>Otwarty świat · ${esc(ws.name)}</b><span class="meta">kafle doczytywane w locie · OpenFreeMap z14 · start ${ws.lat.toFixed(2)}° N, ${ws.lon.toFixed(2)}° E</span></span>
+				<span aria-hidden="true">${this.game.inWorld ? 'WCZYTANY' : 'LEĆ TUTAJ'}</span></button></div>` : '';
 		const date = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`; };
 		const km = (m) => `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km`;
 		el.innerHTML = builtin.map(({ r, m }) => row(r.id, r.name, `${km(r)}${m?.osm ? ` · ${num(m.osm.counts.buildings)} budynków` : ''} · ${r.gen ? 'kafle OpenStreetMap' : 'ESA WorldCover i OpenStreetMap'} · wbudowany`, false)).join('') +
 			list.map((m) => row(m.id, m.name, `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km · ${num(m.osm.counts.buildings)} budynków · ${(m.bytes / 1e6).toFixed(0)} MB · ${date(m.baked)}`, true)).join('') +
-			(list.length ? '' : '<p class="lead" style="margin-top:14px">Nie ma jeszcze wygenerowanych regionów – zacznij od generatora, np. Katowice albo Beskid Śląski.</p>');
+			(list.length ? '' : '<p class="lead" style="margin-top:14px">Nie ma jeszcze wygenerowanych regionów – zacznij od generatora, np. Katowice albo Beskid Śląski.</p>') +
+			(ws ? `<h2>Otwarty świat · wersja rozwojowa</h2>${worldRow}` : '');
 		const u = await usage();
 		const ue = this.root.querySelector('#region-usage');
 		if (u && ue) ue.textContent = `Pamięć przeglądarki: ${(u.used / 1e6).toFixed(0)} MB${u.quota ? ` z ${(u.quota / 1e9).toFixed(0)} GB` : ''}`;
@@ -394,7 +406,7 @@ export class GameMenu {
 				<h2>Budynki</h2>${tiles(BUILDINGS, 'buildings')}
 				<p class="gen-note">Dane: kafle wektorowe OpenFreeMap (© OpenMapTiles, © współtwórcy OpenStreetMap) i rzeźba AWS Terrain Tiles. Pobrane kafle zostają w pamięci przeglądarki – drugi region w tej samej okolicy powstaje szybciej.</p>
 			</div>
-			<div class="menu-window-actions">${this.btn('generate', 'Generuj region', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
+			<div class="menu-window-actions">${this.btn('generate', 'Generuj region', { prominent: true })}${this.btn('world', 'Otwarty świat stąd', { hint: 'DEV' })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
 	}
 
 	resultTiles() {
@@ -582,6 +594,8 @@ export class GameMenu {
 			case 'generator': return this.show('generator', 'regions');
 			case 'geo': return this.search();
 			case 'generate': return this.startGenerate();
+			case 'world': return g.openWorld?.({ name: (this.gen.name || '').trim() || 'Start', lon: this.gen.lon, lat: this.gen.lat });
+			case 'world-last': return g.openWorld?.(g.worldStart);
 			case 'env': return this.show('pauseEnv', 'pause');
 			case 'map': return g.openMap?.();
 			case 'resume': return g.resume();

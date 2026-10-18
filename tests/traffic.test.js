@@ -105,3 +105,67 @@ test('pociągi: jadą po szlaku, stają na stacji, na końcu toru zawracają; os
 	assert.ok(reversed, 'zawrócił na końcu toru');
 	if (sim.trains[0].type !== 'freight') assert.ok(stopped, 'postój na stacji');
 });
+
+import { packNetwork, unpackNetwork, projectToGraph } from '../src/traffic/graph.js';
+
+test('sieć spakowana do tablic i z powrotem – te same krawędzie, węzły, drogi i siatka', () => {
+	const roads = [road(0, [[-3000, 0], [0, 0], [3000, 0]], 1), road(3, [[0, -2000], [0, 0], [0, 2000]]), road(4, [[500, 10], [900, 600]])];
+	const g = buildRoadGraph(roads), grid = edgeGrid(g.edges);
+	const { packed, transfer } = packNetwork(g, grid);
+	assert.ok(transfer.every((b) => b instanceof ArrayBuffer));
+	const u = unpackNetwork(structuredClone(packed));
+	assert.equal(u.graph.edges.length, g.edges.length);
+	for (const e of g.edges) {
+		const f = u.graph.edges[e.id];
+		for (const k of ['a', 'b', 'cls', 'oneway', 'way']) assert.equal(f[k], e[k], k);
+		assert.ok(Math.abs(f.len - e.len) < 1e-3);
+		assert.deepEqual([...f.pts], [...e.pts]);
+		assert.deepEqual([...f.cum], [...e.cum]);
+	}
+	for (const n of g.nodes) assert.deepEqual(u.graph.nodes[n.id].out, n.out);
+	assert.deepEqual(u.graph.ways.map((w) => w.first), g.ways.map((w) => w.first));
+	for (const [k, ids] of grid.map) assert.deepEqual([...u.grid.map.get(k)], ids);
+});
+
+test('przepięcie na nową sieć: punkt na drodze w kierunku jazdy; poprzeczna i daleka – nie', () => {
+	const g = buildRoadGraph([road(3, [[-1000, 0], [1000, 0]]), road(3, [[200, -500], [200, 500]])]), grid = edgeGrid(g.edges);
+	const hit = projectToGraph(g, grid, 50, 1.5, -1, 0);
+	assert.ok(hit);
+	const e = g.edges[hit.edge];
+	assert.equal(hit.dir, -1);
+	const p = pointAt(e, hit.s);
+	assert.ok(Math.hypot(p.x - 50, p.z) < 1e-3, 'rzut na oś drogi');
+	assert.equal(projectToGraph(g, grid, 50, 30, -1, 0), null, 'za daleko');
+	assert.equal(g.edges[projectToGraph(g, grid, 201, 300, 0, 1).edge].pts[0], 200, 'droga N–S, jazda na południe');
+});
+
+test('ruch: przebudowa sieci (otwarty świat) – pojazdy zostają na drogach, jadą dalej', () => {
+	const roads = [road(2, [[-3000, 0], [3000, 0]]), road(3, [[0, -2000], [0, 2000]])];
+	const g = buildRoadGraph(roads);
+	const sim = new TrafficSim(g, edgeGrid(g.edges), { radius: 1500, max: 300, seed: 4 });
+	for (let i = 0; i < 300; i++) sim.step(1 / 30, { x: 0, z: 0 });
+	const n = sim.agents.length;
+	// nowa sieć z tych samych dróg, pociętych inaczej (jak kafle) – te same miejsca
+	const g2 = buildRoadGraph([road(2, [[-3000, 0], [-700, 0]]), road(2, [[-700, 0], [3000, 0]]), ...roads.slice(1)]);
+	const pos = sim.agents.map((a) => [a.x, a.z]);
+	sim.rebind(g2, edgeGrid(g2.edges));
+	assert.equal(sim.agents.length, n);
+	sim.agents.forEach((a, i) => { sim.place(a); assert.ok(Math.hypot(a.x - pos[i][0], a.z - pos[i][1]) < 0.5); });
+	for (let i = 0; i < 300; i++) sim.step(1 / 30, { x: 0, z: 0 });
+	assert.ok(sim.agents.length > n * 0.5);
+});
+
+test('pociągi: przebudowa sieci – pociąg zostaje na torze i jedzie w tę samą stronę', () => {
+	const rails = [rail([[0, 0], [8000, 0]])];
+	const sim = new TrainSim(rails, [], { radius: 9000, max: 1, seed: 6 });
+	for (let i = 0; i < 200; i++) sim.step(0.05, { x: 4000, z: 0 });
+	const tr = sim.trains[0];
+	const hx = tr.cars[0].hx, x0 = tr.cars[0].x;
+	sim.rebind([rail([[0, 0], [3000, 0]]), rail([[3000, 0], [8000, 0]])], []);
+	assert.equal(sim.trains.length, 1);
+	for (let i = 0; i < 20; i++) sim.step(0.05, { x: 4000, z: 0 });
+	const c = sim.trains[0].cars[0];
+	assert.ok(Math.abs(c.z) < 1);
+	assert.equal(Math.sign(c.hx), Math.sign(hx));
+	assert.ok(Math.abs(c.x - x0) < 200);
+});

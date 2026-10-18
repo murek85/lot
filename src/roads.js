@@ -127,7 +127,7 @@ export function createRoads(osm, region, terrain, atmo, clouds, plane, worldShad
 		g.count += rb.side.length;
 	}
 
-	const material = makeMaterial(region, atmo, clouds, plane, worldShadow);
+	const material = makeRoadMaterial(region, atmo, clouds, plane, worldShadow);
 	const meshes = [];
 	for (const [cls, g] of [...groups.entries()].sort((a, b) => b[0] - a[0])) {
 		const geo = new BufferGeometry();
@@ -154,7 +154,7 @@ export function createRoads(osm, region, terrain, atmo, clouds, plane, worldShad
 	};
 }
 
-function makeMaterial(region, atmo, clouds, plane, worldShadow) {
+export function makeRoadMaterial(region, atmo, clouds, plane, worldShadow) {
 	const m = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
 	const vWorld = varying(vec3(0), 'vRoadWorld');
 	const camXZ = uniform(new Vector2()); // krzywizna Ziemi względem kamery – jak teren

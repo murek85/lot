@@ -1,0 +1,272 @@
+// Kafle otwartego świata w scenie: teren (siatka z wysokościami i normalnymi z wątku, barwy z rastra pokrycia –
+// jedna tekstura warstwowa na wszystkie kafle, jeden shader), w bliższym pierścieniu drogi (wstęgi jak w regionach)
+// i budynki (te same moduły co w regionach, wspólne materiały). Do tego daleka „podłoga” pod brzegiem wczytanego
+// obszaru. Geometria w metrach układu świata (początek origin) – materiały jak w regionach.
+import {
+	Mesh, Group, BufferGeometry, BufferAttribute, Float32BufferAttribute, MeshBasicNodeMaterial, DataArrayTexture, RedFormat,
+	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry,
+} from 'three/webgpu';
+import {
+	Fn, float, vec2, vec3, vec4, int, ivec2, attribute, varying, uniform, textureLoad, max, abs, clamp, normalize, floor, fract,
+	smoothstep, positionLocal, step, mix, dot,
+} from 'three/tsl';
+import { onGround } from '../gfx/ground.js';
+import { valueNoise, fbm } from '../gfx/noise.js';
+import { shadeGround } from '../terrain.js';
+import { GRID, COVER_RES } from './chunkdata.js';
+import { gridHeightAt } from './streamer.js';
+import { createBuildings } from '../buildings.js';
+import { makeRoadMaterial, densify, ribbon } from '../roads.js';
+import { createRivers } from '../rivers.js';
+import { createRails } from '../rails.js';
+import { createBridges } from '../bridges.js';
+
+const SLOTS = 256;
+
+/** Siatka terenu kafla: GRID² wierzchołków w metrach świata, uv kafla, numer warstwy pokrycia. */
+function terrainGeometry(ch, layer) {
+	const { x0, z0, w, h } = ch.frame;
+	const n = GRID, pos = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2), lay = new Float32Array(n * n).fill(layer);
+	for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+		const k = j * n + i;
+		pos.set([x0 + (i / (n - 1)) * w, ch.heights[k], z0 + (j / (n - 1)) * h], k * 3);
+		uv.set([i / (n - 1), j / (n - 1)], k * 2);
+	}
+	const idx = new Uint32Array((n - 1) * (n - 1) * 6);
+	let p = 0;
+	for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
+		const a = j * n + i, b = a + 1, c = a + n, d = c + 1;
+		idx.set([a, c, b, b, c, d], p); p += 6;
+	}
+	const g = new BufferGeometry();
+	g.setAttribute('position', new BufferAttribute(pos, 3));
+	g.setAttribute('normal', new BufferAttribute(ch.normals, 3));
+	g.setAttribute('uv', new BufferAttribute(uv, 2));
+	g.setAttribute('aLayer', new BufferAttribute(lay, 1));
+	g.setIndex(new BufferAttribute(idx, 1));
+	return g;
+}
+
+// klasy pokrycia 0–3 i 4–7 jako wagi (jak w terenie regionu)
+const oneHotA = (c) => max(vec4(0), vec4(1).sub(abs(vec4(c).sub(vec4(0, 1, 2, 3)))));
+const oneHotB = (c) => max(vec4(0), vec4(1).sub(abs(vec4(c).sub(vec4(4, 5, 6, 7)))));
+// świat zastępczy (podłoga za brzegiem wczytanego obszaru): lasy i pola z szumu
+const outsideA = (xz) => {
+	const fOut = smoothstep(0.50, 0.56, fbm(xz.div(4200), 4));
+	const gOut = smoothstep(0.62, 0.70, valueNoise(xz.div(1300))).mul(float(1).sub(fOut));
+	return vec4(gOut, fOut, 0, float(1).sub(fOut).sub(gOut));
+};
+
+/** Materiał terenu kafli: ten sam shader gruntu co w regionach (shadeGround), dane z rastra kafla i siatki. */
+function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow) {
+	const m = new MeshBasicNodeMaterial();
+	const vFlat = varying(vec3(0), 'vWTerFlat');
+	const vN = varying(vec3(0, 1, 0), 'vWTerN');
+	const vUv = varying(vec2(0), 'vWTerUv');
+	const vLayer = varying(float(0), 'vWTerLayer');
+	m.positionNode = Fn(() => {
+		vFlat.assign(positionLocal);
+		vN.assign(attribute('normal', 'vec3'));
+		vUv.assign(attribute('uv', 'vec2'));
+		vLayer.assign(attribute('aLayer', 'float'));
+		return onGround(positionLocal, U.cam);
+	})();
+	const src = {
+		U, isRing: false, hasOsm: true,
+		// pokrycie: cztery sąsiednie piksele rastra kafla dwuliniowo, z poszarpanym szumem brzegiem (jak w regionach)
+		cover(xz) {
+			const jitter = vec2(valueNoise(xz.div(38)), valueNoise(xz.div(38).add(71.3))).sub(0.5).mul(1.4)
+				.add(vec2(valueNoise(xz.div(9)), valueNoise(xz.div(9).add(13.1))).sub(0.5).mul(0.5));
+			const pc = vUv.mul(COVER_RES).sub(0.5).add(jitter);
+			const i0 = floor(pc), f = fract(pc);
+			const layer = int(vLayer.add(0.5));
+			const load0 = (ij) => floor(textureLoad(coverTex, ivec2(clamp(ij, vec2(0), vec2(COVER_RES - 1))), 0).depth(layer).r.mul(255).add(0.5));
+			const load = (o) => load0(i0.add(o));
+			const c00 = load(vec2(0, 0)), c10 = load(vec2(1, 0)), c01 = load(vec2(0, 1)), c11 = load(vec2(1, 1));
+			const k00 = float(1).sub(f.x).mul(float(1).sub(f.y)), k10 = f.x.mul(float(1).sub(f.y)), k01 = float(1).sub(f.x).mul(f.y), k11 = f.x.mul(f.y);
+			const wA = oneHotA(c00).mul(k00).add(oneHotA(c10).mul(k10)).add(oneHotA(c01).mul(k01)).add(oneHotA(c11).mul(k11)).toVar();
+			const wB = oneHotB(c00).mul(k00).add(oneHotB(c10).mul(k10)).add(oneHotB(c01).mul(k01)).add(oneHotB(c11).mul(k11)).toVar();
+			// las: gęstość dwuliniowo bez szumu położenia i brzeg jak w forestCover – ta sama, z której stoją drzewa 3D
+			// (src/world/window.js), więc korony z daleka i drzewa z bliska się pokrywają
+			const q = vUv.mul(COVER_RES).sub(0.5);
+			const q0 = floor(q), g = fract(q);
+			const isF = (o) => step(abs(load0(q0.add(o)).sub(1)), 0.5);
+			const dens = mix(mix(isF(vec2(0, 0)), isF(vec2(1, 0)), g.x), mix(isF(vec2(0, 1)), isF(vec2(1, 1)), g.x), g.y);
+			const edgeNoise = valueNoise(xz.div(23)).mul(0.6).add(valueNoise(xz.div(6.5)).mul(0.4)).sub(0.5).mul(0.42);
+			const fw = smoothstep(0.42, 0.58, dens.add(edgeNoise));
+			const others = max(1e-4, wA.x.add(wA.z).add(wA.w).add(dot(wB, vec4(1))));
+			const rest = float(1).sub(fw).div(others);
+			wA.assign(vec4(wA.x.mul(rest), fw, wA.z.mul(rest), wA.w.mul(rest)));
+			wB.assign(wB.mul(rest));
+			return { wA, wB };
+		},
+		// wysokość i spadki z siatki kafla (normalne policzone w wątku – wspólne na brzegach kafli)
+		ground() {
+			const N = normalize(vN);
+			const ny = max(N.y, 0.05);
+			return { h: vFlat.y, hx: N.x.negate().div(ny), hz: N.z.negate().div(ny) };
+		},
+	};
+	m.colorNode = shadeGround(vFlat, src, atmo, clouds, plane, worldShadow);
+	m.fog = false;
+	return m;
+}
+
+/** Daleka „podłoga”: duży kwadrat pod wczytanym obszarem (pod najniższym wczytanym terenem) – bez pustki za brzegiem. */
+function farFloor(U, atmo, clouds, plane) {
+	const g = new PlaneGeometry(400000, 400000, 96, 96);
+	g.rotateX(-Math.PI / 2);
+	const m = new MeshBasicNodeMaterial();
+	const base = uniform(0);
+	const vFlat = varying(vec3(0), 'vWFloorFlat');
+	m.positionNode = Fn(() => {
+		const p = positionLocal.add(vec3(U.cam.x, base, U.cam.y));
+		vFlat.assign(p);
+		return onGround(p, U.cam);
+	})();
+	const src = {
+		U, isRing: true, hasOsm: true,
+		cover: (xz) => ({ wA: outsideA(xz).toVar(), wB: vec4(0).toVar() }),
+		ground: () => ({ h: base, hx: float(0), hz: float(0) }),
+	};
+	m.colorNode = shadeGround(vFlat, src, atmo, clouds, plane, null);
+	m.fog = false;
+	const mesh = new Mesh(g, m);
+	mesh.frustumCulled = false;
+	mesh.renderOrder = -1;
+	return { mesh, base };
+}
+
+export class ChunkView {
+	constructor(scene, atmo, clouds, plane, worldShadow) {
+		this.scene = scene;
+		this.atmo = atmo; this.clouds = clouds; this.plane = plane; this.worldShadow = worldShadow;
+		this.camXZ = uniform(new Vector2());
+		this.U = { cam: this.camXZ, time: uniform(0), treeH: uniform(17), treesFar: uniform(0) };
+		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * SLOTS), COVER_RES, COVER_RES, SLOTS);
+		this.coverTex.format = RedFormat;
+		this.coverTex.type = UnsignedByteType;
+		this.coverTex.minFilter = this.coverTex.magFilter = NearestFilter;
+		this.coverTex.generateMipmaps = false;
+		this.coverTex.needsUpdate = true;
+		this.free = Array.from({ length: SLOTS }, (_, i) => SLOTS - 1 - i);
+		this.terrainMat = terrainMaterial(this.coverTex, this.U, atmo, clouds, plane, worldShadow);
+		this.roadMat = makeRoadMaterial(null, atmo, clouds, plane, worldShadow);
+		this.buildingShared = null; // z pierwszego kafla z budynkami
+		this.shared = { rivers: null, rails: null, bridges: null }; // wspólne materiały – z pierwszego kafla, który ich użył
+		this.floor = farFloor(this.U, atmo, clouds, plane);
+		scene.add(this.floor.mesh);
+		this.group = new Group();
+		scene.add(this.group);
+		this.objectQueue = [];
+		this.stats = { chunks: 0, objectChunks: 0, buildMs: 0 };
+	}
+
+	/** Nowy kafel: teren od razu (geometria gotowa z wątku), pokrycie do wolnej warstwy tekstury. */
+	add(ch) {
+		const layer = this.free.pop();
+		if (layer === undefined) { console.warn('Brak wolnych warstw pokrycia'); return; }
+		ch.layer = layer;
+		this.coverTex.image.data.set(ch.cover, layer * COVER_RES * COVER_RES);
+		this.coverTex.addLayerUpdate?.(layer);
+		this.coverTex.needsUpdate = true;
+		ch.terrain = new Mesh(terrainGeometry(ch, layer), this.terrainMat);
+		ch.terrain.frustumCulled = false;
+		this.group.add(ch.terrain);
+		this.stats.chunks++;
+	}
+
+	remove(ch) {
+		this.objects(ch, false);
+		if (ch.terrain) { this.group.remove(ch.terrain); ch.terrain.geometry.dispose(); ch.terrain = null; }
+		if (ch.layer !== undefined) { this.free.push(ch.layer); ch.layer = undefined; }
+		this.stats.chunks--;
+	}
+
+	/** Obiekty kafla (drogi, budynki) – budowa w kolejce (jeden kafel na klatkę), zdejmowanie od razu. */
+	objects(ch, on) {
+		if (on) { if (!ch.objs && !this.objectQueue.includes(ch)) this.objectQueue.push(ch); return; }
+		const qi = this.objectQueue.indexOf(ch);
+		if (qi >= 0) this.objectQueue.splice(qi, 1);
+		if (!ch.objs) return;
+		for (const o of ch.objs.list) { o.parent?.remove(o); o.geometry?.dispose(); }
+		ch.objs = null;
+		this.stats.objectChunks--;
+	}
+
+	buildObjects(ch) {
+		const t0 = performance.now();
+		const list = [];
+		const hAt = (x, z) => gridHeightAt(ch, x, z);
+		// drogi: jedna siatka na kafel, kolejność rysowania od polnych do głównych (kolejność indeksów)
+		const roads = [...ch.osm.roads].sort((a, b) => b[0] - a[0]);
+		const g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], cls: [], count: 0 };
+		for (const [cls, w10, surface, bridge, , c] of roads) {
+			let pts = [];
+			for (let i = 0; i < c.length; i += 2) pts.push(c[i] / 10, c[i + 1] / 10);
+			if (pts.length < 4) continue;
+			pts = densify(pts);
+			const width = w10 / 10, n = pts.length / 2;
+			let hFn = (x, z) => hAt(x, z) + 0.25;
+			if (bridge) { const h0 = hAt(pts[0], pts[1]), h1 = hAt(pts[(n - 1) * 2], pts[(n - 1) * 2 + 1]); let i = 0; hFn = () => h0 + (h1 - h0) * (n > 1 ? i++ / (n - 1) : 0) + 0.6; }
+			const rb = ribbon(pts, width / 2, hFn, g.count);
+			g.pos.push(...rb.pos); g.side.push(...rb.side); g.dist.push(...rb.dist); g.idx.push(...rb.idx);
+			for (let i = 0; i < rb.side.length; i++) { g.width.push(width); g.surf.push(surface); g.cls.push(cls); }
+			g.count += rb.side.length;
+		}
+		if (g.count) {
+			const geo = new BufferGeometry();
+			geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
+			geo.setAttribute('aSide', new Float32BufferAttribute(g.side, 1));
+			geo.setAttribute('aDist', new Float32BufferAttribute(g.dist, 1));
+			geo.setAttribute('aWidth', new Float32BufferAttribute(g.width, 1));
+			geo.setAttribute('aSurf', new Float32BufferAttribute(g.surf, 1));
+			geo.setAttribute('aCls', new Float32BufferAttribute(g.cls, 1));
+			geo.setIndex(g.idx);
+			const m = new Mesh(geo, this.roadMat);
+			m.renderOrder = 10;
+			m.frustumCulled = false;
+			list.push(m);
+		}
+		// rzeki i strugi, tory, mosty i perony – moduły regionów, wspólne materiały
+		const reg = { size: 1e8 }, ter = { meshHeightAt: hAt };
+		const A = [this.atmo, this.clouds, this.plane, this.worldShadow];
+		const rv = createRivers(ch.osm, reg, ter, ...A, this.shared.rivers);
+		if (rv.material) this.shared.rivers ??= { material: rv.material };
+		const rl = createRails(ch.osm, reg, ter, ...A, this.shared.rails);
+		if (rl.material) this.shared.rails ??= { material: rl.material };
+		const br = createBridges(ch.osm, reg, ter, ...A, this.shared.bridges);
+		if (br.material) this.shared.bridges ??= { material: br.material, shadowMaterial: br.shadowMaterial };
+		list.push(...rv.objects, ...rl.objects, ...br.objects, ...br.shadowCasters);
+		// budynki: moduł regionów (okna, dachy, kominy), wspólne materiały dla wszystkich kafli
+		if (ch.osm.buildings.length) {
+			const b = createBuildings(ch.osm, { size: 1e8 }, { meshHeightAt: hAt }, this.atmo, this.clouds, this.plane, this.worldShadow, this.buildingShared);
+			if (!this.buildingShared) this.buildingShared = { material: b.material, shadowMaterial: b.shadowMaterial };
+			list.push(...b.objects, ...b.shadowCasters);
+		}
+		for (const o of list) this.scene.add(o);
+		ch.objs = { list };
+		this.stats.objectChunks++;
+		this.stats.buildMs = performance.now() - t0;
+	}
+
+	/** Co klatkę: krzywizna względem kamery, budowa obiektów z kolejki (najbliższy kafel), podłoga. */
+	update(camera, center, time = 0) {
+		this.camXZ.value.set(camera.position.x, camera.position.z);
+		this.U.time.value = time;
+		this.roadMat.userData.camXZ.value.set(camera.position.x, camera.position.z);
+		const cx = camera.position.x, cz = camera.position.z;
+		if (this.buildingShared) this.buildingShared.material.userData.camXZ.value.set(cx, cz);
+		const sh = this.shared;
+		for (const m of [sh.rivers?.material, sh.rails?.material, sh.bridges?.material, sh.bridges?.shadowMaterial]) m?.userData.camXZ.value.set(cx, cz);
+		if (sh.rivers) sh.rivers.material.userData.time.value = performance.now() / 1000;
+		if (this.objectQueue.length) {
+			this.objectQueue.sort((a, b) => Math.hypot(a.frame.x0 + a.frame.w / 2 - center.x, a.frame.z0 + a.frame.h / 2 - center.z) - Math.hypot(b.frame.x0 + b.frame.w / 2 - center.x, b.frame.z0 + b.frame.h / 2 - center.z));
+			const ch = this.objectQueue.shift();
+			if (ch.terrain) this.buildObjects(ch);
+		}
+	}
+
+	/** Wysokość podłogi: poniżej najniższego wczytanego terenu. */
+	setFloor(h) { this.floor.base.value = h; }
+}

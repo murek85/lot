@@ -3,6 +3,22 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.23 – otwarty świat (wersja rozwojowa)
+
+- **Otwarty świat** jako osobny tryb w rozwoju: generator → „Otwarty świat stąd” – kafle mapy (OpenFreeMap z14)
+  i rzeźby (Terrarium z12) doczytywane w locie wokół samolotu w wątkach, z pamięcią w przeglądarce; teren 9 km,
+  drogi, budynki, rzeki i tory 4 km, zwalnianie za zasięgiem. Regiony bez zmian.
+- Teren kafli tym samym shaderem co regiony: materiał gruntu wydzielony z `src/terrain.js` (`shadeGround`) – region
+  podaje swoje rastry, kafle swoje (tekstura warstwowa pokrycia, siatka i normalne z wątku).
+- Budynki i drogi kafli ze wspólnymi materiałami (`createBuildings` z parametrem `shared`, `makeRoadMaterial`); tak
+  samo rzeki, tory, mosty i perony.
+- **Drzewa 3D** w otwartym świecie: las regionów czyta „okno gruntu” wokół kamery (gęstość lasu, wysokość, maska dróg
+  z kafli), przesuwane pasami; brzeg lasu w terenie kafli liczony tak samo jak przy drzewach.
+- **Ruch uliczny, pociągi i piesi** w otwartym świecie: sieć dróg i torów budowana w osobnym wątku co ~2 km lotu,
+  przekazywana w tablicach; pojazdy i pociągi przepinane na nowy graf bez znikania.
+- Testy: rama kafla, kafle wysokości, siatka i normalne, kafle wokół punktu, wysokość na trójkątach siatki, maska
+  dróg kafla, pakowanie sieci, przepinanie pojazdów i pociągów na nową sieć.
+
 ## 0.22 – nowe samoloty
 
 - **PZL Mielec An-2** – dwupłat: górne skrzydło na grzbiecie (sloty, lotki), dolne przy podłodze, słupki „I” i cięgna,

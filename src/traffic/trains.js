@@ -3,7 +3,7 @@
 // wagony stoją w swoich odległościach od czoła – na łukach składa się naturalnie. Na rozjazdach tylko łagodne
 // przejścia (pociąg nie skręca pod ostrym kątem), na końcu toru staje i zmienia kierunek czoła (jak skład wahadłowy).
 // Osobowe stają na stacjach i przystankach z danych (Intercity – tylko na stacjach), towarowe przejeżdżają.
-import { buildRoadGraph, edgeGrid, pointAt } from './graph.js';
+import { buildRoadGraph, edgeGrid, pointAt, projectToGraph } from './graph.js';
 
 /** Klasy torów w grafie: 0 szlak, 1 bocznica / tor stacyjny, 2 wąskotorowy. */
 export function railsAsRoads(rails) {
@@ -76,17 +76,22 @@ export function makeConsist(type, random) {
 export class TrainSim {
 	/** rails – osm.rails, stations – osm.stations; opts: { radius, max, heightAt, seed }. */
 	constructor(rails, stations, opts = {}) {
-		this.g = buildRoadGraph(railsAsRoads(rails), { maxClass: 2, half: opts.half ?? Infinity });
-		this.grid = edgeGrid(this.g.edges, 500);
 		this.radius = opts.radius ?? 6000;
 		this.max = opts.max ?? 10;
+		this.half = opts.half ?? Infinity;
 		this.random = rng(opts.seed ?? 777);
 		this.heightAt = opts.heightAt ?? (() => 0);
 		this.trains = [];
 		this.density = 1;
-		this.wayEnds = new Map();
 		this.events = []; // zdarzenia do dźwięku: { type: 'horn', x, z }
-		// stacje przypięte do najbliższego toru (do 80 m)
+		this.setNetwork(rails, stations);
+	}
+
+	/** Sieć torów i postoje (stacje przypięte do najbliższego toru, do 80 m); net – gotowy { graph, grid } z wątku. */
+	setNetwork(rails, stations, net = null) {
+		this.g = net ? net.graph : buildRoadGraph(railsAsRoads(rails), { maxClass: 2, half: this.half });
+		this.grid = net ? net.grid : edgeGrid(this.g.edges, 500);
+		this.wayEnds = new Map();
 		this.stops = new Map(); // krawędź → [{ s, halt, name }]
 		for (const [halt, p, name] of stations ?? []) {
 			const x = p[0] / 10, z = p[1] / 10;
@@ -106,6 +111,33 @@ export class TrainSim {
 				a.push(best);
 			}
 		}
+	}
+
+	/**
+	 * Nowa sieć (otwarty świat – tory z kafli wokół samolotu): każdy pociąg przepięty czołem na najbliższy tor nowego
+	 * grafu w tym samym kierunku, ścieżka i postoje od nowa; skład, prędkość i postój na stacji zostają.
+	 */
+	rebind(rails, stations, net = null) {
+		const heads = this.trains.map((tr) => this.posAt(tr, tr.head));
+		const old = this.trains;
+		this.setNetwork(rails, stations, net);
+		this.trains = [];
+		old.forEach((tr, i) => {
+			const h = heads[i];
+			const hit = projectToGraph(this.g, this.grid, h.x, h.z, h.tx, h.tz, 3);
+			if (!hit) return;
+			const e = this.g.edges[hit.edge];
+			tr.path = [{ edge: hit.edge, dir: hit.dir, start: 0 }];
+			tr.head = hit.dir === 1 ? hit.s : e.len - hit.s;
+			tr.cursor = undefined;
+			tr.endOfLine = null;
+			if (!this.extendBack(tr)) return;
+			tr.stops = [];
+			for (const en of tr.path) this.addStops(tr, en);
+			tr.stops = tr.stops.filter((st) => st.at > tr.head + 5);
+			this.extend(tr);
+			this.trains.push(tr);
+		});
 	}
 
 	nearEdges(x, z) {

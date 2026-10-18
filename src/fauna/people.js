@@ -30,6 +30,17 @@ export class PeopleSim {
 		this.radius = opts.radius ?? 800;
 		this.max = opts.max ?? 1500;
 		this.random = rng(opts.seed ?? 99);
+		this.setRoads(roads, platforms);
+		this.agents = [];
+		this.density = 1;
+		this.rain = false;
+	}
+
+	/**
+	 * Drogi i perony (otwarty świat podmienia je przy przebudowie sieci z kafli); grafy kwadratów od nowa – piesi
+	 * w drodze trzymają swój graf, aż znikną.
+	 */
+	setRoads(roads, platforms) {
 		// drogi rozłożone po kwadratach (pierwszy punkt) – graf kwadratu budowany przy pierwszej potrzebie
 		this.byChunk = new Map();
 		for (const r of roads) {
@@ -45,9 +56,6 @@ export class PeopleSim {
 			return pts;
 		});
 		this.graphs = new Map();
-		this.agents = [];
-		this.density = 1;
-		this.rain = false;
 	}
 
 	chunkKey(x, z) { return `${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`; }
