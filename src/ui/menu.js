@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER, WINDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.11'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.15'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,25 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.15', title: 'Piesi', items: [
+		['Ludzie', 'na chodnikach, deptakach i peronach – widoczni z niska; krok, różne ubrania, w deszczu parasole.'],
+		['Rytm dnia', 'więcej w południe i po południu, nocą i w burzy prawie nikt; gwar w dźwięku; przełącznik „Piesi”.'],
+	] },
+	{ v: '0.14', title: 'Ptaki', items: [
+		['Gatunki', 'stada szpaków, bociany, myszołowy w kominach termicznych, mewy nad wodą, wrony nad miastami – zależnie od miejsca, pory i pogody.'],
+		['Zachowanie', 'stado ucieka przed samolotem; zderzenie z ptakiem.'],
+		['Dźwięk', 'świergot, klekot, krzyk mew, krakanie i trzepot; przełącznik „Ptaki”.'],
+	] },
+	{ v: '0.13', title: 'Kolej', items: [
+		['Pociągi', 'regionalne, Intercity, towarowe z węglarkami i wąskotorowe – postoje na stacjach, zmiana kierunku na końcu toru.'],
+		['Wygląd', 'wagony wyginają się na łukach; nocą oświetlone okna, reflektory i światła końca składu.'],
+		['Dźwięk', 'dudnienie, stukot wózków i sygnał przy odjeździe; przełącznik „Ruch kolejowy”.'],
+	] },
+	{ v: '0.12', title: 'Ruch uliczny', items: [
+		['Pojazdy', 'samochody, ciężarówki i autobusy na drogach – prędkość i gęstość z klasy drogi, pory dnia i pogody.'],
+		['Noc', 'reflektory i czerwone światła tylne – strumienie świateł na głównych drogach.'],
+		['Ustawienia', 'suwak „Ruch uliczny” (wyłączony … duży); szum ruchu w dźwięku.'],
+	] },
 	{ v: '0.11', title: 'Kominy i chłodnie', items: [
 		['Budowle', 'kominy, chłodnie kominowe i zbiorniki rozpoznawane z kształtu – bez okien, nocą nie świecą jak bloki.'],
 		['Wygląd', 'chłodnie jak hiperboloidy, wysokie kominy w biało-czerwone pasy, nocą czerwone światła przeszkodowe.'],
@@ -260,7 +279,11 @@ export class GameMenu {
 			range('mini', 'Efekt miniatury', 0, 2, 0.05, FMT.mini, 'rozmycie góry i dołu kadru – krajobraz jak makieta') +
 			range('exposure', 'Ekspozycja', 0.4, 2.5, 0.01, FMT.exposure, 'mnożnik automatycznej ekspozycji') +
 			range('renderScale', 'Rozdzielczość obrazu', 0.5, 1, 0.05, FMT.renderScale, 'mniej – płynniej na słabszych kartach') +
-			range('relief', 'Przewyższenie rzeźby', 1, 4, 0.1, FMT.relief, 'pagórki morenowe wyraźniejsze z góry'),
+			range('relief', 'Przewyższenie rzeźby', 1, 4, 0.1, FMT.relief, 'pagórki morenowe wyraźniejsze z góry') +
+			range('traffic', 'Ruch uliczny', 0, 3, 1, FMT.traffic, 'samochody, ciężarówki i autobusy na drogach; nocą światła – więcej to więcej pracy procesora') +
+			check('trains', 'Ruch kolejowy', 'pociągi osobowe, Intercity, towarowe i wąskotorowe, postoje na stacjach') +
+			check('birds', 'Ptaki', 'stada szpaków, bociany, myszołowy, mewy i wrony – zależnie od miejsca, pory i pogody') +
+			check('people', 'Piesi', 'ludzie na chodnikach, deptakach i peronach – widoczni z niska (poniżej ~350 m)'),
 			check('invertPitch', 'Odwróć oś wznoszenia', 'W / ↑ – nos w dół, jak drążkiem') +
 			range('mouseSens', 'Czułość myszy', 0.4, 2, 0.05, FMT.mouseSens, 'obrót kamery za samolotem i rozglądanie się w kabinie') +
 			check('chaseReturn', 'Kamera wraca za ogon', 'po puszczeniu myszy kamera za samolotem łagodnie wraca do domyślnego ujęcia') +
@@ -536,7 +559,7 @@ export class GameMenu {
 		if (el.type === 'range') {
 			this.fill(el);
 			const out = el.closest('.setting')?.querySelector('output');
-			if (out) out.textContent = FMT[key](v);
+			if (out) out.textContent = (FMT[key] ?? String)(v); // brak formatu nie może zatrzymać podpisu
 		}
 	}
 
@@ -580,5 +603,7 @@ const FMT = {
 	relief: (v) => `×${(+v).toFixed(1)}`,
 	mouseSens: (v) => `×${(+v).toFixed(2)}`,
 	cockpitFov: (v) => `${Math.round(v)}°`,
+	traffic: (v) => ['wyłączony', 'mały', 'normalny', 'duży'][Math.round(v)],
 	volume: (v) => (v < 0.005 ? 'cisza' : `${Math.round(v * 100)}%`),
 };
+FMT.engineVolume = FMT.ambientVolume = FMT.volume;

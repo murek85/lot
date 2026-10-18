@@ -22,6 +22,15 @@ import { CockpitCamera } from './plane/cockpitcam.js';
 import { createFlight, stepFlight, propRpm } from './plane/flight.js';
 import { GameAudio } from './audio/audio.js';
 import { Precipitation } from './weather/precip.js';
+import { buildRoadGraph, edgeGrid } from './traffic/graph.js';
+import { TrafficSim, trafficByHour } from './traffic/sim.js';
+import { createTrafficView } from './traffic/render.js';
+import { TrainSim } from './traffic/trains.js';
+import { createTrainView } from './traffic/trainview.js';
+import { BirdSim, speciesWeights } from './fauna/birds.js';
+import { createBirdView } from './fauna/birdview.js';
+import { PeopleSim, peopleByHour } from './fauna/people.js';
+import { createPeopleView } from './fauna/peopleview.js';
 import { weatherById, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt } from './weather/weather.js';
 import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
@@ -141,6 +150,43 @@ async function start() {
 	// czerwone światła przeszkodowe na kominach i chłodniach (nocą)
 	const beacons = buildings?.createBeacons(atmo.u.pixelAngle);
 	if (beacons) scene.add(beacons);
+	// ruch uliczny: graf dróg z danych regionu, pojazdy wokół kamery (src/traffic/)
+	let traffic = null;
+	if (region.osm) {
+		$('boot-stage').textContent = 'Sieć dróg i ruch uliczny…';
+		await new Promise((r) => setTimeout(r, 0));
+		const graph = buildRoadGraph(region.osm.roads, { half: region.size / 2 - 50 });
+		const sim = new TrafficSim(graph, edgeGrid(graph.edges), { heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 2500, max: 2500 });
+		const view = createTrafficView(sim, atmo, clouds, plane, atmo.u.pixelAngle, 2500);
+		scene.add(...view.objects);
+		traffic = { graph, sim, view };
+	}
+	// ptaki: gatunek z pokrycia terenu (src/fauna/birds.js)
+	const coverNames = Object.fromEntries(Object.entries(region.meta.cover.classes).map(([k, v]) => [v, k]));
+	const coverData = region.coverTex.image.data, coverRes = region.meta.cover.res;
+	const coverAt = (x, z) => {
+		const i = Math.floor((x / region.size + 0.5) * coverRes), j = Math.floor((z / region.size + 0.5) * coverRes);
+		return i < 0 || j < 0 || i >= coverRes || j >= coverRes ? 'crop' : coverNames[coverData[j * coverRes + i]];
+	};
+	const birdSim = new BirdSim({ groundAt: (x, z) => region.heightAt(x, z), coverAt, radius: 3000, maxGroups: 14 });
+	const birds = { sim: birdSim, view: createBirdView(birdSim, atmo, clouds, plane, atmo.u.pixelAngle) };
+	scene.add(...birds.view.objects);
+	// piesi: chodniki, deptaki, perony – tylko z niska (src/fauna/people.js)
+	let people = null;
+	if (region.osm) {
+		const sim = new PeopleSim(region.osm.roads, region.osm.platforms, { coverAt, heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 800, max: 1500 });
+		const view = createPeopleView(sim, atmo, clouds, plane, atmo.u.pixelAngle);
+		scene.add(...view.objects);
+		people = { sim, view };
+	}
+	// ruch kolejowy: pociągi na torach regionu, postoje na stacjach (src/traffic/trains.js)
+	let trains = null;
+	if (region.osm?.rails?.length) {
+		const sim = new TrainSim(region.osm.rails, region.osm.stations, { half: region.size / 2 - 50, heightAt: (x, z) => terrain.meshHeightAt(x, z), radius: 6000, max: 10 });
+		const view = createTrainView(sim, atmo, clouds, plane, atmo.u.pixelAngle);
+		scene.add(...view.objects);
+		trains = { sim, view };
+	}
 	const forest = createForest(region, atmo, clouds, terrain, roads?.maskTex, worldShadow, plane);
 	scene.add(...forest.shadowCasters);
 	scene.add(...forest.objects);
@@ -689,6 +735,88 @@ async function start() {
 			light: [0.5 * daylight, 0.53 * daylight, 0.58 * daylight].map((v) => v * (pr?.type === 'snow' ? 1.6 : 1)),
 		});
 
+		// ruch uliczny: gęstość z ustawień, godziny i pogody; wokół samolotu (w widoku swobodnym – wokół celu kamery)
+		if (traffic) {
+			const level = [0, 0.5, 1, 1.7][settings.traffic ?? 2];
+			const on = level > 0;
+			for (const o of traffic.view.objects) if (!on) o.visible = false;
+			if (on) {
+				traffic.sim.density = level * trafficByHour(state.hour) * (pr ? (pr.type === 'snow' ? 0.55 : 0.8) : 1);
+				const c = mode === 'free' && game !== 'menu' ? view.target : plane.model.position;
+				if (game !== 'paused' && game !== 'loading') traffic.sim.step(dt, { x: c.x, z: c.z });
+				traffic.view.update(camera, cityLights ? cityLights.uniforms.street.value : 0);
+			}
+		}
+
+		// pociągi: wokół samolotu (w widoku swobodnym – celu kamery); dźwięk – najbliższy wagon i sygnały przy odjeździe
+		let trainNear = 0, trainSpeed = 0;
+		if (trains) {
+			const on = settings.trains !== false;
+			for (const o of trains.view.objects) if (!on) o.visible = false;
+			if (on) {
+				const c = mode === 'free' && game !== 'menu' ? view.target : plane.model.position;
+				if (game !== 'paused' && game !== 'loading') trains.sim.step(dt, { x: c.x, z: c.z });
+				trains.view.update(camera);
+				const cp = camera.position;
+				let best = Infinity;
+				for (const tr of trains.sim.trains) for (const car of tr.cars) {
+					const d = Math.hypot(car.x - cp.x, car.y - cp.y, car.z - cp.z);
+					if (d < best) { best = d; trainSpeed = tr.v; }
+				}
+				trainNear = best < 1500 ? Math.min(1, 120 / (best + 60)) : 0;
+				for (const ev of trains.sim.events) {
+					const h = ev.train.cars[0];
+					const d = Math.hypot(h.x - cp.x, h.y - cp.y, h.z - cp.z);
+					if (d < 3000) audio.event('horn', d);
+				}
+			}
+		}
+		// ptaki: gatunki z pory dnia, roku i pogody; płoszy je samolot, zderzenie – dźwięk i komunikat
+		if (settings.birds !== false) {
+			birds.sim.weights = speciesWeights({ sunY: sun.y, day: state.day, hour: state.hour, weather: W });
+			birds.sim.density = 1;
+			const pp = plane.model.position;
+			const fwd = game === 'flying' || game === 'menu' ? { x: pp.x, y: pp.y, z: pp.z } : null;
+			if (game !== 'paused' && game !== 'loading') birds.sim.step(dt, { x: pp.x, z: pp.z, hx: Math.sin(flight.heading), hz: -Math.cos(flight.heading) }, fwd);
+			birds.view.update(camera);
+			const cp = camera.position;
+			for (const ev of birds.sim.events) {
+				if (ev.type === 'strike' && game !== 'flying') continue;
+				audio.bird(ev.type, ev.species, Math.hypot(ev.x - cp.x, ev.y - cp.y, ev.z - cp.z), mode === 'cockpit');
+				if (ev.type === 'strike') {
+					$('esc-hint').textContent = 'Zderzenie z ptakiem!';
+					escHintUntil = performance.now() + 2200;
+				}
+			}
+		} else birds.view.objects.forEach((o) => (o.visible = false));
+		// piesi: gdy kamera nisko (poniżej ~350 m nad ziemią); gwar w pobliżu
+		let crowd = 0;
+		if (people) {
+			const cp = camera.position;
+			const agl = cp.y - groundAt(cp.x, cp.z);
+			const low = settings.people === false ? 0 : Math.min(1, Math.max(0, (350 - agl) / 250));
+			people.sim.density = peopleByHour(state.hour) * (pr ? (pr.type === 'snow' ? 0.4 : W.storm ? 0.15 : 0.6) : 1);
+			if (low > 0 || people.sim.agents.length) {
+				if (game !== 'paused' && game !== 'loading') people.sim.step(dt, { x: cp.x, z: cp.z }, low);
+				people.view.update(camera, pr?.type === 'rain');
+				for (const a of people.sim.agents) {
+					const d2 = (a.x - cp.x) ** 2 + (a.y - cp.y) ** 2 + (a.z - cp.z) ** 2;
+					if (d2 < 6400) crowd += 400 / (d2 + 400);
+				}
+				crowd = Math.min(1, crowd / 8);
+			} else people.view.objects.forEach((o) => (o.visible = false));
+		}
+		// bliskość ruchu do dźwięku: pojazdy w promieniu ~400 m od kamery, ważone odległością
+		const trafficNoise = () => {
+			if (!traffic || !(settings.traffic > 0)) return 0;
+			let s = 0;
+			const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z;
+			for (const a of traffic.sim.agents) {
+				const d2 = (a.x - cx) ** 2 + (a.y - cy) ** 2 + (a.z - cz) ** 2;
+				if (d2 < 160000) s += 2500 / (d2 + 2500);
+			}
+			return Math.min(1, s / 6);
+		};
 		const rpm = propRpm(flight, plane.spec.flight);
 		if (audio.type !== plane.type) { audio.type = plane.type; audio.setAircraft(plane.type); }
 		audio.update(dt, {
@@ -697,6 +825,8 @@ async function start() {
 			view: game === 'menu' ? 'menu' : mode === 'cockpit' ? 'cockpit' : mode === 'plane' ? 'chase' : 'free',
 			distance: camera.position.distanceTo(plane.model.position),
 			weather: { rain: pr?.type === 'rain' ? pr.rate : 0, snow: pr?.type === 'snow' ? pr.rate : 0, wind: windNow.speed },
+			traffic: trafficNoise(),
+			train: trainNear, trainSpeed, crowd,
 		});
 		const simDt = game === 'paused' || game === 'loading' ? 0 : dt;
 		plane.update(flight, simDt, key, state.haze, rpm, controls, keyE, keyTint);
@@ -778,7 +908,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

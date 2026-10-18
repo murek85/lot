@@ -78,7 +78,7 @@ const data = collect(responses, region.center);
 const compact = {
 	version: 1,
 	attribution: '© OpenStreetMap contributors (ODbL)',
-	roads: data.roads.map((r) => [r.cls, Math.round(r.width * 10), r.surface, r.bridge, r.layer, r.c]),
+	roads: data.roads.map((r) => [r.cls, Math.round(r.width * 10), r.surface, r.bridge, r.layer, r.c, r.oneway]),
 	rails: data.rails.map((r) => [r.kind, r.service, r.bridge, r.layer, r.c]),
 	buildings: data.buildings.map((x) => [x.type, Math.round(x.height * 10), x.roof, x.known ? 1 : 0, x.c]),
 	waterways: data.waterways.map((x) => [Math.round(x.width * 10), x.c]),

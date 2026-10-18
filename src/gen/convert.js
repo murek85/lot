@@ -91,7 +91,9 @@ export function convertTile(tile, z, x, y, opts) {
 				const r = roadFrom(p.class, p.subclass);
 				if (!r) continue;
 				const surface = p.surface === 'unpaved' ? (r.id === 6 ? 4 : 3) : p.surface === 'paved' ? (r.id === 6 ? 1 : 0) : r.id <= 5 ? 0 : r.id === 6 ? 4 : 3;
-				out.roads.push([r.id, Math.round(r.width * 10), surface, bridge, layer, c]);
+				// jednokierunkowa (OpenMapTiles: 1 / −1); autostrady – jezdnie osobno dla kierunków
+				const oneway = p.oneway === -1 ? -1 : p.oneway === 1 || p.class === 'motorway' ? 1 : 0;
+				out.roads.push([r.id, Math.round(r.width * 10), surface, bridge, layer, c, oneway]);
 			}
 		}
 	}

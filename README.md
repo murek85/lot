@@ -78,6 +78,75 @@ Regiony z polem `gen` wypieka `npm run bake:gen -- <id>` (`tools/bake-gen.js`) t
 (`src/gen/build.js`), z miejscami startu i odmianą nazw z `src/regions.js`; kafle zostają w `tools/.cache/tiles/`.
 Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 GB pamięci.
 
+## Ruch uliczny
+
+`src/traffic/`: samochody, dostawczaki, ciężarówki i autobusy na drogach regionu.
+
+- **Sieć dróg** (`graph.js`): graf z dróg z ruchem samochodowym (autostrady … dojazdowe) – węzły na końcach i w punktach
+  wspólnych kilku dróg, końce pocięte na granicach kafli łączone w siatce 0,5 m. Kafle wektorowe upraszczają linie i gubią
+  punkty skrzyżowań, więc przy wczytaniu `joinRoads` przyciąga końce dróg leżące < 1,5 m od innej drogi i wstawia wspólne
+  punkty w przecięciach (nie na mostach i nie między poziomami). Drogi mają kierunek jednokierunkowy (`oneway` w danych:
+  z tagów OSM, autostrady i ronda domyślnie; w kaflach – pole `oneway`). Zabrze: 110 tys. krawędzi, ok. 1,5 s.
+- **Symulacja** (`sim.js`): pojazdy w promieniu 2,5 km od samolotu (w widoku swobodnym – od celu kamery), gęstość
+  z klasy drogi × pora dnia (szczyty rano i po południu, noc spokojna) × pogoda × ustawienie; prędkość drogi
+  (autostrada 120 km/h, miasto 50, osiedla 40), odstęp od poprzedzającego, na skrzyżowaniach dalsza droga podobnej lub
+  ważniejszej klasy, zawracanie tylko w ślepych uliczkach; ruch prawostronny, na jednokierunkowych losowy pas; na mostach
+  po pomoście. Ok. 1000 pojazdów – 0,5 ms na klatkę.
+- **Obraz** (`render.js`): proste bryły z instancjami (położenie, kierunek, kolor lakieru w atrybutach, obrót w
+  shaderze), nocą reflektory i czerwone światła tylne jako poświaty.
+- **Dźwięk**: szum opon i silników w pobliżu ruchliwych dróg.
+- Ustawienia → Obraz → **Ruch uliczny**: wyłączony / mały / normalny / duży.
+
+## Ruch kolejowy
+
+`src/traffic/trains.js` (logika, testowana w Node) i `trainview.js` (obraz):
+
+- **Sieć torów**: ten sam graf co dla dróg (szlaki, bocznice, wąskotorowe; bez nieczynnych), z łączeniem rozjazdów.
+  Stacje i przystanki z danych przypięte do najbliższego toru (Zabrze: 66 z 67).
+- **Pociągi** w promieniu 6 km od samolotu (ok. 1 na 10 km szlaków, do 10): regionalne zespoły elektryczne (barwy
+  Polregio, Kolei Śląskich), Intercity (lokomotywa i wagony), towarowe (węglarki z węglem albo cysterny, 17–32 wagony)
+  i wąskotorowe. Prędkości 25–120 km/h, przyspieszanie i hamowanie; osobowe stają na każdej stacji i przystanku
+  (25–45 s), Intercity tylko na stacjach, towarowe przejeżdżają.
+- **Jazda**: pociąg to ścieżka z kolejnych krawędzi (z zapasem przed czołem i za ogonem), wagony w swoich odległościach
+  od czoła – na łukach skład się wygina, na wzniesieniach pochyla. Na rozjazdach tylko przejścia łagodne (< ~40°),
+  szlak przed bocznicą; na końcu toru pociąg staje i zmienia kierunek (jak skład wahadłowy).
+- **Obraz**: wagony z instancjami (dwie barwy malowania, pochylenie), nocą oświetlone okna osobowych, trzy reflektory
+  na czole i czerwone światła końca składu.
+- **Dźwięk**: dudnienie i stukot wózków w pobliżu, sygnał przy odjeździe ze stacji.
+- Ustawienia → Obraz → **Ruch kolejowy**.
+
+## Ptaki
+
+`src/fauna/birds.js` (logika, testowana w Node) i `birdview.js` (obraz):
+
+- **Gatunki z miejsca, pory i pogody**: stada szpaków nad polami i łąkami (o zmierzchu kilkukrotnie większe, falujące),
+  bociany nad łąkami i mokradłami (wiosna–lato, szybują), myszołowy krążące w kominach termicznych (pogodne
+  popołudnia), mewy nad wodą, wrony nad miastami i polami. Nocą i w burzy – brak, w deszczu mniej, w śniegu tylko wrony
+  i trochę mew. Klasa pokrycia terenu z mapy regionu.
+- **Lot**: stada jak „boidy” (spójność, wyrównanie, odstęp) za wędrującym celem, wysokość nad terenem; grupy pojawiają
+  się głównie przed samolotem (150–1500 m – w kadrze kamery), te daleko za nim ustępują miejsca nowym.
+- **Samolot płoszy** stado bliżej niż ~140 m (ucieczka w bok i w dół, szybsze machanie); ptak bliżej niż ~3 m od
+  kadłuba – **zderzenie** (uderzenie w dźwięku i komunikat).
+- **Obraz**: jedna bryła (tułów, skrzydła ze stawem) z instancjami, machanie i szybowanie w shaderze; z daleka co
+  najmniej ~12 pikseli rozpiętości.
+- **Dźwięk**: świergot szpaków, klekot bocianów, „kiii-ja” myszołowa, krzyk mew, krakanie wron, trzepot spłoszonego stada.
+- Ustawienia → Obraz → **Ptaki**.
+
+## Piesi
+
+`src/fauna/people.js` (logika, testowana w Node) i `peopleview.js` (obraz):
+
+- **Gdzie**: chodniki ulic (obok jezdni, po jednej stronie), deptaki i ścieżki – w zabudowie; ok. 12% czeka na
+  peronach. Po autostradach i duktach nikt nie chodzi; jednokierunkowe nie obowiązują, czasem ktoś zawraca.
+- **Kiedy**: widoczni tylko z niska, więc symulowani, gdy kamera jest poniżej ~350 m nad ziemią, w promieniu 800 m
+  (do 1500 osób); natężenie z godziny (południe i popołudnie) i pogody (w deszczu mniej, w burzy prawie nikt).
+- **Sieć ścieżek** budowana na bieżąco w kwadratach 2 km wokół kamery – najwyżej jeden kwadrat na klatkę (do ~40 ms
+  w centrum Zabrza przy pierwszym zejściu nisko), pamięć kilkunastu kwadratów.
+- **Obraz**: figurka (nogi, tułów, ręce, głowa) z instancjami, krok – wymach nóg i rąk w shaderze; losowe ubrania,
+  wzrost; w deszczu parasole. Atrybuty instancji upakowane (WebGPU – najwyżej 8 buforów wierzchołków).
+- **Dźwięk**: gwar w pobliżu ludzi.
+- Ustawienia → Obraz → **Piesi**.
+
 ## Pogoda
 
 Plan lotu i pauza: **pogoda** (bezchmurnie … mgliście, **deszcz**, **śnieg**, **burza**) i **wiatr** (cisza, słaby,
@@ -276,6 +345,15 @@ src/clouds/noise3d.js      szumy 3D i mapa pogody (CPU)
 src/camera.js              kamera swobodna
 src/moon.js                Księżyc, czas gwiazdowy, sfera niebieska
 src/citylights.js          latarnie i okna nocą
+src/traffic/graph.js       ruch: graf dróg, łączenie skrzyżowań
+src/traffic/sim.js         ruch: symulacja pojazdów wokół kamery
+src/traffic/render.js      ruch: pojazdy i ich światła na GPU
+src/traffic/trains.js      kolej: graf torów, pociągi, postoje
+src/traffic/trainview.js   kolej: wagony i światła na GPU
+src/fauna/birds.js         ptaki: gatunki, stada, płoszenie, zderzenia
+src/fauna/birdview.js      ptaki na GPU z machaniem skrzydeł
+src/fauna/people.js        piesi: chodniki, ścieżki, perony
+src/fauna/peopleview.js    piesi na GPU z krokiem i parasolami
 src/weather/weather.js     pogoda: rodzaje, wiatr, turbulencja, błyskawice
 src/weather/precip.js      deszcz, śnieg i błyskawice na GPU
 src/audio/audio.js         dźwięk: synteza Web Audio (silnik, śmigło, wiatr, zdarzenia, menu)

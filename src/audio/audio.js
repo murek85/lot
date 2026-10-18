@@ -155,6 +155,28 @@ export class GameAudio {
 		this.chain(this.noise(), this.filter('bandpass', 900, 0.9), drumMod, this.drumGain, this.bus);
 		this.chain(this.noise(), this.filter('lowpass', 40, 0.5), this.gain(6), drumMod.gain);
 
+		// pociąg: niskie dudnienie i stukot (szum w paśmie modulowany prostokątem w rytmie wózków)
+		this.trainGain = this.gain(0);
+		this.chain(this.noise(), this.filter('lowpass', 110, 0.8), this.gain(2.5), this.trainGain, this.bus);
+		const clackMod = this.gain(0.4);
+		this.chain(this.noise(), this.filter('bandpass', 1400, 2), clackMod, this.trainGain);
+		this.clackOsc = c.createOscillator();
+		this.clackOsc.type = 'square';
+		this.clackOsc.frequency.value = 2;
+		this.chain(this.clackOsc, this.gain(0.4), clackMod.gain);
+		this.clackOsc.start();
+
+		// gwar: szum w paśmie mowy z powolną, nieregularną modulacją (wiele głosów naraz)
+		this.crowdGain = this.gain(0);
+		const crowdMod = this.gain(0.6);
+		this.chain(this.noise(), this.filter('bandpass', 520, 1.4), this.filter('peaking', 1800, 1), crowdMod, this.crowdGain, this.bus);
+		this.chain(this.noise(), this.filter('lowpass', 6, 0.5), this.gain(8), crowdMod.gain);
+
+		// ruch uliczny: szum opon (pasmo średnie) i niski pomruk silników
+		this.trafficGain = this.gain(0);
+		this.chain(this.noise(), this.filter('bandpass', 700, 0.5), this.trafficGain, this.bus);
+		this.chain(this.noise(), this.filter('lowpass', 160, 0.7), this.gain(1.2), this.trafficGain);
+
 		// toczenie po ziemi: niski szum i dudnienie
 		this.groundGain = this.gain(0);
 		this.chain(this.noise(), this.filter('lowpass', 140, 1.5), this.gain(2.2), this.groundGain, this.bus);
@@ -222,6 +244,10 @@ export class GameAudio {
 		set(this.propGain.gain, L.prop * 0.35);
 
 		set(this.rainGain.gain, L.rain * 0.5);
+		set(this.trafficGain.gain, L.traffic * 0.35);
+		set(this.trainGain.gain, L.train * 0.45);
+		set(this.crowdGain.gain, L.crowd * 0.4);
+		set(this.clackOsc.frequency, Math.max(0.2, L.clack));
 		set(this.drumGain.gain, L.drum * 0.55);
 		set(this.windBand.frequency, L.windCutoff);
 		set(this.windGain.gain, L.wind * 0.9);
@@ -263,13 +289,18 @@ export class GameAudio {
 		o.stop(t + dur + 0.05);
 	}
 
-	/** Zdarzenia: 'touchdown' (siła 0…1), 'crash', 'thunder' (odległość w m). */
+	/** Zdarzenia: 'touchdown' (siła 0…1), 'crash', 'thunder' i 'horn' (odległość w m). */
 	event(name, strength = 0.5) {
 		if (!this.ctx || this.ctx.state !== 'running') return;
 		const v = this.vol.ambient;
 		if (name === 'touchdown') {
 			this.burst({ f: 120, q: 1.2, dur: 0.35, gain: (0.6 + strength) * v }); // uderzenie podwozia
 			this.burst({ type: 'bandpass', f: 2400, f2: 1500, q: 3, dur: 0.25 + strength * 0.25, gain: 0.25 * strength * v, attack: 0.01 }); // pisk opon
+		} else if (name === 'horn') {
+			// sygnał pociągu: akord dwóch tonów (jak syreny lokomotyw), ciszej z odległości
+			const g = Math.min(0.5, 400 / (strength + 200)) * v;
+			for (const f of [311, 370]) this.tone({ type: 'sawtooth', f, dur: 1.4, gain: 0.08 * g, attack: 0.06 });
+			this.burst({ type: 'bandpass', f: 340, q: 4, dur: 1.4, gain: 0.15 * g, attack: 0.06 });
 		} else if (name === 'thunder') {
 			// grzmot: im bliżej, tym głośniej i ostrzej (trzask na początku), daleki – sam niski pomruk
 			const d = strength, near = Math.min(1, 2500 / d);
@@ -286,6 +317,52 @@ export class GameAudio {
 				this.tone({ type: 'triangle', f, f2: f * (0.6 + Math.random() * 0.3), dur: 0.3 + Math.random() * 0.6, gain: 0.12 * v, at: Math.random() * 0.8 });
 			}
 		}
+	}
+
+	/**
+	 * Ptaki: kind 'call' (głos gatunku), 'scare' (trzepot spłoszonego stada), 'strike' (zderzenie); d – odległość od
+	 * kamery (m), muffled – w kabinie (ciszej). Daleko (> 450 m) – nic nie słychać.
+	 */
+	bird(kind, species, d, muffled = false) {
+		if (!this.ctx || this.ctx.state !== 'running') return;
+		const v = this.vol.ambient * (muffled ? 0.3 : 1);
+		if (kind === 'strike') {
+			this.burst({ f: 180, q: 1, dur: 0.25, gain: 1.1 * this.vol.ambient, attack: 0.002 });
+			this.burst({ type: 'bandpass', f: 2600, q: 0.8, dur: 0.35, gain: 0.25 * this.vol.ambient, attack: 0.01 });
+			return;
+		}
+		if (d > 450) return;
+		const g = Math.min(1, 60 / (d + 30)) * v;
+		const t = (o) => this.tone(o);
+		if (kind === 'scare') {
+			// trzepot: seria krótkich szumów
+			for (let i = 0; i < 10; i++) this.burstAt(0.03 * i + Math.random() * 0.03, { type: 'bandpass', f: 900 + Math.random() * 600, q: 1.2, dur: 0.05, gain: 0.25 * g });
+			return;
+		}
+		if (species === 'starling') {
+			const n = 3 + Math.floor(Math.random() * 4);
+			for (let i = 0; i < n; i++) { const f = 3000 + Math.random() * 3000; t({ f, f2: f * (0.7 + Math.random() * 0.6), dur: 0.05, gain: 0.05 * g, at: i * 0.07 + Math.random() * 0.05 }); }
+		} else if (species === 'stork') {
+			// klekot: szybkie kliknięcia dziobem
+			for (let i = 0; i < 14; i++) this.burstAt(i * 0.075, { type: 'bandpass', f: 1500, q: 3, dur: 0.03, gain: 0.35 * g });
+		} else if (species === 'buzzard') {
+			t({ type: 'sawtooth', f: 2600, f2: 1500, dur: 0.75, gain: 0.03 * g, attack: 0.05 });
+			t({ f: 2600, f2: 1500, dur: 0.75, gain: 0.05 * g, attack: 0.05 });
+		} else if (species === 'gull') {
+			for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) t({ type: 'triangle', f: 1450, f2: 850, dur: 0.32, gain: 0.07 * g, at: i * 0.4, attack: 0.02 });
+		} else {
+			// wrona: „kraa” – chrapliwy ton z szumem
+			for (let i = 0; i < 1 + Math.floor(Math.random() * 3); i++) {
+				t({ type: 'sawtooth', f: 560, f2: 470, dur: 0.28, gain: 0.04 * g, at: i * 0.42, attack: 0.02 });
+				this.burstAt(i * 0.42, { type: 'bandpass', f: 1100, q: 2, dur: 0.28, gain: 0.12 * g, attack: 0.02 });
+			}
+		}
+	}
+
+	/** burst() z opóźnieniem (s). */
+	burstAt(at, o) {
+		if (at <= 0) return this.burst(o);
+		setTimeout(() => this.burst(o), at * 1000);
 	}
 
 	/** Dźwięki menu: 'hover', 'click', 'select', 'back', 'done', 'toggle'. */

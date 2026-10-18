@@ -7,7 +7,14 @@ import { alongLine } from '../src/details.js';
 import { rng } from '../src/clouds/noise3d.js';
 
 test('klasy dróg i szerokości z tagów', () => {
-	assert.deepEqual(roadInfo({ highway: 'primary' }), { cls: 1, width: 9, surface: 0 });
+	assert.deepEqual(roadInfo({ highway: 'primary' }), { cls: 1, width: 9, surface: 0, oneway: 0 });
+	// kierunek: tag, odwrotny, autostrada i rondo domyślnie jednokierunkowe, chyba że oneway=no
+	assert.equal(roadInfo({ highway: 'primary', oneway: 'yes' }).oneway, 1);
+	assert.equal(roadInfo({ highway: 'primary', oneway: '-1' }).oneway, -1);
+	assert.equal(roadInfo({ highway: 'motorway' }).oneway, 1);
+	assert.equal(roadInfo({ highway: 'motorway_link' }).oneway, 1);
+	assert.equal(roadInfo({ highway: 'tertiary', junction: 'roundabout' }).oneway, 1);
+	assert.equal(roadInfo({ highway: 'motorway', oneway: 'no' }).oneway, 0);
 	assert.equal(roadInfo({ highway: 'secondary_link' }).cls, 2);
 	assert.equal(roadInfo({ highway: 'residential', lanes: '4' }).width, 12.8);
 	assert.equal(roadInfo({ highway: 'track' }).surface, 4);

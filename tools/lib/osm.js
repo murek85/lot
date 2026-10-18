@@ -62,7 +62,11 @@ export function roadInfo(tags) {
 	if (!width && lanes && r.id <= 4) width = Math.max(r.width, lanes * 3.2);
 	if (!width) width = r.width;
 	const surface = SURFACE[tags.surface] ?? (r.id <= 5 ? 0 : r.id === 6 ? 4 : 3);
-	return { cls: r.id, width: Math.min(30, width), surface };
+	// jednokierunkowa: 1 – zgodnie z kolejnością punktów, −1 – przeciwnie; autostrady i ronda domyślnie
+	const ow = tags.oneway;
+	const oneway = ow === '-1' || ow === 'reverse' ? -1 : ow === 'yes' || ow === '1' || ow === 'true' ? 1 : ow === 'no' ? 0
+		: hw === 'motorway' || tags.junction === 'roundabout' || tags.junction === 'circular' ? 1 : 0;
+	return { cls: r.id, width: Math.min(30, width), surface, oneway };
 }
 
 export function buildingInfo(tags) {

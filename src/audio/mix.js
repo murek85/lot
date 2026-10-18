@@ -27,7 +27,7 @@ export const stallAmount = (speed, P) => clamp((P.minSpeed + 6 - speed) / 8, 0, 
 /**
  * Poziomy warstw dźwięku (liniowe 0…1, przed głośnością główną) i barwa. s: { rpm, throttle, speed, onGround,
  * crashed, stall, view: 'menu' | 'chase' | 'cockpit' | 'free', distance (m od kamery), P (parametry lotu),
- * weather: { rain 0..1, snow 0..1, wind m/s } }.
+ * weather: { rain 0..1, snow 0..1, wind m/s }, traffic 0..1 (bliskość ruchu ulicznego) }.
  * vol: { engine, ambient } z ustawień.
  */
 export function layerLevels(s, vol = { engine: 1, ambient: 1 }) {
@@ -53,6 +53,13 @@ export function layerLevels(s, vol = { engine: 1, ambient: 1 }) {
 		rain: (wx.rain * (cockpit ? 0.9 : 0.5) + wx.snow * 0.08) * menu * vol.ambient,
 		drum: cockpit ? wx.rain * clamp(0.4 + s.speed / 60, 0, 1.4) * vol.ambient : 0,
 		gust: gale,
+		// szum ruchu ulicznego (opony, silniki) – z zewnątrz, w kabinie zagłuszony
+		traffic: (s.traffic ?? 0) * (cockpit ? 0.15 : 0.6) * menu * vol.ambient,
+		// pociąg w pobliżu: dudnienie (głośniejsze z prędkością) i stukot wózków na złączach
+		train: (s.train ?? 0) * clamp(0.25 + (s.trainSpeed ?? 0) / 25, 0, 1.2) * (cockpit ? 0.25 : 0.8) * menu * vol.ambient,
+		clack: (s.trainSpeed ?? 0) / 13, // stuknięcia na sekundę (wózki co ~13 m)
+		// gwar ludzi (rozmowy, kroki) – z bliska, z zewnątrz
+		crowd: (s.crowd ?? 0) * (cockpit ? 0.1 : 0.5) * menu * vol.ambient,
 		ground: s.onGround && !s.crashed ? clamp(s.speed / 25, 0, 1) * near * vol.ambient : 0,
 		stall: s.view !== 'menu' && s.game !== 'paused' && !s.onGround && !s.crashed && s.stall > 0.2 ? (cockpit ? 0.5 : 0.22) * vol.engine : 0,
 		// barwa: filtr silnika otwiera się z gazem; z zewnątrz – tłumienie powietrza, w kabinie – kabina dławi górę

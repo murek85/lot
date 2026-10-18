@@ -45,6 +45,10 @@ export const DEFAULT_SETTINGS = {
 	hud: true,
 	dev: false,
 	reducedMotion: false,
+	traffic: 2, // ruch uliczny: 0 wyłączony, 1 mały, 2 normalny, 3 duży
+	trains: true, // ruch kolejowy
+	birds: true, // ptaki
+	people: true, // piesi
 	sound: true, // dźwięk włączony (klawisz M)
 	volume: 0.8, // głośność główna
 	engineVolume: 1, // silnik i śmigło

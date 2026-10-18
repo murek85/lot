@@ -3,6 +3,37 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.15 – piesi
+
+- **Piesi** na chodnikach, deptakach i ścieżkach w zabudowie, czekający na peronach – widoczni z niska (poniżej
+  ~350 m), z krokiem, różnymi ubraniami i wzrostem; w deszczu parasole.
+- Natężenie zależne od godziny i pogody; gwar w dźwięku; przełącznik „Piesi” w ustawieniach.
+- Sieć ścieżek budowana na bieżąco w okolicy kamery (bez wydłużania wczytywania).
+
+## 0.14 – ptaki
+
+- **Ptaki** zależne od miejsca, pory dnia i roku oraz pogody: stada szpaków (o zmierzchu wielkie, falujące),
+  bociany, krążące myszołowy, mewy nad wodą, wrony nad miastami.
+- Stada płoszone przez przelatujący samolot, zderzenie z ptakiem.
+- Machanie i szybowanie, głosy ptaków, trzepot stada; przełącznik „Ptaki” w ustawieniach.
+
+## 0.13 – kolej
+
+- **Pociągi** na torach regionu: regionalne zespoły elektryczne, Intercity, towarowe z węglarkami i cysternami,
+  wąskotorowe; postoje na stacjach i przystankach, zmiana kierunku na końcu toru, tylko łagodne rozjazdy.
+- Wagony wyginające się na łukach i pochylające na wzniesieniach, nocą oświetlone okna, reflektory i światła końca.
+- Dudnienie, stukot i sygnał pociągu; przełącznik „Ruch kolejowy” w ustawieniach.
+- Poprawka siatki przestrzennej dróg i torów: długie proste odcinki nie przeskakują komórek.
+
+## 0.12 – ruch uliczny
+
+- **Samochody, dostawczaki, ciężarówki i autobusy** na drogach wokół samolotu: prędkość i gęstość zależne od klasy
+  drogi, pory dnia (szczyty), pogody; odstępy, skrzyżowania, ruch prawostronny, jednokierunkowe, mosty.
+- Nocą reflektory i czerwone światła tylne – strumienie świateł na głównych drogach.
+- Sieć dróg z danych regionu z łączeniem skrzyżowań zgubionych w kaflach wektorowych; kierunek jednokierunkowy
+  w danych dróg (regiony wbudowane wypieczone ponownie).
+- Szum ruchu w dźwięku, suwak „Ruch uliczny” w ustawieniach.
+
 ## 0.11 – kominy i chłodnie
 
 - Kominy elektrowni, ciepłowni i kopalń, chłodnie kominowe i zbiorniki rozpoznawane z kształtu obrysu (kafle mapy
