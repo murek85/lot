@@ -138,6 +138,9 @@ async function start() {
 	const buildings = region.osm ? createBuildings(region.osm, region, terrain, atmo, clouds, plane, worldShadow) : null;
 	if (buildings) scene.add(...buildings.shadowCasters);
 	if (buildings) scene.add(...buildings.objects);
+	// czerwone światła przeszkodowe na kominach i chłodniach (nocą)
+	const beacons = buildings?.createBeacons(atmo.u.pixelAngle);
+	if (beacons) scene.add(beacons);
 	const forest = createForest(region, atmo, clouds, terrain, roads?.maskTex, worldShadow, plane);
 	scene.add(...forest.shadowCasters);
 	scene.add(...forest.objects);

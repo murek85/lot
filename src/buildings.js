@@ -2,16 +2,17 @@
 // dwuspadowe dla domów i budynków gospodarczych o kształcie bliskim prostokąta (kalenica wzdłuż dłuższego boku
 // najmniejszego prostokąta otaczającego), płaskie dla bloków, hal i obrysów nieregularnych. Kolory dachów i elewacji
 // losowane z typowych dla Pomorza, okna rysowane w shaderze z siatki pięter. Geometria scalona w kafelki 2 km.
-import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, ShapeUtils, Vector2, DoubleSide } from 'three/webgpu';
+import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, ShapeUtils, Vector2, DoubleSide, SpriteNodeMaterial, Sprite, InstancedBufferAttribute, AdditiveBlending } from 'three/webgpu';
 import {
 	Fn, float, vec2, vec3, floor, attribute, varying, positionLocal, uniform, max, mix, smoothstep, step, fract, dot, normalize,
-	cameraPosition, pow, select, fwidth,
+	cameraPosition, pow, select, fwidth, instancedBufferAttribute, uv, exp, clamp, length, time,
 } from 'three/tsl';
 import { onGround, cityLight, cityUniforms } from './gfx/ground.js';
 import { hash12 } from './gfx/noise.js';
 import { valueNoise } from './gfx/noise.js';
 import { rng } from './clouds/noise3d.js';
 import { CASTER_LAYER } from './shadows.js';
+import { structureKind, coolingProfile, beaconHeights } from './gfx/structures.js';
 
 const EARTH_R = 6371000;
 const TILE = 2000;
@@ -139,11 +140,44 @@ export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed) {
 	}
 }
 
+/**
+ * Chłodnia kominowa: powłoka hiperboloidy (gładkie normalne) wokół środka (cx, cz), promień podstawy r0, wysokość h;
+ * otwarta u góry (od środka ciemna – patrz cieniowanie tylnych ścian).
+ */
+export function addCoolingTower(b, cx, cz, r0, base, h, wall) {
+	const SEG = 40, RINGS = 14;
+	const first = b.count;
+	for (let k = 0; k <= RINGS; k++) {
+		const t = k / RINGS;
+		const r = r0 * coolingProfile(t);
+		// nachylenie powłoki dr/dy → normalna odchylona od poziomu
+		const t0 = Math.max(0, t - 0.01), t1 = Math.min(1, t + 0.01);
+		const dr = (r0 * (coolingProfile(t1) - coolingProfile(t0))) / ((t1 - t0) * h);
+		const ny = -dr / Math.hypot(1, dr), nh = 1 / Math.hypot(1, dr);
+		for (let i = 0; i <= SEG; i++) {
+			const a = (i / SEG) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+			b.pos.push(cx + c * r, base + t * h, cz + s * r);
+			b.nrm.push(c * nh, ny, s * nh);
+			b.kind.push(0);
+			b.uv.push((i / SEG) * 2 * Math.PI * r0, t * h);
+			b.wall.push(...wall);
+			b.roof.push(...wall);
+			b.count++;
+		}
+	}
+	for (let k = 0; k < RINGS; k++) for (let i = 0; i < SEG; i++) {
+		const a = first + k * (SEG + 1) + i, c = a + SEG + 1;
+		b.idx.push(a, c, a + 1, a + 1, c, c + 1);
+	}
+}
+
 export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null) {
 	const half = region.size / 2 - 30;
 	const tiles = new Map();
 	const r = rng(77);
 	let count = 0;
+	const beacons = []; // światła przeszkodowe: [x, y, z] (y – bezwzględnie, nad poziomem morza)
+	const structures = { chimney: 0, cooling: 0, tank: 0 };
 	for (const [type, h10, roofTag, known, c] of osm.buildings) {
 		let pts = [];
 		for (let i = 0; i < c.length; i += 2) pts.push(c[i] / 10, c[i + 1] / 10);
@@ -171,6 +205,35 @@ export function createBuildings(osm, region, terrain, atmo, clouds, plane, world
 		const h = h10 / 10;
 		if (known) wallH = Math.max(2.4, h - (type === 0 ? 1.2 : 0));
 		else wallH = [seed < 0.55 ? 3.2 : 5.9, h, 2.7, Math.min(9, 4 + area / 300), 4, 7, 9, area > 120 ? 3.5 : 2.6][type];
+		// budowle bez okien (kominy, chłodnie, zbiorniki) – z kształtu obrysu (src/gfx/structures.js)
+		const sk = structureKind(pts, wallH, known);
+		if (sk) {
+			structures[sk]++;
+			const key = `${Math.floor(cx / TILE)},${Math.floor(cz / TILE)}`;
+			let b = tiles.get(key);
+			if (!b) tiles.set(key, (b = { pos: [], nrm: [], kind: [], uv: [], wall: [], roof: [], idx: [], light: [], count: 0 }));
+			const first = b.count;
+			const concrete = [0.52 + seed * 0.08, 0.51 + seed * 0.08, 0.48 + seed * 0.07];
+			// komin ceglany (niższe, starsze) albo betonowy; od 100 m – pasy przeszkodowe (biało-czerwone, w cieniowaniu)
+			const striped = sk === 'chimney' && wallH >= 100;
+			if (sk === 'cooling') addCoolingTower(b, cx, cz, Math.sqrt(area / Math.PI), base, wallH, concrete);
+			else {
+				const wall = sk === 'chimney' && wallH < 90 && seed < 0.5 ? [0.34, 0.15, 0.1] : sk === 'tank' ? [0.6, 0.6, 0.58] : concrete;
+				addBuilding(b, pts, base, wallH, 0, wall, sk === 'chimney' ? [0.02, 0.02, 0.02] : [0.4, 0.4, 0.39], seed);
+			}
+			// x < 0 – bez okien (−2: z pasami); y – wysokość budowli (do pasów)
+			for (let i = first; i < b.count; i++) b.light.push(striped ? -2 : -1, wallH);
+			// lampy: nad wylotem (w osi trzon by je zasłaniał), niżej – po dwóch na zewnętrznej ścianie
+			if (sk !== 'tank') {
+				const rad = Math.sqrt(area / Math.PI) * (sk === 'cooling' ? coolingProfile(0.5) : 1) + 0.6;
+				beaconHeights(wallH).forEach((y, i) => {
+					if (i === 0) beacons.push([cx, base + wallH + 1.2, cz]);
+					else beacons.push([cx + rad, base + y, cz], [cx - rad, base + y, cz]);
+				});
+			}
+			count++;
+			continue;
+		}
 		// dach: tag z OSM, inaczej dwuspadowy dla domów i gospodarczych o obrysie zbliżonym do prostokąta
 		const rect = minRect(pts);
 		const rectish = area / rect.area > 0.82 && rect.w * rect.h < 1600;
@@ -228,8 +291,44 @@ export function createBuildings(osm, region, terrain, atmo, clouds, plane, world
 		objects: meshes,
 		shadowCasters,
 		count,
+		structures,
+		beacons,
+		/** Czerwone światła przeszkodowe na kominach i chłodniach – nocą, migające; jeden sprite z instancjami. */
+		createBeacons(pixelAngle) {
+			return beacons.length ? beaconSprite(beacons, material.userData.camXZ, pixelAngle) : null;
+		},
 		update(camera) { material.userData.camXZ.value.set(camera.position.x, camera.position.z); },
 	};
+}
+
+function beaconSprite(beacons, camXZ, pixelAngle) {
+	const n = beacons.length;
+	const pos = new Float32Array(n * 3), phase = new Float32Array(n);
+	beacons.forEach((p, i) => { pos.set(p, i * 3); phase[i] = (Math.abs(Math.round(p[0] * 7 + p[2] * 3)) % 100) / 100; });
+	const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+	const center = instancedBufferAttribute(new InstancedBufferAttribute(pos, 3));
+	const ph = instancedBufferAttribute(new InstancedBufferAttribute(phase, 1));
+	const world = onGround(center, camXZ);
+	m.positionNode = world;
+	// z daleka nie mniejsze niż kilka pikseli – kominy widać z kilometrów jako czerwone punkty
+	const dist = length(cameraPosition.sub(world));
+	const sz = max(float(3), dist.mul(pixelAngle).mul(6)).min(70);
+	m.scaleNode = vec2(sz, sz);
+	const q = uv().sub(0.5).mul(2);
+	const r2 = dot(q, q);
+	const f = exp(r2.mul(-10)).add(float(0.05).div(r2.mul(10).add(1))).mul(clamp(float(1).sub(r2), 0, 1));
+	// miganie ~1 Hz (każda budowla w innej fazie); świecą od zmierzchu jak latarnie
+	const ft = fract(time.mul(0.9).add(ph));
+	const blink = smoothstep(0.35, 0.5, ft).mul(smoothstep(0.85, 1, ft).oneMinus()).mul(0.85).add(0.15);
+	const CU = cityUniforms();
+	const on = CU ? CU.street : float(1);
+	const glow = CU ? max(CU.glow, 0.2) : float(1);
+	m.colorNode = vec3(1, 0.06, 0.03).mul(f.mul(blink).mul(on).mul(glow).mul(9));
+	const sprite = new Sprite(m);
+	sprite.count = n;
+	sprite.frustumCulled = false;
+	sprite.renderOrder = 16;
+	return sprite;
 }
 
 /** Tani materiał do mapy cieni: ta sama pozycja (z krzywizną), bez oświetlenia. */
@@ -267,16 +366,25 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const detail = float(1).sub(smoothstep(0.4, 1.6, footprint));
 		// okna: siatka co 3 m w poziomie i co piętro (3 m), od 0,9 m nad podłogą; z daleka uśrednione
 		const cellU = fract(buv.x.div(3.1)), cellV = fract(buv.y.div(3));
-		const win = step(0.3, cellU).mul(step(cellU, 0.72)).mul(step(0.3, cellV)).mul(step(cellV, 0.78)).mul(step(1, buv.y));
+		// budowle bez okien (kominy, chłodnie, zbiorniki): light.x < 0
+		const hasWin = step(0, light.x);
+		const win = step(0.3, cellU).mul(step(cellU, 0.72)).mul(step(0.3, cellV)).mul(step(cellV, 0.78)).mul(step(1, buv.y)).mul(hasWin);
 		const V = normalize(cameraPosition.sub(vWorld));
 		// szyby: ciemne, z odrobiną odbitego nieba (jako albedo – światło dolicza się niżej)
 		const glass = vec3(0.025, 0.03, 0.036).add(atmo.skyRadiance(normalize(vec3(N.x, 0.35, N.z))).mul(0.02));
-		const wallAlb = mix(wallC.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.div(2)))), glass, win.mul(detail).add(float(0.18).mul(detail.oneMinus())));
+		// pasy przeszkodowe na kominach ≥ 100 m (light.x = −2, light.y = wysokość): 7 pasów w górnych 45%
+		const H = light.y;
+		const band = step(0.5, fract(buv.y.div(H.mul(0.45 / 7)).mul(0.5)));
+		const striped = step(light.x, -1.5).mul(step(H.mul(0.55), buv.y));
+		const wallBase = mix(wallC, mix(vec3(0.78, 0.78, 0.76), vec3(0.6, 0.07, 0.04), band), striped);
+		const wallAlb = mix(wallBase.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.div(2)))), glass, win.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin)));
 		// dachówki: drobne pasy wzdłuż połaci, płaskie dachy – plamy papy
 		const tiles = mix(float(0.88), float(1.08), step(0.5, fract(buv.y.div(0.35))).mul(detail));
 		const roofAlb = roofC.mul(tiles).mul(mix(float(0.85), float(1.1), valueNoise(vWorld.xz.div(3))));
 		const flatAlb = roofC.mul(mix(float(0.8), float(1.15), valueNoise(vWorld.xz.div(4))));
-		const albedo = select(kind.lessThan(0.5), wallAlb, select(kind.lessThan(1.5), roofAlb, flatAlb));
+		// tylne ściany (wnętrze chłodni widziane z góry) – ciemne
+		const back = select(dot(N, V).lessThan(0), float(0.12), float(1));
+		const albedo = select(kind.lessThan(0.5), wallAlb, select(kind.lessThan(1.5), roofAlb, flatAlb)).mul(back);
 		const sun = atmo.u.lightDir;
 		const sunE = atmo.sunLight(vWorld.y);
 		let shadow = clouds.groundShadow(vWorld).mul(plane.groundShadow(vWorld));

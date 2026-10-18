@@ -150,6 +150,13 @@ klawiszu (ekran startowy), w karcie w tle jest wstrzymany.
 - **Budynki** (`src/buildings.js`): obrysy z OSM wyciągnięte na wysokość z pięter albo domyślną dla rodzaju.
   - Domy i budynki gospodarcze o kształcie zbliżonym do prostokąta mają dach dwuspadowy wzdłuż dłuższego boku, bloki, hale i obrysy nieregularne płaski.
   - Kościoły dostają wieżę z hełmem.
+  - **Budowle bez okien** rozpoznawane z kształtu (`src/gfx/structures.js`) – kafle OpenMapTiles nie podają rodzaju
+    budynku (tylko wysokość, kolor i `hide_3d`), a w OSM kominy bywają zwykłym `building=yes`. Obrys prawie okrągły
+    (kołowość 4πA/P² ≥ 0,85, ≥ 7 wierzchołków): smukły i wysoki → **komin** (ceglany albo betonowy, od 100 m
+    biało-czerwone pasy przeszkodowe), wysoki i szeroki → **chłodnia kominowa** (powłoka hiperboloidy, ciemne
+    wnętrze), niższy → **zbiornik / silos**. Bez siatki okien i bez świateł w oknach; kominy i chłodnie od 45 m mają
+    nocą migające czerwone światła przeszkodowe (nad wylotem, a przy wysokich także niżej na trzonie).
+    W Zabrzu: 96 kominów, 9 chłodni (m.in. Elektrownia Łaziska), 29 zbiorników.
   - Kolory dachów i elewacji typowe dla Pomorza, okna z siatki pięter.
 - **Kolej** (`src/rails.js`): nasyp z tłuczniem, podkłady i szyny (1435 mm) z błyskiem na główkach. Tory nieczynne są zarośnięte i rdzawe, rozebrane to sam nasyp.
 - **Mosty i perony** (`src/bridges.js`): pomost z bocznymi ścianami, bariery i filary do gruntu, perony jako podniesione płyty.

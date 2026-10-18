@@ -37,3 +37,20 @@ test('mapa fal: kafelkowana (krawędzie się zszywają) i zróżnicowana', () =>
 	const r = [...m.filter((_, i) => i % 4 === 0)];
 	assert.ok(Math.max(...r) - Math.min(...r) > 150);
 });
+
+test('budowle z kształtu: komin, chłodnia, zbiornik; kwadratowy blok i mały okrągły altana – zwykłe', async () => {
+	const { structureKind, outline, coolingProfile, beaconHeights } = await import('../src/gfx/structures.js');
+	const circle = (r, n = 16) => Array.from({ length: n }, (_, i) => [Math.cos((i / n) * 2 * Math.PI) * r, Math.sin((i / n) * 2 * Math.PI) * r]).flat();
+	assert.ok(Math.abs(outline(circle(10, 64)).circularity - 1) < 0.01);
+	assert.ok(Math.abs(outline([0, 0, 10, 0, 10, 10, 0, 10]).circularity - Math.PI / 4) < 1e-9);
+	assert.equal(structureKind(circle(4), 120, true), 'chimney'); // 300-metrowe kominy elektrowni mają ~9 m średnicy
+	assert.equal(structureKind(circle(40), 100, true), 'cooling');
+	assert.equal(structureKind(circle(8), 15, true), 'tank');
+	assert.equal(structureKind([0, 0, 20, 0, 20, 20, 0, 20], 120, true), null, 'kwadratowy wieżowiec ma okna');
+	assert.equal(structureKind(circle(3), 4, false), null, 'altana');
+	assert.equal(structureKind(circle(8, 6), 60, true), null, 'za mało wierzchołków');
+	// hiperboloida: przewężenie niżej niż wieniec, podstawa najszersza
+	assert.ok(coolingProfile(0) > coolingProfile(1) && coolingProfile(1) > coolingProfile(0.72));
+	assert.deepEqual(beaconHeights(30), []);
+	assert.equal(beaconHeights(300).length, 3);
+});

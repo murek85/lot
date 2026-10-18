@@ -3,6 +3,13 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.11 – kominy i chłodnie
+
+- Kominy elektrowni, ciepłowni i kopalń, chłodnie kominowe i zbiorniki rozpoznawane z kształtu obrysu (kafle mapy
+  nie mają rodzaju budynku) – bez okien, więc nocą już nie świecą jak bloki.
+- Chłodnie w kształcie hiperboloidy, kominy od 100 m z biało-czerwonymi pasami, nocą migające czerwone światła
+  przeszkodowe.
+
 ## 0.10 – pogoda
 
 - **Deszcz, śnieg i burza** w planie lotu i na pauzie: krople i płatki na GPU wokół kamery (smugi pędzące na szybę
