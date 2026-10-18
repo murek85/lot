@@ -1,7 +1,10 @@
 // Wspólne przekształcenie obiektów stojących na ziemi (drogi, tory, budynki, mosty, słupy, aleje): przesunięcie
 // o tyle, o ile przewyższenie rzeźby (suwak) podniosło teren w tym miejscu – sam obiekt zachowuje wysokość – oraz
 // krzywizna Ziemi względem kamery. Dzięki temu obiekty nie odrywają się od terenu przy zmianie przewyższenia.
-import { vec3, dot, texture } from 'three/tsl';
+import { vec3, dot, texture, uniform } from 'three/tsl';
+
+/** Śnieg na ziemi 0..1 (pogoda „Śnieg”) – teren i korony drzew bieleją. */
+export const snowCover = uniform(0);
 
 const EARTH_R = 6371000;
 let T = null;

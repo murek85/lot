@@ -78,6 +78,24 @@ Regiony z polem `gen` wypieka `npm run bake:gen -- <id>` (`tools/bake-gen.js`) t
 (`src/gen/build.js`), z miejscami startu i odmianą nazw z `src/regions.js`; kafle zostają w `tools/.cache/tiles/`.
 Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 GB pamięci.
 
+## Pogoda
+
+Plan lotu i pauza: **pogoda** (bezchmurnie … mgliście, **deszcz**, **śnieg**, **burza**) i **wiatr** (cisza, słaby,
+umiarkowany, silny, wichura). Logika – `src/weather/weather.js` (testowana w Node), obraz – `src/weather/precip.js`:
+
+- **opady**: do 48 tys. kropli lub płatków liczonych w całości na GPU w sześcianie wokół kamery (zawijanie modulo),
+  spadających z wiatrem; smuga budowana w przestrzeni ekranu z dwóch rzutowanych końców (prędkość kropli względem
+  kamery – z lecącego samolotu deszcz pędzi na szybę), zasłanianie z głębi sceny; osobna scena dodawana po
+  wygładzaniu TRAA (cienkie, szybkie smugi nie rozmazują się); w oddali – szara zasłona opadu;
+- **chmury**: przy opadach niska podstawa, gruba i gęsta warstwa, prawie pełne zachmurzenie; większe zamglenie;
+- **śnieg na ziemi**: pola i korony drzew bieleją stopniowo (płaskie miejsca, w plamach), woda nie;
+- **burza**: błyskawice co 4–14 s w odległości 1,5–12 km – kanał z odgałęzieniami, rozświetlenie nieba i chmur,
+  grzmot opóźniony o czas biegu dźwięku (bliski z trzaskiem, daleki – pomruk); zawsze co najmniej silny wiatr;
+- **wiatr**: z zachodu, z wolnym skręcaniem i porywami; znosi samolot, przesuwa chmury i kierunek opadu,
+  **turbulencja** (gładka suma sinusoid, silniejsza w burzy i przy ziemi) buja przechyłem, wysokością i kursem;
+  wiatr i jego kierunek w raporcie lotu na pauzie;
+- **dźwięk**: szum deszczu, bębnienie o osłonę w kabinie, wiatr z porywami także przy małej prędkości, grzmoty.
+
 ## Dźwięk
 
 Cały dźwięk jest syntezowany w Web Audio (`src/audio/audio.js`) – bez plików nagrań. Poziomy i częstotliwości liczy
@@ -251,6 +269,8 @@ src/clouds/noise3d.js      szumy 3D i mapa pogody (CPU)
 src/camera.js              kamera swobodna
 src/moon.js                Księżyc, czas gwiazdowy, sfera niebieska
 src/citylights.js          latarnie i okna nocą
+src/weather/weather.js     pogoda: rodzaje, wiatr, turbulencja, błyskawice
+src/weather/precip.js      deszcz, śnieg i błyskawice na GPU
 src/audio/audio.js         dźwięk: synteza Web Audio (silnik, śmigło, wiatr, zdarzenia, menu)
 src/audio/mix.js           poziomy i częstotliwości dźwięku
 src/ui/menu.js             menu, pauza, plan lotu, zapisy, ustawienia

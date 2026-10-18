@@ -27,16 +27,10 @@ export const SEASONS = [
 	{ id: 'autumn', name: 'Wczesna jesień', day: 269, note: '26 września, pełnia' },
 ];
 
-/** Pogoda: zachmurzenie (0..0,9) i zamglenie powietrza. */
-export const WEATHER = [
-	{ id: 'clear', name: 'Bezchmurnie', cover: 0, haze: 3, note: 'widać po horyzont' },
-	{ id: 'few', name: 'Pojedyncze chmury', cover: 0.25, haze: 5, note: 'cumulusy pogodne' },
-	{ id: 'scattered', name: 'Umiarkowane', cover: 0.42, haze: 6, note: 'cień chmur na polach' },
-	{ id: 'broken', name: 'Duże zachmurzenie', cover: 0.68, haze: 9, note: 'loty pod podstawą' },
-	{ id: 'haze', name: 'Mgliście', cover: 0.3, haze: 26, note: 'zamglone dale' },
-];
+// pogoda i wiatr – src/weather/weather.js (tu ponownie dla menu)
+export { WEATHER, WINDS } from '../weather/weather.js';
 
-export const DEFAULT_PLAN = { aircraft: 'dromader', place: 'tuchola', time: 'morning', season: 'summer', weather: 'scattered', view: 'plane' };
+export const DEFAULT_PLAN = { aircraft: 'dromader', place: 'tuchola', time: 'morning', season: 'summer', weather: 'scattered', wind: 'light', view: 'plane' };
 
 export const DEFAULT_SETTINGS = {
 	mini: 1, // efekt miniatury (tilt-shift)

@@ -147,6 +147,14 @@ export class GameAudio {
 		this.gustOsc.frequency.value = 0.13;
 		this.chain(this.gustOsc, this.gain(0.25), this.gust.gain);
 
+		// deszcz: wysoki szum kropli + bębnienie o osłonę kabiny (pasmo średnie, ziarniste – modulacja szumem)
+		this.rainGain = this.gain(0);
+		this.chain(this.noise(), this.filter('highpass', 1800, 0.5), this.filter('lowpass', 9000, 0.5), this.rainGain, this.bus);
+		this.drumGain = this.gain(0);
+		const drumMod = this.gain(0.5);
+		this.chain(this.noise(), this.filter('bandpass', 900, 0.9), drumMod, this.drumGain, this.bus);
+		this.chain(this.noise(), this.filter('lowpass', 40, 0.5), this.gain(6), drumMod.gain);
+
 		// toczenie po ziemi: niski szum i dudnienie
 		this.groundGain = this.gain(0);
 		this.chain(this.noise(), this.filter('lowpass', 140, 1.5), this.gain(2.2), this.groundGain, this.bus);
@@ -213,6 +221,8 @@ export class GameAudio {
 		set(this.bladeToneGain.gain, 0.6);
 		set(this.propGain.gain, L.prop * 0.35);
 
+		set(this.rainGain.gain, L.rain * 0.5);
+		set(this.drumGain.gain, L.drum * 0.55);
 		set(this.windBand.frequency, L.windCutoff);
 		set(this.windGain.gain, L.wind * 0.9);
 		set(this.groundGain.gain, L.ground * 0.6);
@@ -253,13 +263,20 @@ export class GameAudio {
 		o.stop(t + dur + 0.05);
 	}
 
-	/** Zdarzenia lotu: 'touchdown' (siła 0…1), 'crash'. */
+	/** Zdarzenia: 'touchdown' (siła 0…1), 'crash', 'thunder' (odległość w m). */
 	event(name, strength = 0.5) {
 		if (!this.ctx || this.ctx.state !== 'running') return;
 		const v = this.vol.ambient;
 		if (name === 'touchdown') {
 			this.burst({ f: 120, q: 1.2, dur: 0.35, gain: (0.6 + strength) * v }); // uderzenie podwozia
 			this.burst({ type: 'bandpass', f: 2400, f2: 1500, q: 3, dur: 0.25 + strength * 0.25, gain: 0.25 * strength * v, attack: 0.01 }); // pisk opon
+		} else if (name === 'thunder') {
+			// grzmot: im bliżej, tym głośniej i ostrzej (trzask na początku), daleki – sam niski pomruk
+			const d = strength, near = Math.min(1, 2500 / d);
+			const g = Math.min(1.6, 2600 / d) * v;
+			if (near > 0.6) this.burst({ type: 'highpass', f: 1200, f2: 300, q: 0.6, dur: 0.6, gain: 0.6 * g * near, attack: 0.003 });
+			this.burst({ f: 260 * (0.5 + near), f2: 45, q: 0.9, dur: 4 + 3 * (1 - near), gain: g, attack: 0.05 + (1 - near) * 0.4 });
+			this.burst({ f: 110, q: 1.4, dur: 5.5, gain: 0.8 * g, attack: 0.3 });
 		} else if (name === 'crash') {
 			this.burst({ f: 900, f2: 90, q: 0.8, dur: 2.4, gain: 1.6 * v }); // uderzenie
 			this.burst({ type: 'bandpass', f: 3200, f2: 700, q: 1.5, dur: 1.4, gain: 0.5 * v, attack: 0.02 }); // gięta blacha

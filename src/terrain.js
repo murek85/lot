@@ -2,7 +2,7 @@
 // (pola w pasach z koleinami, bory z koronami drzew i duktami, zabudowa, woda z odbiciem nieba), oświetlone
 // fizycznie: światło słońca po przejściu przez atmosferę, światło nieba, cienie rzeźby i ścian lasu.
 // Poza regionem ciągnie się płaski „świat zastępczy” z tym samym materiałem – zakrzywiony jak Ziemia aż po horyzont.
-import { cityLight } from './gfx/ground.js';
+import { cityLight, snowCover } from './gfx/ground.js';
 import {
 	Mesh, Group, PlaneGeometry, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DataTexture, RGBAFormat,
 	UnsignedByteType, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter,
@@ -356,6 +356,14 @@ export function createTerrain(region, atmo, clouds, plane, worldShadow = null) {
 				const clump = valueNoise(xz.div(28)).mul(0.6).add(valueNoise(xz.div(300)).mul(0.4));
 				albedo.addAssign(mix(COL.pineOld, COL.pineYoung, clump).mul(wForest));
 			});
+		}
+
+		// --- śnieg (pogoda): biel na płaskim, w plamach przy małej pokrywie; las – tylko prześwity między koronami ---
+		{
+			const patch = valueNoise(xz.div(40)).mul(0.6).add(valueNoise(xz.div(7)).mul(0.4));
+			const flat = smoothstep(0.55, 0.85, N.y);
+			const amt = clamp(snowCover.mul(1.4).sub(patch.mul(0.6)), 0, 1).mul(flat).mul(float(1).sub(wWater)).mul(mix(float(1), float(0.35), wForest));
+			albedo.assign(mix(albedo, vec3(0.82, 0.84, 0.88), amt));
 		}
 
 		// --- światło ---

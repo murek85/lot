@@ -26,7 +26,8 @@ export const stallAmount = (speed, P) => clamp((P.minSpeed + 6 - speed) / 8, 0, 
 
 /**
  * Poziomy warstw dźwięku (liniowe 0…1, przed głośnością główną) i barwa. s: { rpm, throttle, speed, onGround,
- * crashed, stall, view: 'menu' | 'chase' | 'cockpit' | 'free', distance (m od kamery), P (parametry lotu) }.
+ * crashed, stall, view: 'menu' | 'chase' | 'cockpit' | 'free', distance (m od kamery), P (parametry lotu),
+ * weather: { rain 0..1, snow 0..1, wind m/s } }.
  * vol: { engine, ambient } z ustawień.
  */
 export function layerLevels(s, vol = { engine: 1, ambient: 1 }) {
@@ -41,11 +42,17 @@ export function layerLevels(s, vol = { engine: 1, ambient: 1 }) {
 	const air = cockpit ? 1 : clamp(Math.pow(40 / d, 0.5), 0.12, 1);
 	const menu = s.view === 'menu' ? 0.55 : 1;
 	const speedN = clamp(s.speed / P.vne, 0, 1.2);
+	const wx = s.weather ?? { rain: 0, snow: 0, wind: 0 };
+	const gale = clamp(wx.wind / 23, 0, 1); // wiatr pogody: szum podmuchów także przy małej prędkości
 	return {
 		engine: run * (0.45 + 0.55 * s.throttle) * near * menu * vol.engine * (cockpit ? 1 : 0.9),
 		exhaust: run * (0.15 + 0.85 * s.throttle * s.throttle) * near * menu * vol.engine * (cockpit ? 0.55 : 1),
 		prop: run * rpmN * rpmN * near * menu * vol.engine * (cockpit ? 0.6 : 1),
-		wind: (s.crashed ? 0 : Math.pow(speedN, 2.2)) * (cockpit ? 0.9 : 0.55 * air) * menu * vol.ambient,
+		wind: (s.crashed ? gale * 0.5 : Math.min(1.3, Math.pow(speedN, 2.2) + gale * 0.45)) * (cockpit ? 0.9 : 0.55 * air) * menu * vol.ambient,
+		// deszcz: szum kropli wokół (z zewnątrz) i bębnienie o kabinę (w kabinie – głośniej i niżej); śnieg – cichy szelest
+		rain: (wx.rain * (cockpit ? 0.9 : 0.5) + wx.snow * 0.08) * menu * vol.ambient,
+		drum: cockpit ? wx.rain * clamp(0.4 + s.speed / 60, 0, 1.4) * vol.ambient : 0,
+		gust: gale,
 		ground: s.onGround && !s.crashed ? clamp(s.speed / 25, 0, 1) * near * vol.ambient : 0,
 		stall: s.view !== 'menu' && s.game !== 'paused' && !s.onGround && !s.crashed && s.stall > 0.2 ? (cockpit ? 0.5 : 0.22) * vol.engine : 0,
 		// barwa: filtr silnika otwiera się z gazem; z zewnątrz – tłumienie powietrza, w kabinie – kabina dławi górę

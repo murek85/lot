@@ -1,8 +1,8 @@
 // Obraz końcowy: scena w HDR (kolor + wektory ruchu), chmury liczone po scenie (znają jej głębię), niebo i perspektywa
 // powietrzna z fizycznej atmosfery, gradacja, wygładzanie czasowe TRAA (drgająca kamera + historia klatek),
-// efekt miniatury (tilt-shift) i na końcu tone mapping.
-import { RenderPipeline, TempNode, NodeUpdateType } from 'three/webgpu';
-import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max } from 'three/tsl';
+// efekt miniatury (tilt-shift), opady i błyskawice (osobna scena, po wygładzaniu) i na końcu tone mapping.
+import { RenderPipeline, TempNode, NodeUpdateType, Color } from 'three/webgpu';
+import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length } from 'three/tsl';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { tiltShift } from './gfx/tiltshift.js';
 
@@ -24,7 +24,7 @@ class CloudStepNode extends TempNode {
 	}
 }
 
-export function createPost(renderer, scene, camera, atmo, clouds) {
+export function createPost(renderer, scene, camera, atmo, clouds, precip = null) {
 	const scenePass = pass(scene, camera);
 	scenePass.setMRT(mrt({ output, velocity }));
 	const color = scenePass.getTextureNode('output');
@@ -37,6 +37,11 @@ export function createPost(renderer, scene, camera, atmo, clouds) {
 	const camWorld = uniform(camera.matrixWorld);
 	const camPos = uniform(camera.position);
 	const saturation = uniform(1.08);
+	// błysk burzy: rozświetlenie całego obrazu (mocniej nieba i chmur), barwa chłodna
+	const flash = uniform(0);
+	// ulewa: szara zasłona deszczu w oddali (w dodatku do zamglenia powietrza)
+	const veil = uniform(0);
+	const veilColor = uniform(new Color(0.3, 0.32, 0.35));
 
 	const composite = Fn(() => {
 		const st = uv();
@@ -55,6 +60,10 @@ export function createPost(renderer, scene, camera, atmo, clouds) {
 		// chmury (pół rozdzielczości, wygładzone czasowo, przycięte głębią sceny): ich światło + tło przez nie
 		const cloud = new CloudStepNode(clouds, clouds.sample(st));
 		out.assign(cloud.rgb.add(out.mul(cloud.a)));
+		// zasłona opadu: rośnie z odległością (niebo – pełna), błysk rozświetla
+		const far = select(d.lessThanEqual(0.0), float(1), float(1).sub(exp(length(offset).mul(-1 / 2500))));
+		out.assign(mix(out, veilColor, far.mul(veil)));
+		out.addAssign(vec3(0.75, 0.8, 1).mul(flash).mul(mix(float(0.35), float(1), select(d.lessThanEqual(0.0), float(1), cloud.a.oneMinus().mul(0.5).add(0.3)))));
 		// gradacja: trochę nasycenia (w świetle liniowym, przed tone mappingiem)
 		const lum = luminance(out);
 		return vec4(max(vec3(0), mix(vec3(lum), out, saturation)), 1);
@@ -63,6 +72,12 @@ export function createPost(renderer, scene, camera, atmo, clouds) {
 	const aa = traa(composite(), depth, vel, camera);
 	const ts = tiltShift(aa, depth, camera);
 	const pipeline = new RenderPipeline(renderer);
-	pipeline.outputNode = ts.node;
-	return { pipeline, scenePass, saturation, tiltShift: ts, render: () => pipeline.render() };
+	let outNode = ts.node;
+	if (precip) {
+		precip.build(depth, projInv);
+		const precipPass = pass(precip.scene, camera);
+		outNode = vec4(ts.node.rgb.add(precipPass.getTextureNode('output').rgb), 1);
+	}
+	pipeline.outputNode = outNode;
+	return { pipeline, scenePass, saturation, flash, veil, veilColor, tiltShift: ts, render: () => pipeline.render() };
 }

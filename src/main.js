@@ -11,7 +11,7 @@ import { createRails } from './rails.js';
 import { createRivers } from './rivers.js';
 import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
-import { setTerrainUniforms, setCityLights } from './gfx/ground.js';
+import { setTerrainUniforms, setCityLights, snowCover } from './gfx/ground.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
 import { Clouds } from './clouds/clouds.js';
@@ -21,6 +21,8 @@ import { ChaseCamera } from './plane/chase.js';
 import { CockpitCamera } from './plane/cockpitcam.js';
 import { createFlight, stepFlight, propRpm } from './plane/flight.js';
 import { GameAudio } from './audio/audio.js';
+import { Precipitation } from './weather/precip.js';
+import { weatherById, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt } from './weather/weather.js';
 import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
 import { sunPosition, sunDirection, dayOfYear } from './sun.js';
@@ -140,7 +142,9 @@ async function start() {
 	scene.add(...forest.shadowCasters);
 	scene.add(...forest.objects);
 	terrain.uniforms.treesFar.value = forest.uniforms.far.value;
-	const post = createPost(renderer, scene, camera, atmo, clouds);
+	// opady i błyskawice: osobna scena dodawana po wygładzaniu (src/weather/precip.js)
+	const precip = new Precipitation(atmo.u.pixelAngle);
+	const post = createPost(renderer, scene, camera, atmo, clouds, precip);
 
 	const view = new ViewCamera(camera, canvas, (x, z) => region.heightAt(x, z));
 	// start nad pierwszym miejscem regionu (Tuchola), z widokiem na północny zachód
@@ -273,8 +277,10 @@ async function start() {
 	let lastStart = null; // do „Leć ponownie” i klawisza R: plan albo zapis
 	let autosaveAt = 0, crashAt = 0, escHintUntil = 0;
 	const timeName = () => TIMES.reduce((a, b) => (Math.abs(b.hour - state.hour) < Math.abs(a.hour - state.hour) ? b : a));
-	const env = { time: plan.time, season: plan.season, weather: plan.weather };
-	const setEnvironment = (kind, id) => {
+	const env = { time: plan.time, season: plan.season, weather: plan.weather, wind: plan.wind ?? 'light' };
+	// pogoda w locie: śnieg na ziemi narasta powoli (cel), burza – harmonogram błyskawic, bieżące uderzenie
+	const wx = { snowTarget: 0, storm: lightning(), strike: null, thunder: [], wind: { x: 0, z: 0, speed: 0 } };
+	const setEnvironment = (kind, id, instant = false) => {
 		env[kind] = id;
 		if (kind === 'time') state.hour = (TIMES.find((t) => t.id === id) ?? TIMES[1]).hour;
 		if (kind === 'season') state.day = (SEASONS.find((t) => t.id === id) ?? SEASONS[1]).day;
@@ -282,10 +288,19 @@ async function start() {
 			const w = WEATHER.find((t) => t.id === id) ?? WEATHER[2];
 			state.cover = w.cover;
 			state.haze = w.haze;
+			const c = w.clouds ?? { base: 1500, thickness: 1600, extinction: 0.12 };
+			clouds.u.base.value = c.base;
+			clouds.u.thickness.value = c.thickness;
+			clouds.u.extinction.value = c.extinction;
+			clouds.u.history.value = 0; // inna warstwa – bez starej historii
+			wx.snowTarget = w.snow ?? 0;
+			if (instant) snowCover.value = wx.snowTarget;
 		}
 		syncPanel();
 	};
-	const applyPlanEnv = (p) => { setEnvironment('time', p.time); setEnvironment('season', p.season); setEnvironment('weather', p.weather); };
+	const applyPlanEnv = (p) => {
+		setEnvironment('time', p.time); setEnvironment('season', p.season); setEnvironment('weather', p.weather, true); setEnvironment('wind', p.wind ?? 'light');
+	};
 	const applySetting = (k, v) => {
 		settings[k] = v;
 		const b = document.body.classList;
@@ -382,7 +397,9 @@ async function start() {
 			ls.progress(0.3, 'Pogoda i pora dnia…');
 			await nextFrames(1);
 			Object.assign(state, s.state);
-			Object.assign(env, s.env);
+			Object.assign(env, { wind: 'light' }, s.env);
+			setEnvironment('weather', env.weather, true);
+			Object.assign(state, s.state);
 			syncPanel();
 			ls.progress(0.45, 'Odtwarzanie położenia maszyny…');
 			await nextFrames(1);
@@ -518,6 +535,7 @@ async function start() {
 				where: flightTitle(flight), speed: Math.round(flight.speed * 3.6), alt: Math.round(flight.y),
 				agl: Math.max(0, Math.round(flight.y - 1.75 - groundAt(flight.x, flight.z))), heading: headingDeg(flight.heading),
 				throttle: Math.round(flight.throttle * 100), time: `${hhmm(state.hour)} · ${dateText(state.day)}`, weather: w.name,
+				wind: wx.wind.speed < 0.5 ? 'cisza' : `${Math.round(wx.wind.speed * 3.6)} km/h z ${windFrom(wx.wind.x, wx.wind.z)}`,
 				lights: plane.lights.landing ? 'REFLEKTORY WŁĄCZONE · L' : 'REFLEKTORY WYŁĄCZONE · L',
 				aircraft: `${plane.spec.name} · ${plane.spec.reg}`,
 			};
@@ -623,6 +641,51 @@ async function start() {
 		controls.roll += (input.roll - controls.roll) * ease;
 		controls.pitch += (input.pitch - controls.pitch) * ease;
 		controls.yaw += (input.roll * 0.4 - controls.yaw) * ease;
+		// --- pogoda: wiatr (znoszenie, turbulencja, chmury), śnieg na ziemi, burza ---
+		const W = weatherById(env.weather);
+		const windNow = windVector(effectiveWind(env.weather, env.wind).speed, t);
+		wx.wind = windNow;
+		clouds.windVelocity.set(1 + windNow.x * 1.2, 0.4 + windNow.z * 1.2);
+		const live = game !== 'paused' && game !== 'loading';
+		if (live && !flight.onGround && !flight.crashed) {
+			if (game === 'flying') { flight.x += windNow.x * dt; flight.z += windNow.z * dt; }
+			const tb = turbulence(t, windNow.speed, !!W.storm, flight.y - groundAt(flight.x, flight.z));
+			const k = game === 'menu' ? 0.4 : 1;
+			flight.bank += tb.roll * 0.45 * k * dt;
+			flight.y += tb.lift * 3 * k * dt;
+			flight.heading += tb.yaw * 0.06 * k * dt;
+		}
+		snowCover.value += (wx.snowTarget - snowCover.value) * (1 - Math.exp(-dt / 12));
+		let flash = 0, bolt = 0;
+		if (W.storm && live) {
+			const ev = wx.storm.next(dt);
+			if (ev) {
+				const sx = camera.position.x + Math.sin(ev.bearing) * ev.distance, sz = camera.position.z - Math.cos(ev.bearing) * ev.distance;
+				precip.strike(sx, sz, groundAt(sx, sz), groundAt(sx, sz) + clouds.u.base.value, camera.position);
+				wx.strike = { ...ev, t: 0 };
+				wx.thunder.push({ at: t + ev.delay, distance: ev.distance });
+			}
+		}
+		if (wx.strike) {
+			if (live) wx.strike.t += dt;
+			flash = flashAt(wx.strike.t, wx.strike.flickers, wx.strike.distance);
+			bolt = flashAt(wx.strike.t, wx.strike.flickers, 3500);
+			if (wx.strike.t > 1.2) wx.strike = null;
+		}
+		while (wx.thunder.length && wx.thunder[0].at <= t) audio.event('thunder', wx.thunder.shift().distance);
+		const exposureNow = renderer.toneMappingExposure;
+		// błysk: jasność stała na ekranie niezależnie od ekspozycji (nocą nie oślepia bielą)
+		post.flash.value = (flash * 0.45) / exposureNow;
+		clouds.u.ambient.value = 0.5 + flash * 1.2;
+		const daylight = Math.min(1, Math.max(0.03, sun.y * 3 + 0.2)) * (W.storm ? 0.55 : W.precip ? 0.8 : 1);
+		const pr = W.precip;
+		post.veil.value = pr ? pr.rate * (pr.type === 'snow' ? 0.4 : W.storm ? 0.45 : 0.3) : 0;
+		post.veilColor.value.setRGB(0.42 * daylight, 0.44 * daylight, 0.48 * daylight);
+		precip.update(game === 'paused' ? 0 : dt, camera, {
+			type: pr?.type ?? null, rate: pr?.rate ?? 0, wind: windNow, flash, bolt,
+			light: [0.5 * daylight, 0.53 * daylight, 0.58 * daylight].map((v) => v * (pr?.type === 'snow' ? 1.6 : 1)),
+		});
+
 		const rpm = propRpm(flight, plane.spec.flight);
 		if (audio.type !== plane.type) { audio.type = plane.type; audio.setAircraft(plane.type); }
 		audio.update(dt, {
@@ -630,6 +693,7 @@ async function start() {
 			stall: stallAmount(flight.speed, plane.spec.flight), P: plane.spec.flight, game,
 			view: game === 'menu' ? 'menu' : mode === 'cockpit' ? 'cockpit' : mode === 'plane' ? 'chase' : 'free',
 			distance: camera.position.distanceTo(plane.model.position),
+			weather: { rain: pr?.type === 'rain' ? pr.rate : 0, snow: pr?.type === 'snow' ? pr.rate : 0, wind: windNow.speed },
 		});
 		const simDt = game === 'paused' || game === 'loading' ? 0 : dt;
 		plane.update(flight, simDt, key, state.haze, rpm, controls, keyE, keyTint);
@@ -711,7 +775,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { audio, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

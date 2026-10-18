@@ -12,7 +12,7 @@ import { hash12, hash22 } from './gfx/noise.js';
 import { forestStand, forestCover } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
 import { CASTER_LAYER } from './shadows.js';
-import { cityLight } from './gfx/ground.js';
+import { cityLight, snowCover } from './gfx/ground.js';
 
 const EARTH_R = 6371000;
 const SPACING = 5;
@@ -155,8 +155,10 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const crown = select(type.greaterThan(1.5), COL.leafy.mul(1.6), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
 				.mul(mix(float(0.8), float(1.2), tint));
 			const bark = vec3(0.09, 0.055, 0.035);
-			const albedo = mix(bark, crown, part);
 			const N = normalize(vNormal);
+			// śnieg na koronach (pogoda): na górnych, poziomych częściach, w plamach
+			const snowy = snowCover.mul(smoothstep(0.25, 0.75, N.y)).mul(part).mul(mix(float(0.55), float(0.95), tint));
+			const albedo = mix(mix(bark, crown, part), vec3(0.8, 0.82, 0.86), snowy);
 			const sunE = atmo.sunLight(vWorld.y);
 			const skyE = atmo.skyIrradiance();
 			// listowie przepuszcza i rozprasza światło – miękkie „owinięcie” zamiast twardego cosinusa

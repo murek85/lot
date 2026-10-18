@@ -3,11 +3,11 @@
 // odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash, regions (lista
 // regionów: wbudowany i wygenerowane), generator (nowy region z kafli OpenStreetMap).
 // Esc cofa o jeden poziom; w locie otwiera pauzę, na pauzie wznawia. Gra dostarcza obiekt `game` z akcjami.
-import { TIMES, SEASONS, WEATHER } from './places.js';
+import { TIMES, SEASONS, WEATHER, WINDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.9'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.10'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,12 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.10', title: 'Pogoda', items: [
+		['Opady', 'deszcz, śnieg i burza – krople i płatki wokół samolotu, zasłona opadu, niska warstwa chmur.'],
+		['Śnieg', 'pola i korony drzew stopniowo bieleją.'],
+		['Burza', 'błyskawice, rozświetlone niebo i chmury, grzmot opóźniony o odległość.'],
+		['Wiatr', 'od ciszy po wichurę: znoszenie, porywy, turbulencja; wiatr w raporcie lotu.'],
+	] },
 	{ v: '0.9', title: 'Dźwięk', items: [
 		['Silnik', 'syntezowany warkot zależny od obrotów i maszyny – gwiazdowy Dromadera i Wilgi, bokser Extry; świst śmigła.'],
 		['Lot', 'wiatr rosnący z prędkością, brzęczyk przeciągnięcia, przyziemienie z piskiem opon, kraksa.'],
@@ -204,7 +210,7 @@ export class GameMenu {
 	card_home() {
 		const p = this.planInfo(this.plan);
 		return `<aside class="menu-card"><div class="eyebrow">PLAN LOTU</div><h2>${esc(p.place.name)}</h2>
-			<dl><dt>Pora</dt><dd>${esc(p.time.name)} · ${esc(p.season.note)}</dd><dt>Pogoda</dt><dd>${esc(p.weather.name)}</dd>
+			<dl><dt>Pora</dt><dd>${esc(p.time.name)} · ${esc(p.season.note)}</dd><dt>Pogoda</dt><dd>${esc(p.weather.name)} · wiatr ${esc(p.wind.name.toLowerCase())}</dd>
 			<dt>Maszyna</dt><dd>${esc(aircraftById(this.plan.aircraft).name)} · ${aircraftById(this.plan.aircraft).reg}</dd><dt>Widok</dt><dd>${this.plan.view === 'cockpit' ? 'kabina' : 'za samolotem'}</dd></dl>
 			<span class="tag">${this.game.slotInfo('auto') ? 'ZAPIS GOTOWY DO WZNOWIENIA' : 'OCZEKIWANIE NA ZGODĘ NA START'}</span></aside>`;
 	}
@@ -219,6 +225,7 @@ export class GameMenu {
 				<h2>Pora dnia</h2>${tiles(TIMES, 'time')}
 				<h2>Pora roku</h2>${tiles(SEASONS, 'season')}
 				<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}
+				<h2>Wiatr</h2>${tiles(WINDS, 'wind')}
 				<h2>Widok na starcie</h2>${tiles([{ id: 'plane', name: 'Za samolotem', note: 'kamera pościgowa' }, { id: 'cockpit', name: 'Kabina', note: 'przyrządy i widok pilota' }], 'view')}
 			</div>
 			<div class="menu-window-actions">${this.btn('start', 'Startuj', { prominent: true, hint: '<kbd>ENTER</kbd>' })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
@@ -419,7 +426,7 @@ export class GameMenu {
 		const r = this.game.report();
 		return `<aside class="menu-card gold"><div class="eyebrow">RAPORT LOTU</div><h2>${esc(r.where)}</h2>
 			<dl><dt>Maszyna</dt><dd>${esc(r.aircraft)}</dd><dt>Prędkość</dt><dd>${r.speed} km/h</dd><dt>Wysokość</dt><dd>${r.alt} m n.p.m. · ${r.agl} m nad ziemią</dd>
-			<dt>Kurs</dt><dd>${r.heading}°</dd><dt>Gaz</dt><dd>${r.throttle}%</dd><dt>Czas</dt><dd>${esc(r.time)}</dd><dt>Pogoda</dt><dd>${esc(r.weather)}</dd></dl>
+			<dt>Kurs</dt><dd>${r.heading}°</dd><dt>Gaz</dt><dd>${r.throttle}%</dd><dt>Czas</dt><dd>${esc(r.time)}</dd><dt>Pogoda</dt><dd>${esc(r.weather)}</dd><dt>Wiatr</dt><dd>${esc(r.wind)}</dd></dl>
 			<span class="tag">${r.lights}</span></aside>`;
 	}
 
@@ -428,7 +435,7 @@ export class GameMenu {
 		const tiles = (list, kind) => `<div class="tiles">${list.map((o, i) =>
 			`<button class="tile${cur[kind] === o.id ? ' sel' : ''}" data-env="${kind}:${o.id}"><span class="num">${String(i + 1).padStart(2, '0')}</span><b>${esc(o.name)}</b><small>${esc(o.note)}</small></button>`).join('')}</div>`;
 		return `<section class="menu-content menu-window">${this.head('Pogoda i pora.', '')}
-			<div class="menu-scroll"><h2>Pora dnia</h2>${tiles(TIMES, 'time')}<h2>Pora roku</h2>${tiles(SEASONS, 'season')}<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}</div>
+			<div class="menu-scroll"><h2>Pora dnia</h2>${tiles(TIMES, 'time')}<h2>Pora roku</h2>${tiles(SEASONS, 'season')}<h2>Pogoda</h2>${tiles(WEATHER, 'weather')}<h2>Wiatr</h2>${tiles(WINDS, 'wind')}</div>
 			<div class="menu-window-actions">${this.btn('resume', 'Wznów lot', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
 	}
 
@@ -557,6 +564,7 @@ export class GameMenu {
 			time: TIMES.find((p) => p.id === plan.time) ?? TIMES[1],
 			season: SEASONS.find((p) => p.id === plan.season) ?? SEASONS[1],
 			weather: WEATHER.find((p) => p.id === plan.weather) ?? WEATHER[2],
+			wind: WINDS.find((p) => p.id === plan.wind) ?? WINDS[1],
 		};
 	}
 }

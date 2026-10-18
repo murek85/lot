@@ -3,6 +3,15 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.10 – pogoda
+
+- **Deszcz, śnieg i burza** w planie lotu i na pauzie: krople i płatki na GPU wokół kamery (smugi pędzące na szybę
+  lecącego samolotu), zasłona opadu w oddali, niska i gęsta warstwa chmur.
+- **Śnieg na ziemi**: pola i korony drzew stopniowo bieleją.
+- **Burza**: błyskawice z odgałęzieniami, rozświetlenie nieba i chmur, grzmot opóźniony o odległość.
+- **Wiatr** do wyboru (cisza … wichura): znoszenie samolotu, porywy, turbulencja, szybsze chmury; w raporcie lotu.
+- Dźwięk pogody: deszcz i bębnienie o kabinę, wiatr z porywami, grzmoty.
+
 ## 0.9 – dźwięk
 
 - **Dźwięk syntezowany w Web Audio** (bez plików nagrań): silnik z tonem zapłonów zależnym od obrotów i od maszyny
