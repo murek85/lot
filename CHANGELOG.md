@@ -8,6 +8,7 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 - Duża mapa regionu (Tab, menu pauzy): przesuwanie, powiększanie, nazwy, podziałka; kliknięcie – cel lotu.
 - Prowadzenie do celu: odległość, czas dolotu i skręt w panelu, znacznik na pasku kursu i minimapie, komunikat u celu.
 - Opcja: nazwy miast nad krajobrazem.
+- Minimapa w kształcie pozostałych paneli (zaokrąglony kwadrat z tłem i ramką, skala w środku panelu).
 
 ## 0.18 – minimapa
 

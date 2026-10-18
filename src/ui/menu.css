@@ -316,13 +316,13 @@ kbd.k { display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 
 	color: #c3cfd8; background: rgba(8, 14, 20, 0.55); border: 1px solid rgba(170, 205, 230, 0.15); text-transform: uppercase;
 	transition: opacity 0.6s; pointer-events: none;
 }
-body:not(.flying) #flight, body:not(.flying) #esc-hint, body:not(.flying) #fps, body:not(.flying) #compass, body:not(.flying) #nav, body:not(.flying) #minimap, body:not(.flying) #minimap-scale, body:not(.flying) #labels3d { display: none; }
+body:not(.flying) #flight, body:not(.flying) #esc-hint, body:not(.flying) #fps, body:not(.flying) #compass, body:not(.flying) #nav, body:not(.flying) #minimap-box, body:not(.flying) #labels3d { display: none; }
 body.paused #labels3d { display: none; }
 /* w menu atrybucja danych nad stopką */
 body:not(.flying) #credits { bottom: 54px; right: 5.5vw; background: none; }
 body:not(.dev) #hud { display: none; }
-body.no-hud #flight, body.no-hud #compass, body.no-hud #nav, body.no-hud #minimap, body.no-hud #minimap-scale { display: none; }
-body.no-minimap #minimap, body.no-minimap #minimap-scale { display: none; }
+body.no-hud #flight, body.no-hud #compass, body.no-hud #nav, body.no-hud #minimap-box { display: none; }
+body.no-minimap #minimap-box { display: none; }
 body.no-fps #fps { display: none; }
 
 @media (max-width: 900px) {

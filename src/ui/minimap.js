@@ -1,5 +1,5 @@
-// Minimapa: mapa bazowa regionu rysowana raz (pokrycie terenu w barwach mapy, cieniowanie rzeźby, woda, zabudowa,
-// główne drogi i tory) do płótna; w locie z niej – okrągły wycinek wokół samolotu (północ u góry albo kurs u góry),
+// Minimapa (zaokrąglony kwadrat jak pozostałe panele): mapa bazowa regionu rysowana raz (pokrycie terenu w barwach mapy, cieniowanie rzeźby, woda, zabudowa,
+// główne drogi i tory) do płótna; w locie z niej – wycinek wokół samolotu (północ u góry albo kurs u góry),
 // trzy skale, nazwy miejscowości dobrane do skali, miejsca startu i strzałka samolotu. Wszystko w 2D (Canvas).
 
 /** Barwy klas pokrycia (COVER: grass, forest, shrub, crop, built, bare, water, wetland) – jak na mapie turystycznej. */
@@ -115,9 +115,15 @@ export class Minimap {
 		const pxPerM = W / S.span;
 		ctx.save();
 		ctx.clearRect(0, 0, W, W);
+		// kwadrat z zaokrąglonymi rogami (jak panele interfejsu)
+		const rr = W * 0.045;
 		ctx.beginPath();
-		ctx.arc(R, R, R - 1, 0, Math.PI * 2);
+		ctx.roundRect(0, 0, W, W, rr);
 		ctx.clip();
+		// czy punkt (u, v od środka) mieści się w kwadracie z marginesem m
+		const inside = (u, v, m) => Math.abs(u) < R - m && Math.abs(v) < R - m;
+		// punkt na brzegu kwadratu (z marginesem m) w kierunku (u, v)
+		const edgeAt = (u, v, m) => { const k = (R - m) / Math.max(Math.abs(u), Math.abs(v), 1e-6); return [R + u * k, R + v * k]; };
 		ctx.fillStyle = 'rgb(70,78,86)'; // poza regionem
 		ctx.fillRect(0, 0, W, W);
 		// wycinek mapy bazowej: obrót wokół środka (kurs u góry) i przesunięcie do samolotu
@@ -141,7 +147,7 @@ export class Minimap {
 		for (const l of this.labels) {
 			if (!S.labels.includes(l.cls)) continue;
 			const [u, v] = worldToMap(l.x, l.z, px, pz, pxPerM, this.rotate, heading);
-			if (u * u + v * v > (R - 12) ** 2) continue;
+			if (!inside(u, v, 10)) continue;
 			const x = R + u, y = R + v;
 			ctx.font = `${CLASS_FONT[l.cls] ?? '500 10px'} system-ui, sans-serif`;
 			const w = ctx.measureText(l.name).width;
@@ -158,21 +164,20 @@ export class Minimap {
 		ctx.strokeStyle = 'rgba(30,20,0,0.8)';
 		for (const s of this.starts) {
 			const [u, v] = worldToMap(s.x, s.z, px, pz, pxPerM, this.rotate, heading);
-			if (u * u + v * v > (R - 6) ** 2) continue;
+			if (!inside(u, v, 6)) continue;
 			ctx.beginPath(); ctx.moveTo(R + u, R + v - 5); ctx.lineTo(R + u + 4, R + v); ctx.lineTo(R + u, R + v + 5); ctx.lineTo(R + u - 4, R + v); ctx.closePath();
 			ctx.fill(); ctx.stroke();
 		}
 		// cel lotu: znacznik, a poza zasięgiem – strzałka na obwodzie w jego kierunku
 		if (this.target) {
 			const [u, v] = worldToMap(this.target.x, this.target.z, px, pz, pxPerM, this.rotate, heading);
-			const d = Math.hypot(u, v);
 			ctx.fillStyle = '#8fd0ff';
 			ctx.strokeStyle = 'rgba(0,20,40,0.9)';
 			ctx.lineWidth = 1.5;
-			if (d < R - 10) {
+			if (inside(u, v, 10)) {
 				ctx.beginPath(); ctx.arc(R + u, R + v, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 			} else {
-				const a = Math.atan2(v, u), ex = R + Math.cos(a) * (R - 9), ey = R + Math.sin(a) * (R - 9);
+				const a = Math.atan2(v, u), [ex, ey] = edgeAt(u, v, 9);
 				ctx.save(); ctx.translate(ex, ey); ctx.rotate(a + Math.PI / 2);
 				ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(6, 4); ctx.lineTo(-6, 4); ctx.closePath(); ctx.fill(); ctx.stroke();
 				ctx.restore();
@@ -180,7 +185,7 @@ export class Minimap {
 		}
 		// północ na obwodzie (przy kursie u góry – obraca się)
 		const na = this.rotate ? -heading : 0;
-		const nx = R + Math.sin(na) * (R - 10), ny = R - Math.cos(na) * (R - 10);
+		const [nx, ny] = edgeAt(Math.sin(na), -Math.cos(na), 10);
 		ctx.font = '700 12px system-ui, sans-serif';
 		ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.fillStyle = '#f6c344';
 		ctx.strokeText('N', nx, ny); ctx.fillText('N', nx, ny);
@@ -193,9 +198,5 @@ export class Minimap {
 		ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(6, 7); ctx.lineTo(0, 3); ctx.lineTo(-6, 7); ctx.closePath();
 		ctx.fill(); ctx.stroke();
 		ctx.restore();
-		// obwódka
-		ctx.strokeStyle = 'rgba(232,238,242,0.35)';
-		ctx.lineWidth = 2;
-		ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.stroke();
 	}
 }

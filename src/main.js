@@ -726,7 +726,7 @@ async function start() {
 	// minimapa: mapa bazowa budowana po pierwszej klatce (nie wydłuża wczytywania), płótno w rozdzielczości ekranu
 	let minimap = null;
 	const mmCanvas = $('minimap');
-	mmCanvas.width = mmCanvas.height = Math.round(220 * Math.min(2, window.devicePixelRatio || 1));
+	mmCanvas.width = mmCanvas.height = Math.round(208 * Math.min(2, window.devicePixelRatio || 1));
 	setTimeout(async () => {
 		const t0 = performance.now();
 		const base = await buildBaseMap(region, region.osm, 4096);

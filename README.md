@@ -86,11 +86,11 @@ Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 G
   Rytel”, poza zabudową „6 km na płn.-zach. od Tucholi” (od miejscowości bliskiej i ważnej, nie od najbliższego
   przysiółka); współrzędne geograficzne i region; **wiatr względem samolotu** (strzałka, prędkość, czołowy / w ogon /
   boczny z lewej lub prawej, skąd wieje); **ostrzeżenie o granicy mapy** poniżej 3 km z kursem powrotu.
-- **Minimapa** (`src/ui/minimap.js`, prawy dół): okrągły wycinek mapy bazowej regionu – pokrycie terenu w barwach
+- **Minimapa** (`src/ui/minimap.js`, prawy dół): panel w stylu pozostałych (zaokrąglony kwadrat) z wycinkiem mapy bazowej regionu – pokrycie terenu w barwach
   mapy turystycznej z cieniowaniem rzeźby, cieki, drogi (główne z obwódką, lokalne na biało), tory; 4096² (11 m na
   piksel), budowana po wczytaniu porcjami (~0,75 s, bez zacięcia menu). Skale 2 / 5 / 15 km (**N**), kurs albo północ
   u góry (**Shift+N**), nazwy miejscowości dobrane do skali (bez nakładania), miejsca startu, pierścień połowy
-  promienia, strzałka samolotu. Ustawienie zapamiętywane; wyłączenie – Ustawienia → Interfejs → Minimapa.
+  promienia, strzałka samolotu; cel poza zasięgiem – strzałka na brzegu. Ustawienie zapamiętywane; wyłączenie – Ustawienia → Interfejs → Minimapa.
 - **Duża mapa i cel lotu** (`src/ui/bigmap.js`, **Tab** albo menu pauzy → „Mapa i cel lotu”): cały region z mapy
   bazowej, przesuwanie (przeciąganie) i powiększanie kółkiem wokół kursora, nazwy dobrane do powiększenia, podziałka,
   miejsca startu, samolot. Kliknięcie – **cel lotu** (przyciąga do pobliskiej nazwy, inaczej punkt), prawy przycisk –
