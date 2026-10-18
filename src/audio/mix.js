@@ -7,18 +7,23 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 /**
  * Brzmienie silnika samolotu: cyl – liczba cylindrów (zapłony na obrót wału = cyl/2 dla silnika czterosuwowego),
  * gear – przełożenie śmigło/wał (obroty w grze to obroty śmigła), blades – łopaty śmigła, rough – nierówność pracy
- * (gwiazdowy „kołysze”), bright – jasność wydechu (0 – basowy pomruk, 1 – ostry), body – waga dołu pasma.
+ * (gwiazdowy „kołysze”), bright – jasność wydechu (0 – basowy pomruk, 1 – ostry), body – waga dołu pasma,
+ * turbine – głośność gwizdu sprężarki (silnik turbośmigłowy; ton z obrotów).
  */
 export const SOUND = {
 	dromader: { cyl: 9, gear: 1.57, blades: 3, rough: 0.55, bright: 0.25, body: 1.0 }, // PZL ASz-62IR, 1000 KM, reduktor
 	wilga: { cyl: 9, gear: 1.0, blades: 2, rough: 0.45, bright: 0.45, body: 0.75 }, // AI-14R, 260 KM
 	extra: { cyl: 6, gear: 1.0, blades: 3, rough: 0.2, bright: 0.85, body: 0.65 }, // Lycoming AEIO-580, 315 KM
+	an2: { cyl: 9, gear: 1.57, blades: 4, rough: 0.6, bright: 0.2, body: 1.0 }, // ASz-62IR, 1000 KM, wolne śmigło
+	orlik: { cyl: 4, gear: 1.0, blades: 5, rough: 0, bright: 0.6, body: 0.5, turbine: 1 }, // P&W PT6A-62, 950 KM
+	p11c: { cyl: 9, gear: 2.0, blades: 2, rough: 0.5, bright: 0.55, body: 0.85 }, // Bristol Mercury VS2, 645 KM
 };
 
 /** Częstotliwości z obrotów śmigła: zapłony (ton silnika), obrót wału (kołysanie) i przejście łopat. */
 export function engineFreqs(rpm, snd) {
 	const crank = (rpm * snd.gear) / 60; // obroty wału na sekundę
-	return { firing: (crank * snd.cyl) / 2, crank, blade: (rpm / 60) * snd.blades };
+	// gwizd turbiny: obroty sprężarki rosną z obrotami śmigła (~2,1 kHz na jałowym, ~3,8 kHz przy pełnej mocy)
+	return { firing: (crank * snd.cyl) / 2, crank, blade: (rpm / 60) * snd.blades, whine: rpm * 1.9 };
 }
 
 /** Siła przeciągnięcia 0…1 – jak w modelu lotu (src/plane/flight.js). */

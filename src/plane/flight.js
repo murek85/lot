@@ -51,6 +51,58 @@ export const EXTRA = {
 	accel: 0.38,
 };
 
+/** An-2: wielki dwupłat – najwolniejszy w hangarze, ociężały w przechyle, ale niemal nie da się go przeciągnąć. */
+export const AN2 = {
+	minSpeed: 15, // ~55 km/h
+	cruise: 50, // ~180 km/h
+	maxSpeed: 62, // ~225 km/h
+	vne: 83, // ~300 km/h
+	maxBank: 0.9,
+	bankRate: 0.95, // ogromne skrzydła – powolne lotki
+	maxClimb: 0.3,
+	pitchRate: 0.42,
+	throttleRate: 0.4,
+	gearHeight: 1.85,
+	rpm: [550, 1450], // reduktor 0,637 – śmigło wolniej od wału
+	accel: 0.18,
+};
+
+/** PZL-130 Orlik: turbośmigłowy samolot szkolny – szybki, zwinny, akrobacyjny (wolniej od Extry w beczce). */
+export const ORLIK = {
+	minSpeed: 33, // ~120 km/h
+	cruise: 85, // ~305 km/h
+	maxSpeed: 115, // ~415 km/h
+	vne: 140, // ~500 km/h
+	maxBank: 1.35,
+	bankRate: 2.6,
+	rollRate: 3.0, // ~170°/s
+	aerobatic: true,
+	maxClimb: 0.55,
+	pitchRate: 0.95,
+	throttleRate: 0.6,
+	gearHeight: 1.45,
+	rpm: [1100, 2000], // śmigło o stałych obrotach – turbina nie „wyje” jak tłokowy
+	accel: 0.3,
+};
+
+/** PZL P.11c: przedwojenny myśliwiec – szybki jak na swoje czasy, zwrotny, akrobacyjny. */
+export const P11C = {
+	minSpeed: 30, // ~110 km/h
+	cruise: 80, // ~290 km/h
+	maxSpeed: 104, // ~375 km/h
+	vne: 125, // ~450 km/h
+	maxBank: 1.35,
+	bankRate: 2.4,
+	rollRate: 2.6, // ~150°/s
+	aerobatic: true,
+	maxClimb: 0.6,
+	pitchRate: 1.0,
+	throttleRate: 0.7,
+	gearHeight: 1.8,
+	rpm: [600, 1300], // Mercury z reduktorem 1:2
+	accel: 0.32,
+};
+
 export function createFlight(start = {}) {
 	return {
 		x: 0, y: 500, z: 0,

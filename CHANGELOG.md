@@ -3,6 +3,20 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.22 – nowe samoloty
+
+- **PZL Mielec An-2** – dwupłat: górne skrzydło na grzbiecie (sloty, lotki), dolne przy podłodze, słupki „I” i cięgna,
+  silnik gwiazdowy w osłonie z żaluzjami, czterołopatowe śmigło, okrągłe okna kabiny pasażerskiej, drzwi, zastrzały
+  usterzenia; najwolniejszy (przeciąga ~55 km/h) i najbardziej ociężały w przechyle; SP-ANT, dwa fotele obok siebie.
+- **PZL-130 Orlik** – turbośmigłowy samolot szkolny: długi nos z rurami wydechowymi, pięciołopatowe śmigło, owiewka
+  tandem z instruktorem z tyłu; akrobacyjny (~170°/s przechyłu, do ~415 km/h); podwozie trójkołowe chowa się samo
+  powyżej ~180 km/h i wypuszcza przy zwolnieniu; szachownice z obwódką na skrzydłach i stateczniku, numer 042.
+- **PZL P.11c** – przedwojenny myśliwiec: skrzydło mewie Puławskiego z zastrzałami, silnik Mercury w pierścieniu
+  Townenda z widocznymi cylindrami, drewniane dwułopatowe śmigło, otwarta kabina z wiatrochronem i celownikiem;
+  khaki z błękitnym spodem, szachownice na skrzydłach i sterze kierunku.
+- Dźwięk: brzmienia nowych silników, gwizd turbiny Orlika.
+- Części wspólne: otwarta kabina w kadłubie z przekrojów, szachownica lotnicza.
+
 ## 0.21 – ptaki z daleka
 
 - Odległe ptaki jako drobne, migoczące kropki w barwie gatunku (nakładka po wygładzaniu, zasłaniana przez budynki

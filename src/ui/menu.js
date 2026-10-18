@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.21'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.22'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,11 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.22', title: 'Nowe samoloty', items: [
+		['An-2', 'wielki dwupłat z Mielca – słupki i cięgna między płatami, czterołopatowe śmigło, okrągłe okna kabiny; lata najwolniej w hangarze.'],
+		['Orlik', 'turbośmigłowy PZL-130 – akrobacja, podwozie chowa się samo powyżej ~180 km/h, gwizd turbiny, szachownice.'],
+		['P.11c', 'przedwojenny myśliwiec – skrzydło mewie, otwarta kabina, silnik gwiazdowy w pierścieniu, barwy z lat 30.'],
+	] },
 	{ v: '0.21', title: 'Ptaki z daleka', items: [
 		['Stada', 'z wysokości – ruchome chmury migoczących kropek; z bliska – pełne modele w naturalnej wielkości.'],
 		['Obraz', 'poprawne wektory ruchu ptaków – wygładzanie nie zostawia smug.'],

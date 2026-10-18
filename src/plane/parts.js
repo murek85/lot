@@ -5,7 +5,7 @@ import {
 	Group, Mesh, SphereGeometry, CircleGeometry, LatheGeometry, PlaneGeometry, MeshBasicNodeMaterial, MeshStandardNodeMaterial, BoxGeometry,
 	CanvasTexture, SRGBColorSpace, DoubleSide, Vector2, Vector3, Quaternion,
 } from 'three/webgpu';
-import { vec3, float, max, uv, length, smoothstep, sin, atan, uniform, texture } from 'three/tsl';
+import { vec3, float, max, mix, uv, length, smoothstep, step, sin, atan, uniform, texture } from 'three/tsl';
 import { airfoil, profileSection, airfoilPanel, makeLoft, mergeGeometries, tube } from './geo.js';
 
 const DEG = Math.PI / 180;
@@ -58,7 +58,8 @@ export function cabinKit(cabin) {
 /**
  * Kadłub z kabiną: lakier, szyby, wnętrze (powierzchnia odsunięta do środka), ramy przeszklenia (z zewnątrz w
  * kolorze lakieru, od środka szarozielone). opts: { stations, zMin, zMax, step(z), cabin, pillars (z słupków),
- * frameR, innerY (środek kabiny do odsunięcia ram), aPillar (czy słupek A w wiatrochronie), centerBar }.
+ * frameR, innerY (środek kabiny do odsunięcia ram), aPillar (czy słupek A w wiatrochronie), centerBar, openFrom (otwarta
+ * kabina: za tym z nie ma ani szyby, ani poszycia – przed nim zostaje wiatrochron) }.
  */
 export function buildFuselage(add, root, M, opts) {
 	const { stations, cabin } = opts;
@@ -75,7 +76,8 @@ export function buildFuselage(add, root, M, opts) {
 	const loft = makeLoft(stations, zs, kit.ringAngles);
 	const { K, mirrorK, isGlassQuad } = kit;
 	add(loft.mesh((z0, z1, k) => !isGlassQuad(z0, z1, k)), M.fuselage);
-	const glass = add(loft.mesh(isGlassQuad), M.glass, root, { shadow: false });
+	const open = (z0, z1, k) => opts.openFrom !== undefined && (z0 + z1) / 2 > opts.openFrom && isGlassQuad(z0, z1, k);
+	const glass = add(loft.mesh((z0, z1, k) => isGlassQuad(z0, z1, k) && !open(z0, z1, k)), M.glass, root, { shadow: false });
 	glass.renderOrder = 2;
 	add(loft.mesh((z0, z1, k) => z0 > cabin.front - 0.2 && z1 < cabin.back + 0.2 && !isGlassQuad(z0, z1, k) && mirrorK(k) > 6, { inset: 0.025, flip: true }), M.cabinShell, root, { shadow: false });
 
@@ -298,6 +300,19 @@ export function underwingRegistration(root, mat, { pos, dihedral = 0, w = 3, h =
 		.multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI / 2))
 		.multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI / 2)));
 	root.add(d);
+}
+
+/**
+ * Szachownica lotnicza w układzie (u, v) – kwadrat −1..1, cztery pola na przemian czerwone i białe; frame – szerokość
+ * obwódki (wzór z 1993 r.: każde pole obwiedzione kolorem przeciwnym). Zwraca { inside, color } (TSL).
+ */
+export function checkerboard(u, v, frame = 0) {
+	const a = max(u.abs(), v.abs());
+	const q = step(0, u.mul(v)); // pola: prawe górne i lewe dolne czerwone
+	const inner = step(a, 1);
+	const inside = step(a, 1 + frame);
+	const red = mix(q.oneMinus(), q, inner);
+	return { inside, color: mix(vec3(1), vec3(0.8, 0.04, 0.08), red) };
 }
 
 /** Wspólne zakończenie modelu: bez odrzucania poza kadrem (części blisko kamery w kabinie). */

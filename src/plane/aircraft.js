@@ -2,7 +2,10 @@
 import { createDromader, REGISTRATION as DRB } from './model.js';
 import { createWilga, REGISTRATION as WGA } from './wilga.js';
 import { createExtra, REGISTRATION as AKR } from './extra.js';
-import { DROMADER, WILGA, EXTRA } from './flight.js';
+import { createAn2, REGISTRATION as ANT } from './an2.js';
+import { createOrlik, REGISTRATION as ORL } from './orlik.js';
+import { createP11c, REGISTRATION as P11 } from './p11c.js';
+import { DROMADER, WILGA, EXTRA, AN2, ORLIK, P11C } from './flight.js';
 
 export const AIRCRAFT = {
 	dromader: {
@@ -19,6 +22,21 @@ export const AIRCRAFT = {
 		id: 'extra', name: 'Extra 330LX', short: 'Extra', reg: AKR, build: createExtra, flight: EXTRA,
 		note: 'akrobacyjny, beczki i lot na plecach, 300°/s przechyłu',
 		specs: 'rozpiętość 7,5 m · 110–345 km/h · owiewka kroplowa',
+	},
+	an2: {
+		id: 'an2', name: 'PZL Mielec An-2', short: 'An-2', reg: ANT, build: createAn2, flight: AN2,
+		note: 'dwupłat „Antek”, ociężały, lata bardzo wolno i prawie nie daje się przeciągnąć',
+		specs: 'rozpiętość 18,2 m · 55–225 km/h · kabina dwuosobowa obok siebie',
+	},
+	orlik: {
+		id: 'orlik', name: 'PZL-130 Orlik', short: 'Orlik', reg: ORL, build: createOrlik, flight: ORLIK,
+		note: 'turbośmigłowy szkolny, akrobacja, chowane podwozie',
+		specs: 'rozpiętość 9,0 m · 120–415 km/h · kabina tandem',
+	},
+	p11c: {
+		id: 'p11c', name: 'PZL P.11c', short: 'P.11c', reg: P11, build: createP11c, flight: P11C,
+		note: 'przedwojenny myśliwiec, skrzydło mewie, otwarta kabina',
+		specs: 'rozpiętość 10,7 m · 110–375 km/h · silnik gwiazdowy Mercury',
 	},
 };
 

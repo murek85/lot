@@ -15,6 +15,9 @@ test('dźwięk: brzmienie dla każdego samolotu, częstotliwości z obrotów', (
 	// ton rośnie z obrotami: Extra (6 cylindrów, bez reduktora) – 40 Hz na jałowym, 135 Hz przy pełnym gazie
 	assert.ok(Math.abs(engineFreqs(2700, SOUND.extra).firing - 135) < 0.1);
 	assert.ok(Math.abs(engineFreqs(800, SOUND.extra).firing - 40) < 0.1);
+	// gwizd turbiny Orlika rośnie z obrotami; tłokowe go nie mają
+	assert.ok(engineFreqs(2000, SOUND.orlik).whine > engineFreqs(1100, SOUND.orlik).whine);
+	assert.ok(SOUND.orlik.turbine > 0 && !SOUND.an2.turbine && !SOUND.p11c.turbine);
 });
 
 test('dźwięk: poziomy warstw – gaz, prędkość, widok, odległość, kraksa, przeciągnięcie', () => {

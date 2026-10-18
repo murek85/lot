@@ -119,3 +119,20 @@ test('Wilga leci wolniej niż Dromader, zanim przeciągnie', async () => {
 	};
 	assert.ok(slow(WILGA) < slow(DROMADER) - 8);
 });
+
+test('hangar: każda maszyna ma spójne parametry lotu, akrobacyjne – prędkość beczki', async () => {
+	const { AIRCRAFT } = await import('../src/plane/aircraft.js');
+	for (const a of Object.values(AIRCRAFT)) {
+		const P = a.flight;
+		assert.ok(P.minSpeed < P.cruise && P.cruise < P.maxSpeed && P.maxSpeed < P.vne, a.id);
+		assert.ok(P.rpm[0] < P.rpm[1] && P.gearHeight > 1, a.id);
+		if (P.aerobatic) assert.ok(P.rollRate > 1, a.id);
+	}
+});
+
+test('An-2 leci najwolniej w hangarze, Orlik najszybciej', async () => {
+	const { AIRCRAFT } = await import('../src/plane/aircraft.js');
+	const all = Object.values(AIRCRAFT).map((a) => a.flight);
+	assert.equal(Math.min(...all.map((P) => P.minSpeed)), AIRCRAFT.an2.flight.minSpeed);
+	assert.equal(Math.max(...all.map((P) => P.maxSpeed)), AIRCRAFT.orlik.flight.maxSpeed);
+});

@@ -194,7 +194,16 @@ export class GameAudio {
 		this.chain(hornLfo, this.gain(0.5), this.hornGate.gain);
 		this.hornGate.gain.value = 0.5;
 
-		for (const o of [this.eng1, this.eng2, this.sub, this.lope, this.exOsc, this.bladeOsc, this.bladeTone, this.gustOsc, this.horn, hornLfo]) o.start();
+		// gwizd turbiny (tylko silnik turbośmigłowy): dwa rozstrojone tony przez wąski filtr
+		this.whine1 = c.createOscillator();
+		this.whine2 = c.createOscillator();
+		this.whine2.detune.value = 14;
+		this.whineBand = this.filter('bandpass', 3000, 4);
+		this.whineGain = this.gain(0);
+		this.whine1.connect(this.whineBand); this.whine2.connect(this.whineBand);
+		this.chain(this.whineBand, this.whineGain, this.bus);
+
+		for (const o of [this.eng1, this.eng2, this.sub, this.lope, this.exOsc, this.bladeOsc, this.bladeTone, this.gustOsc, this.horn, hornLfo, this.whine1, this.whine2]) o.start();
 	}
 
 	/** Barwa tonu zapłonów zależna od silnika: harmoniczne 1/n^k, gwiazdowy – mocniejsze parzyste (pomruk). */
@@ -236,6 +245,11 @@ export class GameAudio {
 		set(this.exBand.frequency, 260 + f.firing * (1.5 + this.snd.bright * 3));
 		set(this.exDepth.gain, 0.35 + this.snd.rough * 0.4);
 		set(this.exGain.gain, L.exhaust * 0.5);
+
+		set(this.whine1.frequency, f.whine);
+		set(this.whine2.frequency, f.whine * 0.5);
+		set(this.whineBand.frequency, f.whine);
+		set(this.whineGain.gain, L.engine * (this.snd.turbine ?? 0) * (s.view === 'cockpit' ? 0.05 : 0.09));
 
 		set(this.bladeOsc.frequency, f.blade);
 		set(this.bladeTone.frequency, f.blade);
