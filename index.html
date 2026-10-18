@@ -37,7 +37,7 @@
 			<label>Miniatura <output id="mini-v"></output><input id="mini" type="range" min="0" max="2" step="0.05"></label>
 			<label>Ekspozycja <output id="exposure-v"></output><input id="exposure" type="range" min="0.3" max="3" step="0.01"></label>
 			<label>Rzeźba terenu <output id="relief-v"></output><input id="relief" type="range" min="1" max="4" step="0.1"></label>
-			<p class="hint">Lot: A/D (←/→) – przechył i skręt · W/S (↑/↓) – wznoszenie i opadanie · E/Shift i Q – gaz · R – od nowa<br>Kamera: C – za samolotem / kabina / swobodna · V – kabina · przeciąganie myszą – obrót wokół samolotu (w kabinie – rozglądanie się) · kółko – odległość (w kabinie – pole widzenia) · dwuklik lub X – za ogon (w kabinie – na wprost) · L – reflektory · M – dźwięk · T – czas stop/start, Shift+T – przyspieszenie · H – panel</p>
+			<p class="hint">Lot: A/D (←/→) – przechył i skręt · W/S (↑/↓) – wznoszenie i opadanie · E/Shift i Q – gaz · R – od nowa<br>Kamera: C – za samolotem / kabina / swobodna · V – kabina · przeciąganie myszą – obrót wokół samolotu (w kabinie – rozglądanie się) · kółko – odległość (w kabinie – pole widzenia) · dwuklik lub X – za ogon (w kabinie – na wprost) · L – reflektory · M – dźwięk · T – czas stop/start, Shift+T – przyspieszenie · N – skala minimapy, Shift+N – jej obrót · Tab – duża mapa i cel · H – panel</p>
 		</div>
 	</div>
 	<div id="flight">
@@ -53,7 +53,15 @@
 		<div id="nav-where">—</div>
 		<div id="nav-coords"></div>
 		<div id="nav-wind"><i id="wind-arrow" aria-hidden="true">↑</i><span id="wind-text"></span></div>
+		<div id="nav-target" hidden></div>
 		<div id="nav-edge" hidden></div>
+	</div>
+	<canvas id="minimap" width="220" height="220" aria-label="Minimapa" title="N – skala · Shift+N – północ / kurs u góry"></canvas>
+	<div id="minimap-scale"></div>
+	<div id="labels3d" aria-hidden="true"></div>
+	<div id="bigmap" hidden>
+		<canvas></canvas>
+		<div class="bigmap-head"><b>Mapa</b><span class="bigmap-info">Kliknij miejscowość albo punkt – cel lotu · prawy przycisk – bez celu · przeciąganie i kółko – przesuwanie i powiększenie · Tab / Esc – zamknij</span></div>
 	</div>
 	<div id="esc-hint">Esc – pauza i menu</div>
 	<div id="fps"></div>

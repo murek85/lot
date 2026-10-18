@@ -64,6 +64,8 @@ export const DEFAULT_SETTINGS = {
 	trains: true, // ruch kolejowy
 	birds: true, // ptaki
 	people: true, // piesi
+	minimap: true, // minimapa w locie
+	labels3d: false, // nazwy miast nad krajobrazem
 	sound: true, // dźwięk włączony (klawisz M)
 	volume: 0.8, // głośność główna
 	engineVolume: 1, // silnik i śmigło

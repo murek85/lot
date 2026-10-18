@@ -30,7 +30,7 @@ test('„Co nowego”: wersje od bieżącej do 0.1, bieżąca zgodna z numerem w
 	const { readFileSync } = await import('node:fs');
 	const src = readFileSync(new URL('../src/ui/menu.js', import.meta.url), 'utf8');
 	const versions = [...src.matchAll(/\{ v: '(\d+\.\d+)'/g)].map((m) => m[1]);
-	assert.deepEqual(versions, ['0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
+	assert.deepEqual(versions, ['0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
 	assert.ok(src.includes(`'PROTOTYP ${versions[0]}'`));
 	const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 	assert.deepEqual([...log.matchAll(/^## (\d+\.\d+)/gm)].map((m) => m[1]), versions);
@@ -70,4 +70,27 @@ test('nawigacja: współrzędne, wiatr względem samolotu, granica mapy, opis po
 	assert.equal(dp(200, 300, pl), 'nad Zabrzem');
 	assert.equal(dp(9100, 50, pl), 'nad miejscowością Kopienice');
 	assert.equal(dp(0, -7000, pl), '7 km na płn. od Zabrza', 'odniesienie do miasta, nie bliższego przysiółka');
+});
+
+test('minimapa: przeliczenie świat → mapa, północ u góry i kurs u góry, skale', async () => {
+	const { worldToMap, SCALES } = await import('../src/ui/minimap.js');
+	const near = (a, b) => assert.ok(Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9, `${a} ≠ ${b}`);
+	// punkt 100 m na północ od samolotu, 1 px/m
+	near(worldToMap(0, -100, 0, 0, 1, false, 0), [0, -100]);
+	// kurs na wschód, kurs u góry: punkt na wschodzie jest „przed” samolotem – u góry
+	near(worldToMap(100, 0, 0, 0, 1, true, Math.PI / 2), [0, -100]);
+	// a punkt na północy – po lewej
+	near(worldToMap(0, -100, 0, 0, 1, true, Math.PI / 2), [-100, 0]);
+	assert.deepEqual(SCALES.map((s) => s.km), [2, 5, 15]);
+});
+
+test('cel lotu: odległość, kurs do celu, skręt, czas dolotu', async () => {
+	const { targetInfo } = await import('../src/ui/nav.js');
+	// cel 10 km na wschód, lecimy na północ z 50 m/s
+	const t = targetInfo(0, 0, 0, 50, 10000, 0);
+	assert.ok(Math.abs(t.bearing - 90) < 1e-9 && Math.abs(t.turn - 90) < 1e-9 && Math.abs(t.eta - 200) < 1e-9);
+	assert.ok(t.text.startsWith('10 km · 3 min · skręć 90° w prawo'), t.text);
+	assert.ok(targetInfo(0, 0, 0, 50, 0, -5000).text.includes('na kursie'));
+	assert.ok(targetInfo(0, 0, 0, 50, -3000, 0).text.includes('w lewo'));
+	assert.ok(targetInfo(0, 0, 0, 50, 100, 100).text.includes('nad celem'));
 });

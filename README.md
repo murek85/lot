@@ -86,6 +86,19 @@ Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 G
   Rytel”, poza zabudową „6 km na płn.-zach. od Tucholi” (od miejscowości bliskiej i ważnej, nie od najbliższego
   przysiółka); współrzędne geograficzne i region; **wiatr względem samolotu** (strzałka, prędkość, czołowy / w ogon /
   boczny z lewej lub prawej, skąd wieje); **ostrzeżenie o granicy mapy** poniżej 3 km z kursem powrotu.
+- **Minimapa** (`src/ui/minimap.js`, prawy dół): okrągły wycinek mapy bazowej regionu – pokrycie terenu w barwach
+  mapy turystycznej z cieniowaniem rzeźby, cieki, drogi (główne z obwódką, lokalne na biało), tory; 4096² (11 m na
+  piksel), budowana po wczytaniu porcjami (~0,75 s, bez zacięcia menu). Skale 2 / 5 / 15 km (**N**), kurs albo północ
+  u góry (**Shift+N**), nazwy miejscowości dobrane do skali (bez nakładania), miejsca startu, pierścień połowy
+  promienia, strzałka samolotu. Ustawienie zapamiętywane; wyłączenie – Ustawienia → Interfejs → Minimapa.
+- **Duża mapa i cel lotu** (`src/ui/bigmap.js`, **Tab** albo menu pauzy → „Mapa i cel lotu”): cały region z mapy
+  bazowej, przesuwanie (przeciąganie) i powiększanie kółkiem wokół kursora, nazwy dobrane do powiększenia, podziałka,
+  miejsca startu, samolot. Kliknięcie – **cel lotu** (przyciąga do pobliskiej nazwy, inaczej punkt), prawy przycisk –
+  bez celu. Na mapie czas stoi (jak na pauzie). Prowadzenie do celu: w panelu „Cel: Bytom · 10 km · 3 min · skręć 107°
+  w prawo” (na kursie / nad celem), niebieski znacznik na pasku kursu, znacznik albo strzałka na brzegu minimapy,
+  komunikat przy osiągnięciu celu; cel zapisuje się z lotem.
+- **Nazwy miast w krajobrazie** (opcja w Ustawienia → Interfejs): podpisy miast i miasteczek 0,8–15 km przed
+  samolotem, najbliższe 12.
 - **Nazwy miejscowości** w danych regionu (`meta.labels`: miasta, wsie, dzielnice, przysiółki – do 900): z warstwy
   „place” kafli OpenFreeMap – `npm run bake:labels -- <region>` dopisuje je do istniejącego regionu (Zabrze 900,
   Beskid Śląski 900, Bory Tucholskie 560), generator w grze zapisuje je od razu. Do nich – odmiana nazw miejsc
@@ -383,6 +396,8 @@ src/ui/menu.js             menu, pauza, plan lotu, zapisy, ustawienia
 src/ui/menu.css            styl menu, ekranu startowego i wczytywania
 src/ui/loading.js          ekrany wczytywania (tło 2D, karta, postęp)
 src/gen/                   generator regionów: worker, klient, dekoder MVT, kafle, konwersja, IndexedDB
+src/ui/bigmap.js           duża mapa i wybór celu lotu
+src/ui/minimap.js          minimapa: mapa bazowa regionu, wycinek, skale
 src/ui/nav.js              nawigacja: współrzędne, wiatr względny, granica mapy, pasek kursu
 src/ui/places.js           miejsca startu, pory, pogoda, opis położenia, pamięć przeglądarki
 src/plane/model.js         model Dromadera

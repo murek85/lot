@@ -45,6 +45,22 @@ export function edgeWarning(x, z, half, warnAt = 3000) {
 	return { dist, deg, text: `Granica mapy za ${(dist / 1000).toFixed(1).replace('.', ',')} km – zawróć na ${dir} (${String(deg).padStart(3, '0')}°)` };
 }
 
+/**
+ * Prowadzenie do celu: samolot (px, pz), kurs heading (rad), prędkość (m/s), cel (tx, tz). Zwraca { dist (m), bearing
+ * (stopnie, 0 = północ), turn (stopnie, + w prawo, −180…180), eta (s), text } – np. „14,2 km · 4 min · skręć 30° w prawo”.
+ */
+export function targetInfo(px, pz, heading, speed, tx, tz) {
+	const dx = tx - px, dz = tz - pz, dist = Math.hypot(dx, dz);
+	const bearing = ((Math.atan2(dx, -dz) * 180) / Math.PI + 360) % 360;
+	const hdg = ((heading * 180) / Math.PI + 360) % 360;
+	const turn = ((bearing - hdg + 540) % 360) - 180;
+	const eta = dist / Math.max(1, speed);
+	const km = dist < 10000 ? (dist / 1000).toFixed(1).replace('.', ',') : Math.round(dist / 1000);
+	const min = eta < 90 ? `${Math.max(1, Math.round(eta))} s` : `${Math.round(eta / 60)} min`;
+	const steer = dist < 600 ? 'nad celem' : Math.abs(turn) < 8 ? 'na kursie' : `skręć ${Math.round(Math.abs(turn))}° w ${turn > 0 ? 'prawo' : 'lewo'}`;
+	return { dist, bearing, turn, eta, text: `${km} km · ${min} · ${steer}` };
+}
+
 /** Skąd wieje (słownie) – wektor dokąd wieje. */
 export function windFromText(wx, wz) {
 	const ang = (Math.atan2(-wx, wz) + 2 * Math.PI) % (2 * Math.PI);
@@ -55,7 +71,7 @@ export function windFromText(wx, wz) {
  * Pasek kursu: taśma kompasu przesuwana z kursem (stopnie), co 5° kreska, co 10° dłuższa, co 30° liczba, kierunki
  * główne literami (N żółte). Opcjonalnie znacznik kursu powrotu do środka mapy (marker – stopnie).
  */
-export function drawCompass(ctx, w, h, hdgDeg, marker = null) {
+export function drawCompass(ctx, w, h, hdgDeg, marker = null, target = null) {
 	ctx.clearRect(0, 0, w, h);
 	const pxPerDeg = w / 110; // widać ±55°
 	const cx = w / 2;
@@ -85,6 +101,15 @@ export function drawCompass(ctx, w, h, hdgDeg, marker = null) {
 		ctx.fillStyle = '#ff8f7a';
 		ctx.beginPath();
 		ctx.moveTo(x, 12); ctx.lineTo(x - 5, 2); ctx.lineTo(x + 5, 2);
+		ctx.fill();
+	}
+	if (target != null) {
+		// cel: niebieski romb (poza zakresem – przy krawędzi paska)
+		const rel = ((target - hdgDeg + 540) % 360) - 180;
+		const x = cx + Math.max(-53, Math.min(53, rel)) * pxPerDeg;
+		ctx.fillStyle = '#8fd0ff';
+		ctx.beginPath();
+		ctx.moveTo(x, 4); ctx.lineTo(x + 6, 12); ctx.lineTo(x, 20); ctx.lineTo(x - 6, 12);
 		ctx.fill();
 	}
 	// wskaźnik środka

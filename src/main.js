@@ -37,7 +37,9 @@ import { aircraftById } from './plane/aircraft.js';
 import { sunPosition, sunDirection, dayOfYear } from './sun.js';
 import { nightSky, moonIllumination } from './moon.js';
 import { lonLatToLocal, localToLonLat } from './geo.js';
-import { formatLatLon, relativeWind, edgeWarning, windFromText, drawCompass } from './ui/nav.js';
+import { formatLatLon, relativeWind, edgeWarning, windFromText, drawCompass, targetInfo } from './ui/nav.js';
+import { BigMap } from './ui/bigmap.js';
+import { buildBaseMap, Minimap, SCALES } from './ui/minimap.js';
 import { transmittance, ATMOSPHERE } from './atmosphere/model.js';
 import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
@@ -245,10 +247,25 @@ async function start() {
 	const controls = { roll: 0, pitch: 0, yaw: 0 };
 	const keys = new Set();
 	window.addEventListener('keydown', (e) => {
+		// duża mapa: Tab – otwórz / zamknij (w locie), Esc – zamknij
+		if (bigMap?.open && (e.code === 'Escape' || e.code === 'Tab')) { e.preventDefault(); closeMap(); return; }
+		if (e.code === 'Tab' && !e.target.closest?.('input')) {
+			e.preventDefault();
+			if (game === 'flying' && bigMap) openMap(null);
+			return;
+		}
 		if (e.code === 'Escape') {
 			e.preventDefault();
 			if (menu.open) menu.escape();
 			else if (game === 'flying') pause();
+			return;
+		}
+		// N – skala minimapy, Shift+N – północ / kurs u góry
+		if (e.code === 'KeyN' && !e.target.closest?.('input') && !e.repeat && game === 'flying' && minimap) {
+			const txt = e.shiftKey ? (minimap.toggleRotate() ? 'Minimapa: kurs u góry' : 'Minimapa: północ u góry') : `Minimapa: ${minimap.nextScale().km} km`;
+			save('minimap', { scale: minimap.scale, rotate: minimap.rotate });
+			$('esc-hint').textContent = `${txt} · N / Shift+N`;
+			escHintUntil = performance.now() + 1600;
 			return;
 		}
 		// T – czas stop / start, Shift+T – następne przyspieszenie (×1 → ×10 → ×60)
@@ -376,6 +393,7 @@ async function start() {
 		if (k === 'renderScale') resize();
 		if (k === 'fps') b.toggle('no-fps', !v);
 		if (k === 'hud') b.toggle('no-hud', !v);
+		if (k === 'minimap') b.toggle('no-minimap', !v);
 		if (k === 'dev') b.toggle('dev', v);
 		if (k === 'reducedMotion') b.toggle('reduced-motion', v);
 		if (k === 'mouseSens') cockpitCam.sens = chase.sens = v;
@@ -385,7 +403,7 @@ async function start() {
 	};
 	const flightTitle = (f) => describePosition(f.x, f.z, positionPlaces);
 	const dateText = (d) => { const t = new Date(Date.UTC(YEAR, 0, d)); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; };
-	const snapshot = () => ({ v: 1, saved: Date.now(), aircraft: plane.type, flight: { ...flight }, env: { ...env }, state: { hour: state.hour, day: state.day, cover: state.cover, haze: state.haze }, mode, landing: plane.lights.landing });
+	const snapshot = () => ({ v: 1, saved: Date.now(), aircraft: plane.type, flight: { ...flight }, env: { ...env }, state: { hour: state.hour, day: state.day, cover: state.cover, haze: state.haze }, mode, landing: plane.lights.landing, target });
 	const enterFlight = (view) => {
 		game = 'flying';
 		document.body.classList.add('flying');
@@ -473,6 +491,7 @@ async function start() {
 			await nextFrames(1);
 			flight = { ...s.flight, crashed: false, onGround: false };
 			plane.lights.landing = s.landing ?? true;
+			setTarget(s.target ?? null, true);
 			lastStart = { snapshot: s };
 			const view = s.mode === 'cockpit' || s.mode === 'free' ? s.mode : 'plane';
 			setMode(view);
@@ -589,6 +608,7 @@ async function start() {
 		setEnvironment,
 		setSetting: (k, v) => { applySetting(k, v); save('settings', settings); },
 		saveSlot: (id) => saveWithCard(id),
+		openMap: () => openMap('pause'),
 		loadSlot: (id) => { const s = loadRaw(slotKey(id)); if (s?.flight) restoreSnapshot(s, id === 'auto' ? 'AUTOZAPIS' : `SLOT ${id}`); },
 		slotInfo: (id) => {
 			const s = loadRaw(slotKey(id));
@@ -648,6 +668,76 @@ async function start() {
 	const timer = new Timer();
 	let frames = 0, fpsTime = 0;
 	const compassCanvas = $('compass-c'), compassCtx = compassCanvas.getContext('2d');
+	// nazwy miast nad krajobrazem (opcja): miasta i miasteczka 0,8–15 km od kamery, rzutowane na ekran
+	const labelEls = [];
+	const labelPick = positionPlaces.filter((p) => p.cls === 'city' || p.cls === 'town' || !p.cls);
+	const lv = new Vector3();
+	const updateLabels3d = () => {
+		const cp = camera.position, W = innerWidth, Hh = innerHeight;
+		const vis = [];
+		for (const p of labelPick) {
+			const d = Math.hypot(p.x - cp.x, p.z - cp.z);
+			if (d < 800 || d > 15000) continue;
+			lv.set(p.x, groundAt(p.x, p.z) + 40, p.z).project(camera);
+			if (lv.z > 1 || Math.abs(lv.x) > 1 || Math.abs(lv.y) > 1) continue;
+			vis.push({ p, x: (lv.x + 1) / 2 * W, y: (1 - lv.y) / 2 * Hh, d });
+		}
+		vis.sort((a, b) => a.d - b.d);
+		vis.length = Math.min(vis.length, 12);
+		while (labelEls.length < vis.length) { const el = document.createElement('span'); $('labels3d').append(el); labelEls.push(el); }
+		labelEls.forEach((el, i) => {
+			const v = vis[i];
+			el.hidden = !v;
+			if (!v) return;
+			if (el.textContent !== v.p.name) el.textContent = v.p.name;
+			el.className = v.p.cls === 'city' ? 'city' : 'town';
+			el.style.left = `${v.x}px`; el.style.top = `${v.y}px`;
+			el.style.opacity = String(Math.min(1, (15000 - v.d) / 3000));
+		});
+	};
+	// cel lotu (duża mapa): { name, gen, x, z } albo null; prowadzenie w panelu, na pasku kursu i minimapie
+	let target = null, targetReached = false;
+	const setTarget = (t, quiet = false) => {
+		target = t ? { name: t.name ?? null, gen: t.gen ?? null, x: t.x, z: t.z } : null;
+		targetReached = false;
+		if (minimap) minimap.target = target;
+		if (!quiet) {
+			$('esc-hint').textContent = target ? `Cel lotu: ${target.name ?? 'punkt na mapie'}` : 'Bez celu lotu';
+			escHintUntil = performance.now() + 1800;
+		}
+	};
+	// duża mapa: w locie wstrzymuje symulację (jak pauza); z menu pauzy – powrót do pauzy
+	let bigMap = null, mapFrom = null;
+	const openMap = (from) => {
+		if (!bigMap || bigMap.open) return;
+		mapFrom = from ?? game;
+		if (game === 'flying') game = 'paused';
+		menu.hide();
+		document.body.classList.add('paused');
+		bigMap.show({ x: flight.x, z: flight.z, heading: flight.heading }, target);
+	};
+	const closeMap = () => {
+		if (!bigMap?.open) return;
+		bigMap.hide();
+		if (mapFrom === 'pause') menu.show('pause');
+		else { game = 'flying'; document.body.classList.remove('paused'); keys.clear(); }
+		mapFrom = null;
+	};
+	// minimapa: mapa bazowa budowana po pierwszej klatce (nie wydłuża wczytywania), płótno w rozdzielczości ekranu
+	let minimap = null;
+	const mmCanvas = $('minimap');
+	mmCanvas.width = mmCanvas.height = Math.round(220 * Math.min(2, window.devicePixelRatio || 1));
+	setTimeout(async () => {
+		const t0 = performance.now();
+		const base = await buildBaseMap(region, region.osm, 4096);
+		const labels = positionPlaces.map((p) => ({ name: p.name, cls: p.cls ?? 'town', x: p.x, z: p.z }));
+		minimap = new Minimap(mmCanvas, base, region.size, labels, places);
+		const st = load('minimap', { scale: 1, rotate: true });
+		minimap.scale = st.scale; minimap.rotate = st.rotate;
+		minimap.target = target;
+		bigMap = new BigMap($('bigmap'), base, region.size, labels, places, (t) => setTarget(t));
+		console.info(`Lot: mapa bazowa ${Math.round(performance.now() - t0)} ms`);
+	}, 300);
 	const { center } = region.meta;
 
 	const frame = () => {
@@ -892,11 +982,17 @@ async function start() {
 		worldShadow.update(mode !== 'free' ? plane.model.position : view.target, key);
 		post.render();
 
-		// pasek kursu (co klatkę – płynnie); przy granicy mapy znacznik kursu powrotu
+		// pasek kursu (co klatkę – płynnie); przy granicy mapy znacznik kursu powrotu; minimapa
+		if (game === 'flying' && minimap && settings.minimap !== false) {
+			minimap.draw(flight.x, flight.z, flight.heading);
+			$('minimap-scale').textContent = `${SCALES[minimap.scale].km} km · ${minimap.rotate ? 'kurs' : 'N'}↑`;
+		}
 		if (game === 'flying') {
 			const hdg = ((flight.heading * 180) / Math.PI + 360) % 360;
 			const back = edgeWarning(flight.x, flight.z, region.size / 2);
-			drawCompass(compassCtx, compassCanvas.width, compassCanvas.height, hdg, back ? back.deg : null);
+			const tgt = target ? targetInfo(flight.x, flight.z, flight.heading, flight.speed, target.x, target.z).bearing : null;
+			drawCompass(compassCtx, compassCanvas.width, compassCanvas.height, hdg, back ? back.deg : null, tgt);
+			if (settings.labels3d) updateLabels3d(); else if (labelEls.length) { for (const el of labelEls) el.remove(); labelEls.length = 0; }
 			$('compass-hdg').textContent = `${String(Math.round(hdg) % 360).padStart(3, '0')}°`;
 		}
 		frames++;
@@ -917,6 +1013,17 @@ async function start() {
 			$('wind-arrow').style.transform = `rotate(${rw.arrow}rad)`;
 			$('wind-arrow').style.visibility = rw.speed ? 'visible' : 'hidden';
 			$('wind-text').textContent = rw.speed ? `Wiatr ${rw.text} · z ${windFromText(wx.wind.x, wx.wind.z)}` : 'Wiatr: cisza';
+			// cel lotu: odległość, czas dolotu, skręt; przy celu – komunikat raz
+			$('nav-target').hidden = !target;
+			if (target) {
+				const ti = targetInfo(flight.x, flight.z, flight.heading, flight.speed, target.x, target.z);
+				$('nav-target').textContent = `Cel: ${target.name ?? 'punkt'} · ${ti.text}`;
+				if (ti.dist < 600 && !targetReached) {
+					targetReached = true;
+					$('esc-hint').textContent = `Cel osiągnięty${target.name ? `: ${target.name}` : ''} · Tab – nowy cel`;
+					escHintUntil = performance.now() + 3000;
+				}
+			}
 			const edge = edgeWarning(flight.x, flight.z, region.size / 2);
 			$('nav-edge').hidden = !edge;
 			if (edge) $('nav-edge').textContent = edge.text;
@@ -957,7 +1064,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

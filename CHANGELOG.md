@@ -3,6 +3,17 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.19 – duża mapa i cel lotu
+
+- Duża mapa regionu (Tab, menu pauzy): przesuwanie, powiększanie, nazwy, podziałka; kliknięcie – cel lotu.
+- Prowadzenie do celu: odległość, czas dolotu i skręt w panelu, znacznik na pasku kursu i minimapie, komunikat u celu.
+- Opcja: nazwy miast nad krajobrazem.
+
+## 0.18 – minimapa
+
+- Minimapa w rogu ekranu: lasy, pola, woda, zabudowa, rzeźba, drogi i tory, nazwy miejscowości, miejsca startu.
+- Skale 2 / 5 / 15 km (N), kurs albo północ u góry (Shift+N); wyłączenie w ustawieniach.
+
 ## 0.17 – nawigacja w locie
 
 - Pasek kursu (kompas) u góry ekranu i panel położenia: miejscowość z dzielnicą, odległość i kierunek od ważnej

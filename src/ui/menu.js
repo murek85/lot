@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.17'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.19'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,15 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.19', title: 'Duża mapa i cel lotu', items: [
+		['Mapa', 'Tab albo menu pauzy: cały region, przesuwanie i powiększanie, nazwy miejscowości.'],
+		['Cel lotu', 'kliknięcie na mapie – odległość, czas dolotu i skręt w panelu, znaczniki na pasku kursu i minimapie.'],
+		['Opcja', 'nazwy miast nad krajobrazem.'],
+	] },
+	{ v: '0.18', title: 'Minimapa', items: [
+		['Mapa', 'okrągła minimapa w rogu: lasy, pola, woda, zabudowa, rzeźba, drogi, tory i nazwy miejscowości.'],
+		['Sterowanie', 'N – skala 2 / 5 / 15 km, Shift+N – kurs albo północ u góry; wyłączenie w ustawieniach.'],
+	] },
 	{ v: '0.17', title: 'Nawigacja w locie', items: [
 		['Kurs', 'pasek kompasu u góry ekranu.'],
 		['Położenie', 'miejscowość z dzielnicą albo odległość i kierunek od miasta, współrzędne, wiatr względem samolotu.'],
@@ -140,6 +149,8 @@ const KEYS = [
 	['C', 'kamera: za samolotem → kabina → swobodna'],
 	['V', 'kabina i z powrotem'],
 	['L', 'reflektory do lądowania'],
+	['N / Shift+N', 'minimapa: skala 2 → 5 → 15 km / północ albo kurs u góry'],
+	['Tab', 'duża mapa: kliknięcie – cel lotu, prawy przycisk – bez celu'],
 	['T / Shift+T', 'czas: zatrzymaj i wznów / przyspieszenie ×1 → ×10 → ×60'],
 	['Kółko', 'odległość kamery; w kabinie – pole widzenia'],
 	['Przeciąganie myszą', 'obrót kamery wokół samolotu; w kabinie – rozglądanie się'],
@@ -299,7 +310,9 @@ export class GameMenu {
 			range('mouseSens', 'Czułość myszy', 0.4, 2, 0.05, FMT.mouseSens, 'obrót kamery za samolotem i rozglądanie się w kabinie') +
 			check('chaseReturn', 'Kamera wraca za ogon', 'po puszczeniu myszy kamera za samolotem łagodnie wraca do domyślnego ujęcia') +
 			range('cockpitFov', 'Pole widzenia w kabinie', 45, 90, 1, FMT.cockpitFov),
-			check('hud', 'Panel lotu', 'prędkość, wysokość, gaz w rogu ekranu') +
+			check('hud', 'Panel lotu', 'prędkość, wysokość, gaz, kurs i położenie') +
+			check('minimap', 'Minimapa', 'mapa okolicy w rogu ekranu; N – skala, Shift+N – obrót') +
+			check('labels3d', 'Nazwy miast w krajobrazie', 'podpisy miast i miasteczek 0,8–15 km przed samolotem') +
 			check('fps', 'Licznik klatek') +
 			check('reducedMotion', 'Ogranicz animacje menu') +
 			check('dev', 'Panel deweloperski', 'suwaki godziny, daty, chmur i powietrza; klawisz H'),
@@ -451,6 +464,7 @@ export class GameMenu {
 		return `<section class="menu-content">${this.head('<span class="pause-mark">Ⅱ</span>Lot wstrzymany.', 'Symulacja stoi – samolot zawisł w powietrzu do czasu wznowienia.')}
 			<div class="menu-actions">
 				${this.btn('resume', 'Wznów lot', { prominent: true, hint: '<kbd>ESC</kbd>' })}
+				${this.btn('map', 'Mapa i cel lotu', { hint: '<kbd>TAB</kbd>' })}
 				${this.btn('env', 'Pogoda i pora dnia')}
 				${this.btn('save', 'Zapisz lot — sloty')}
 				${this.btn('load', 'Wczytaj lot — sloty')}
@@ -547,6 +561,7 @@ export class GameMenu {
 			case 'geo': return this.search();
 			case 'generate': return this.startGenerate();
 			case 'env': return this.show('pauseEnv', 'pause');
+			case 'map': return g.openMap?.();
 			case 'resume': return g.resume();
 			case 'restart': return g.restart();
 			case 'menu': return g.toMenu();
