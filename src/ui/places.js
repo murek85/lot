@@ -51,6 +51,11 @@ export const DEFAULT_SETTINGS = {
 	hud: true,
 	dev: false,
 	reducedMotion: false,
+	sound: true, // dźwięk włączony (klawisz M)
+	volume: 0.8, // głośność główna
+	engineVolume: 1, // silnik i śmigło
+	ambientVolume: 1, // wiatr, podwozie, zdarzenia
+	uiSounds: true, // dźwięki menu
 };
 
 const DIRS = ['płn.', 'płn.-wsch.', 'wsch.', 'płd.-wsch.', 'płd.', 'płd.-zach.', 'zach.', 'płn.-zach.'];

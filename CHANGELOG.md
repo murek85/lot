@@ -3,6 +3,17 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.9 – dźwięk
+
+- **Dźwięk syntezowany w Web Audio** (bez plików nagrań): silnik z tonem zapłonów zależnym od obrotów i od maszyny
+  (gwiazdowy Dromadera i Wilgi, bokser Extry), pulsujący wydech, świst śmigła z przejściem łopat, wiatr rosnący
+  z prędkością, toczenie po ziemi.
+- Brzęczyk przeciągnięcia, przyziemienie (uderzenie i pisk opon zależny od opadania), kraksa i wybieg silnika.
+- Inne brzmienie w kabinie i z zewnątrz (odległość kamery, tłumienie wysokich tonów), cichy silnik w menu,
+  przytłumienie na pauzie.
+- Dźwięki menu: wskazanie, kliknięcie, wybór, powrót, sygnał gotowości po wczytaniu.
+- Ustawienia → Dźwięk (głośność ogólna, silnika, otoczenia, dźwięki menu), klawisz M – wyciszenie.
+
 ## 0.8 – generator regionów, Zabrze i Beskid Śląski
 
 - **Nowe regiony wbudowane** (46 × 46 km, kafle OpenStreetMap, rzeźba szczegółowa): **Zabrze** – teraz domyślny

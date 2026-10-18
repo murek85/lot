@@ -20,6 +20,8 @@ import { Plane } from './plane/plane.js';
 import { ChaseCamera } from './plane/chase.js';
 import { CockpitCamera } from './plane/cockpitcam.js';
 import { createFlight, stepFlight, propRpm } from './plane/flight.js';
+import { GameAudio } from './audio/audio.js';
+import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
 import { sunPosition, sunDirection, dayOfYear } from './sun.js';
 import { nightSky, moonIllumination } from './moon.js';
@@ -192,6 +194,15 @@ async function start() {
 			else if (game === 'flying') pause();
 			return;
 		}
+		// M – dźwięk wł./wył. (w menu i w locie; nie w polach tekstowych)
+		if (e.code === 'KeyM' && !e.target.closest?.('input') && !e.repeat) {
+			applySetting('sound', !settings.sound);
+			save('settings', settings);
+			$('esc-hint').textContent = settings.sound ? 'Dźwięk włączony · M' : 'Dźwięk wyłączony · M';
+			escHintUntil = performance.now() + 1800;
+			if (menu.screen === 'settings') menu.show('settings');
+			return;
+		}
 		if (menu.open) {
 			// Enter na przycisku klika go sam; poza przyciskiem – start (strona główna, plan) lub ponowny lot
 			if (e.code === 'Enter' && !e.target.closest?.('button, input')) menu.enter();
@@ -214,6 +225,13 @@ async function start() {
 	// --- panel ---
 	const state = { hour: 7.25, day: dayOfYear(6, 29, YEAR), haze: 6, exposure: 1, relief: 1, cover: 0.42, mini: 1 };
 	const settings = load('settings', DEFAULT_SETTINGS);
+	// dźwięk: kontekst powstaje przy pierwszym geście (ekran startowy wymaga kliknięcia lub klawisza)
+	const audio = new GameAudio();
+	audio.setSettings(settings);
+	const unlockAudio = () => audio.unlock();
+	window.addEventListener('pointerdown', unlockAudio, true);
+	window.addEventListener('keydown', unlockAudio, true);
+	document.addEventListener('visibilitychange', () => audio.setHidden(document.hidden));
 	let plan = load('plan', DEFAULT_PLAN);
 	if (!places.some((p) => p.id === plan.place)) plan.place = places[0].id;
 	const bind = (id, key, fmt, apply) => {
@@ -279,6 +297,7 @@ async function start() {
 		if (k === 'reducedMotion') b.toggle('reduced-motion', v);
 		if (k === 'mouseSens') cockpitCam.sens = chase.sens = v;
 		if (k === 'chaseReturn') chase.autoReturn = v;
+		if (['sound', 'volume', 'engineVolume', 'ambientVolume', 'uiSounds'].includes(k)) audio.setSettings(settings);
 		if (k === 'cockpitFov') { cockpitCam.fov = v; if (mode === 'cockpit') { camera.fov = v; camera.updateProjectionMatrix(); } }
 	};
 	const flightTitle = (f) => describePosition(f.x, f.z, places);
@@ -289,6 +308,7 @@ async function start() {
 		document.body.classList.add('flying');
 		menu.hide();
 		if (mode !== view) setMode(view === 'cockpit' || view === 'free' ? view : 'plane');
+		$('esc-hint').textContent = 'Esc – pauza i menu';
 		escHintUntil = performance.now() + 5000;
 		autosaveAt = performance.now() + 30000;
 	};
@@ -312,6 +332,7 @@ async function start() {
 			const view = await work(ls);
 			await warmUp(ls, 0.6, 0.97, 30, 'Kompilacja shaderów, chmury i światło…');
 			ls.done('Gotowe do startu', () => { busy = false; });
+			audio.ui('done');
 			enterFlight(view);
 		} catch (e) {
 			ls.close();
@@ -460,6 +481,7 @@ async function start() {
 		region: region.meta,
 		places: placeList,
 		switchRegion,
+		uiSound: (name) => audio.ui(name),
 		builtinRegions: Object.values(REGIONS),
 		generateRegion: generateWithScreen,
 		deleteRegion: (id) => deleteRegion(id).then(() => { if (id === region.meta.id) switchRegion(DEFAULT_REGION); }),
@@ -587,7 +609,10 @@ async function start() {
 			input = { roll, pitch: Math.max(-1, Math.min(1, (380 - agl) / 120)), throttle: 0 };
 			flight.throttle = 0.62;
 		}
-		if (game !== 'paused' && game !== 'loading' && stepFlight(flight, input, dt, groundAt, plane.spec.flight) === 'crash' && game === 'flying') {
+		const sinkBefore = -Math.sin(flight.gamma) * flight.speed;
+		const ev = game !== 'paused' && game !== 'loading' ? stepFlight(flight, input, dt, groundAt, plane.spec.flight) : null;
+		if (ev && game === 'flying') audio.event(ev, Math.min(1, Math.max(0, sinkBefore / 4.5)));
+		if (ev === 'crash' && game === 'flying') {
 			game = 'crashed';
 			crashAt = performance.now() + 1400;
 		}
@@ -599,6 +624,13 @@ async function start() {
 		controls.pitch += (input.pitch - controls.pitch) * ease;
 		controls.yaw += (input.roll * 0.4 - controls.yaw) * ease;
 		const rpm = propRpm(flight, plane.spec.flight);
+		if (audio.type !== plane.type) { audio.type = plane.type; audio.setAircraft(plane.type); }
+		audio.update(dt, {
+			rpm, throttle: flight.throttle, speed: flight.speed, onGround: flight.onGround, crashed: flight.crashed,
+			stall: stallAmount(flight.speed, plane.spec.flight), P: plane.spec.flight, game,
+			view: game === 'menu' ? 'menu' : mode === 'cockpit' ? 'cockpit' : mode === 'plane' ? 'chase' : 'free',
+			distance: camera.position.distanceTo(plane.model.position),
+		});
 		const simDt = game === 'paused' || game === 'loading' ? 0 : dt;
 		plane.update(flight, simDt, key, state.haze, rpm, controls, keyE, keyTint);
 		if (game === 'menu') menuCamera(t);
@@ -679,7 +711,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { audio, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

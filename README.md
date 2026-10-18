@@ -78,6 +78,27 @@ Regiony z polem `gen` wypieka `npm run bake:gen -- <id>` (`tools/bake-gen.js`) t
 (`src/gen/build.js`), z miejscami startu i odmianą nazw z `src/regions.js`; kafle zostają w `tools/.cache/tiles/`.
 Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 GB pamięci.
 
+## Dźwięk
+
+Cały dźwięk jest syntezowany w Web Audio (`src/audio/audio.js`) – bez plików nagrań. Poziomy i częstotliwości liczy
+`src/audio/mix.js` (testowany w Node):
+
+- **silnik**: ton zapłonów z obrotów (obroty śmigła × przełożenie × cylindry / 2) z harmonicznymi zależnymi od
+  silnika – Dromader (gwiazdowy ASz-62 z reduktorem, basowy i nierówny), Wilga (gwiazdowy AI-14), Extra (bokser
+  Lycominga, ostrzejszy); kołysanie z obrotu wału, nasycenie, filtr otwierający się z gazem;
+- **wydech**: szum w paśmie pulsujący z częstotliwością zapłonów;
+- **śmigło**: świst modulowany przejściem łopat i niski ton łopat;
+- **wiatr** (dwa pasma szumu różowego z podmuchami) rośnie z prędkością, **toczenie** po ziemi;
+- **brzęczyk przeciągnięcia**, **przyziemienie** (uderzenie podwozia i pisk opon zależny od opadania), **kraksa**
+  (uderzenie, gięta blacha), wybieg silnika po kraksie;
+- widok: w kabinie głośno i z przytłumioną górą, z zewnątrz – spadek z odległością kamery i tłumienie wysokich tonów;
+  w menu silnik krążącego samolotu cicho w tle; pauza przytłumia wszystko, wczytywanie wycisza;
+- **menu**: wskazanie, kliknięcie, wybór, powrót, przełącznik, sygnał gotowości po wczytaniu.
+
+Ustawienia → **Dźwięk**: włączenie, głośność, silnik i śmigło, wiatr i otoczenie, dźwięki menu; **M** – szybkie
+wyciszenie. Przeglądarka pozwala na dźwięk dopiero po geście – kontekst powstaje przy pierwszym kliknięciu lub
+klawiszu (ekran startowy), w karcie w tle jest wstrzymany.
+
 ## Grafika
 
 - **Atmosfera** (`src/atmosphere/`) według modelu S. Hillaire'a (2020), liczona na GPU:
@@ -230,6 +251,8 @@ src/clouds/noise3d.js      szumy 3D i mapa pogody (CPU)
 src/camera.js              kamera swobodna
 src/moon.js                Księżyc, czas gwiazdowy, sfera niebieska
 src/citylights.js          latarnie i okna nocą
+src/audio/audio.js         dźwięk: synteza Web Audio (silnik, śmigło, wiatr, zdarzenia, menu)
+src/audio/mix.js           poziomy i częstotliwości dźwięku
 src/ui/menu.js             menu, pauza, plan lotu, zapisy, ustawienia
 src/ui/menu.css            styl menu, ekranu startowego i wczytywania
 src/ui/loading.js          ekrany wczytywania (tło 2D, karta, postęp)

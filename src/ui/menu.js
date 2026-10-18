@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.8'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.9'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,12 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.9', title: 'Dźwięk', items: [
+		['Silnik', 'syntezowany warkot zależny od obrotów i maszyny – gwiazdowy Dromadera i Wilgi, bokser Extry; świst śmigła.'],
+		['Lot', 'wiatr rosnący z prędkością, brzęczyk przeciągnięcia, przyziemienie z piskiem opon, kraksa.'],
+		['Widok', 'inne brzmienie w kabinie i z zewnątrz, cichy silnik w menu, przytłumienie na pauzie.'],
+		['Ustawienia', 'zakładka Dźwięk z głośnościami i dźwiękami menu; klawisz M – wyciszenie.'],
+	] },
 	{ v: '0.8', title: 'Generator regionów, Zabrze i Beskid Śląski', items: [
 		['Nowe regiony', 'Zabrze z Gliwicami i Katowicami (teraz na start) oraz Beskid Śląski ze Szczyrkiem i Wisłą – po 46 × 46 km.'],
 		['Generator', 'nowy region w grze: miejscowość z wyszukiwarki albo propozycja (Katowice, Beskid Śląski, Jura…), 20–60 km, rzeźba standardowa lub szczegółowa.'],
@@ -101,6 +107,7 @@ const KEYS = [
 	['Dwuklik / X', 'kamera z powrotem za ogon; w kabinie – na wprost'],
 	['Esc', 'pauza i wznowienie, w menu – wstecz'],
 	['R', 'start od nowa z tego samego miejsca'],
+	['M', 'dźwięk – włącz / wycisz'],
 	['H', 'panel deweloperski (gdy włączony w ustawieniach)'],
 ];
 
@@ -114,6 +121,12 @@ export class GameMenu {
 		this.slotMode = 'load';
 		this.plan = { ...game.plan };
 		root.addEventListener('click', (e) => this.onClick(e));
+		// dźwięk wskazania: przy wejściu kursora na inny przycisk
+		root.addEventListener('pointerover', (e) => {
+			const b = e.target.closest('button');
+			if (b && b !== this.hovered && !b.disabled) this.game.uiSound?.('hover');
+			this.hovered = b;
+		});
 		root.addEventListener('input', (e) => this.onInput(e));
 		root.addEventListener('keydown', (e) => { if (e.code === 'Enter' && e.target.dataset?.gen === 'query') { e.preventDefault(); this.search(); } });
 		this.gen = { name: PRESETS[0].name, lon: PRESETS[0].lon, lat: PRESETS[0].lat, size: '46000', terrain: 'standard', buildings: 'all', query: '' };
@@ -228,7 +241,7 @@ export class GameMenu {
 
 	render_settings() {
 		const s = this.game.settings;
-		const tabs = [['Obraz', 'obraz'], ['Sterowanie', 'ster'], ['Interfejs', 'ui']];
+		const tabs = [['Obraz', 'obraz'], ['Sterowanie', 'ster'], ['Interfejs', 'ui'], ['Dźwięk', 'dzwiek']];
 		const range = (key, label, min, max, step, fmt, note = '') => `<label class="setting"><span>${label}<output>${fmt(s[key])}</output></span>
 			<input type="range" data-set="${key}" min="${min}" max="${max}" step="${step}" value="${s[key]}" data-fmt="${key}">${note ? `<small>${note}</small>` : ''}</label>`;
 		const check = (key, label, note = '') => `<label class="setting check"${note ? ` title="${esc(note)}"` : ''}><input type="checkbox" data-set="${key}"${s[key] ? ' checked' : ''}><span>${label}</span>${note ? `<small>${note}</small>` : ''}</label>`;
@@ -245,6 +258,11 @@ export class GameMenu {
 			check('fps', 'Licznik klatek') +
 			check('reducedMotion', 'Ogranicz animacje menu') +
 			check('dev', 'Panel deweloperski', 'suwaki godziny, daty, chmur i powietrza; klawisz H'),
+			check('sound', 'Dźwięk', 'klawisz M – szybkie wyciszenie') +
+			range('volume', 'Głośność', 0, 1, 0.01, FMT.volume) +
+			range('engineVolume', 'Silnik i śmigło', 0, 1.5, 0.01, FMT.volume, 'warkot silnika, świst śmigła, brzęczyk przeciągnięcia') +
+			range('ambientVolume', 'Wiatr i otoczenie', 0, 1.5, 0.01, FMT.volume, 'opływ powietrza, toczenie po ziemi, przyziemienie i kraksa') +
+			check('uiSounds', 'Dźwięki menu', 'kliknięcia i wskazania przycisków'),
 		];
 		return `<section class="menu-content menu-window">${this.head('Ustawienia.', '')}
 			<div class="menu-tabs" role="tablist">${tabs.map(([t], i) => `<button role="tab" data-tab="${i}" aria-selected="${i === this.settingsTab}"><small>0${i + 1}</small>${t}</button>`).join('')}</div>
@@ -426,6 +444,8 @@ export class GameMenu {
 		const t = e.target.closest('button');
 		if (!t || t.disabled) return;
 		const g = this.game;
+		const d = t.dataset;
+		if (d.act !== 'back') g.uiSound?.(d.pick || d.env || d.tab || d.genopt || d.genplace || d.del ? 'select' : 'click'); // „Wróć” – dźwięk w escape()
 		if (t.dataset.go) return this.show(t.dataset.go, this.screen);
 		if (t.dataset.tab) { this.settingsTab = +t.dataset.tab; return this.show('settings'); }
 		if (t.dataset.pick) {
@@ -501,6 +521,7 @@ export class GameMenu {
 		if (!key) return;
 		const v = el.type === 'checkbox' ? el.checked : +el.value;
 		this.game.setSetting(key, v);
+		if (el.type === 'checkbox') this.game.uiSound?.('toggle');
 		if (el.type === 'range') {
 			this.fill(el);
 			const out = el.closest('.setting')?.querySelector('output');
@@ -516,6 +537,7 @@ export class GameMenu {
 	escape() {
 		const s = this.screen;
 		if (!s) return false;
+		if (s !== 'home' && s !== 'crash') this.game.uiSound?.('back');
 		if (s === 'pause') { this.game.resume(); return true; }
 		if (s === 'crash' || s === 'home') return true;
 		this.show(this.from[s] || (this.game.inFlight() ? 'pause' : 'home'));
@@ -546,4 +568,5 @@ const FMT = {
 	relief: (v) => `×${(+v).toFixed(1)}`,
 	mouseSens: (v) => `×${(+v).toFixed(2)}`,
 	cockpitFov: (v) => `${Math.round(v)}°`,
+	volume: (v) => (v < 0.005 ? 'cisza' : `${Math.round(v * 100)}%`),
 };
