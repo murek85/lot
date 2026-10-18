@@ -4,8 +4,19 @@
 export const EARTH_RADIUS = 6371008.8;
 const DEG = Math.PI / 180;
 
-/** Długość/szerokość → metry względem środka regionu (rzut równoodległościowy, błąd < 0,1% na 50 km). */
+const mercZ = (lat) => -EARTH_RADIUS * Math.log(Math.tan(Math.PI / 4 + (lat * DEG) / 2));
+
+/**
+ * Długość/szerokość → metry względem środka regionu: rzut równoodległościowy (błąd < 0,1% na 50 km) albo – gdy
+ * środek ma pole merc: { k } (otwarty świat) – Web Mercator przeskalowany o k (k = cos szerokości startu). Mercator
+ * jest jeden dla całej Ziemi, więc przesunięcie początku układu to czyste przesunięcie (bez szwów między kaflami
+ * policzonymi przed i po), kosztem skali rosnącej z odległością od szerokości startu (~1% na 100 km na płn.–płd.).
+ */
 export function lonLatToLocal(lon, lat, center) {
+	if (center.merc) {
+		const k = center.merc.k;
+		return { x: (lon - center.lon) * DEG * EARTH_RADIUS * k, z: (mercZ(lat) - mercZ(center.lat)) * k };
+	}
 	return {
 		x: (lon - center.lon) * DEG * EARTH_RADIUS * Math.cos(center.lat * DEG),
 		z: -(lat - center.lat) * DEG * EARTH_RADIUS,
@@ -13,6 +24,11 @@ export function lonLatToLocal(lon, lat, center) {
 }
 
 export function localToLonLat(x, z, center) {
+	if (center.merc) {
+		const k = center.merc.k;
+		const mz = z / k + mercZ(center.lat);
+		return { lon: center.lon + x / (EARTH_RADIUS * k) / DEG, lat: (2 * Math.atan(Math.exp(-mz / EARTH_RADIUS)) - Math.PI / 2) / DEG };
+	}
 	return {
 		lon: center.lon + x / (EARTH_RADIUS * Math.cos(center.lat * DEG)) / DEG,
 		lat: center.lat - z / EARTH_RADIUS / DEG,

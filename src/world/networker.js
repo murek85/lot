@@ -9,6 +9,8 @@ import { buildRoadGraph, edgeGrid, packNetwork } from '../traffic/graph.js';
 import { railsAsRoads } from '../traffic/trains.js';
 
 const OFM = 'https://tiles.openfreemap.org/planet';
+// komórki siatek krawędzi – dzielniki kroku przesunięcia początku układu (14 080 m), siatki przesuwa się w całości
+export const GRID_CARS = 256, GRID_TRAINS = 640;
 let tpl = null, originKey = '';
 const cache = new Map(); // "x/y" → osm kafla (ostatnio używane)
 
@@ -34,9 +36,9 @@ self.onmessage = async (e) => {
 		const R = await Promise.all(roads.map(([x, y]) => osmOf(x, y, origin)));
 		const T = await Promise.all(rails.map(([x, y]) => osmOf(x, y, origin)));
 		const cg = buildRoadGraph(R.flatMap((o) => o.roads));
-		const cars = packNetwork(cg, edgeGrid(cg.edges));
+		const cars = packNetwork(cg, edgeGrid(cg.edges, GRID_CARS));
 		const tg = buildRoadGraph(railsAsRoads(T.flatMap((o) => o.rails)), { maxClass: 2 });
-		const trains = packNetwork(tg, edgeGrid(tg.edges, 500));
+		const trains = packNetwork(tg, edgeGrid(tg.edges, GRID_TRAINS));
 		const stations = T.flatMap((o) => o.stations);
 		self.postMessage({ type: 'net', req, cars: cars.packed, trains: trains.packed, stations, ms: performance.now() - t0 }, [...cars.transfer, ...trains.transfer]);
 	} catch (err) {

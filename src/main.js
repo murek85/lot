@@ -11,7 +11,8 @@ import { createRails } from './rails.js';
 import { createRivers } from './rivers.js';
 import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
-import { WORLD_ID, worldStart, worldRegion, createWorld } from './world/world.js';
+import { WORLD_ID, worldStart, worldRegion, createWorld, REBASE_AT, REBASE_STEP } from './world/world.js';
+import { WorldLights } from './world/lights.js';
 import { setTerrainUniforms, setCityLights, snowCover } from './gfx/ground.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
@@ -41,7 +42,7 @@ import { nightSky, moonIllumination } from './moon.js';
 import { lonLatToLocal, localToLonLat } from './geo.js';
 import { formatLatLon, relativeWind, edgeWarning, windFromText, drawCompass, targetInfo } from './ui/nav.js';
 import { BigMap } from './ui/bigmap.js';
-import { buildBaseMap, Minimap, SCALES } from './ui/minimap.js';
+import { buildBaseMap, regionBase, Minimap, SCALES } from './ui/minimap.js';
 import { transmittance, ATMOSPHERE } from './atmosphere/model.js';
 import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
@@ -133,10 +134,12 @@ async function start() {
 	const plane = new Plane(renderer, scene, atmo);
 	const worldShadow = new WorldShadow(renderer, scene);
 	// nocne światła osad: przed materiałami (teren, drogi, budynki doliczają plamy światła latarni)
-	const cityLights = region.osm ? createCityLights(region.osm, region) : null;
+	// (otwarty świat: latarnie z doczytywanych kafli, plamy światła w oknie wokół kamery – src/world/lights.js)
+	const worldLights = region.world ? new WorldLights() : null;
+	const cityLights = worldLights ?? (region.osm ? createCityLights(region.osm, region) : null);
 	setCityLights(cityLights);
 	// otwarty świat (wersja rozwojowa): kafle doczytywane wokół samolotu zamiast terenu regionu
-	const world = region.world ? createWorld(region, scene, atmo, clouds, plane, worldShadow) : null;
+	const world = region.world ? createWorld(region, scene, atmo, clouds, plane, worldShadow, worldLights) : null;
 	const terrain = world ? world.terrain : createTerrain(region, atmo, clouds, plane, worldShadow);
 	if (!world) setTerrainUniforms(terrain.uniforms, region.heightTex, region.size);
 	if (cityLights) scene.add(cityLights.createGlows(terrain, atmo.u.pixelAngle));
@@ -407,7 +410,7 @@ async function start() {
 		if (k === 'renderScale') resize();
 		if (k === 'fps') b.toggle('no-fps', !v);
 		if (k === 'hud') b.toggle('no-hud', !v);
-		if (k === 'minimap') b.toggle('no-minimap', !v || !!world);
+		if (k === 'minimap') b.toggle('no-minimap', !v);
 		if (k === 'dev') b.toggle('dev', v);
 		if (k === 'reducedMotion') b.toggle('reduced-motion', v);
 		if (k === 'mouseSens') cockpitCam.sens = chase.sens = v;
@@ -417,7 +420,7 @@ async function start() {
 	};
 	const flightTitle = (f) => describePosition(f.x, f.z, positionPlaces);
 	const dateText = (d) => { const t = new Date(Date.UTC(YEAR, 0, d)); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; };
-	const snapshot = () => ({ v: 1, saved: Date.now(), aircraft: plane.type, flight: { ...flight }, env: { ...env }, state: { hour: state.hour, day: state.day, cover: state.cover, haze: state.haze }, mode, landing: plane.lights.landing, target });
+	const snapshot = () => ({ v: 1, saved: Date.now(), origin: world ? { ...region.meta.center } : undefined, aircraft: plane.type, flight: { ...flight }, env: { ...env }, state: { hour: state.hour, day: state.day, cover: state.cover, haze: state.haze }, mode, landing: plane.lights.landing, target });
 	const enterFlight = (view) => {
 		game = 'flying';
 		document.body.classList.add('flying');
@@ -506,6 +509,12 @@ async function start() {
 			await nextFrames(1);
 			if (world) await world.ready(s.flight.x, s.flight.z, 2500, (f) => ls.progress(0.45 + f * 0.12, 'Kafle mapy wokół samolotu…'));
 			flight = { ...s.flight, crashed: false, onGround: false };
+			// otwarty świat: położenie zapisane względem ówczesnego początku układu – przeliczenie na obecny
+			if (world && s.origin) {
+				const re = (p) => { const ll = localToLonLat(p.x, p.z, s.origin), q = lonLatToLocal(ll.lon, ll.lat, region.meta.center); return { ...p, x: q.x, z: q.z }; };
+				flight = re(flight);
+				if (s.target) s = { ...s, target: re(s.target) };
+			}
 			plane.lights.landing = s.landing ?? true;
 			setTarget(s.target ?? null, true);
 			lastStart = { snapshot: s };
@@ -692,6 +701,15 @@ async function start() {
 	// nazwy miast nad krajobrazem (opcja): miasta i miasteczka 0,8–15 km od kamery, rzutowane na ekran
 	const labelEls = [];
 	const labelPick = positionPlaces.filter((p) => p.cls === 'city' || p.cls === 'town' || !p.cls);
+	// otwarty świat: miejscowości z doczytanych kafli – do opisu położenia i podpisów w krajobrazie
+	if (world) {
+		world.map.onPlaces = (list) => {
+			const ps = list.filter((p) => !placeNames.has(p.name));
+			positionPlaces.push(...ps);
+			labelPick.push(...ps.filter((p) => p.cls === 'city' || p.cls === 'town'));
+		};
+		world.map.onPlaces([...world.map.labels]); // kafle wczytane przed startem
+	}
 	const lv = new Vector3();
 	const updateLabels3d = () => {
 		const cp = camera.position, W = innerWidth, Hh = innerHeight;
@@ -750,9 +768,9 @@ async function start() {
 	mmCanvas.width = mmCanvas.height = Math.round(208 * Math.min(2, window.devicePixelRatio || 1));
 	setTimeout(async () => {
 		const t0 = performance.now();
-		if (world) { document.body.classList.add('no-minimap'); return; } // otwarty świat: mapy jeszcze nie ma (etap 2c)
-		const base = await buildBaseMap(region, region.osm, 4096);
-		const labels = positionPlaces.map((p) => ({ name: p.name, cls: p.cls ?? 'town', x: p.x, z: p.z }));
+		// otwarty świat: płytki mapy i nazwy miejscowości z kafli (lista rośnie z doczytywaniem)
+		const base = world ? world.map : regionBase(await buildBaseMap(region, region.osm, 4096), region.size);
+		const labels = world ? world.map.labels : positionPlaces.map((p) => ({ name: p.name, cls: p.cls ?? 'town', x: p.x, z: p.z }));
 		minimap = new Minimap(mmCanvas, base, region.size, labels, places);
 		const st = load('minimap', { scale: 1, rotate: true });
 		minimap.scale = st.scale; minimap.rotate = st.rotate;
@@ -760,8 +778,27 @@ async function start() {
 		bigMap = new BigMap($('bigmap'), base, region.size, labels, places, (t) => setTarget(t));
 		console.info(`Lot: mapa bazowa ${Math.round(performance.now() - t0)} ms`);
 	}, 300);
-	const { center } = region.meta;
+	// środek układu (otwarty świat przesuwa go razem z początkiem układu – region.meta.center)
+	let center = region.meta.center;
 	const worldFocus = { x: 0, z: 0 };
+	const shiftOrigin = (dx, dz) => {
+		const ms = world.rebase(dx, dz, { traffic, trains, people });
+		center = region.meta.center;
+		flight.x -= dx; flight.z -= dz;
+		for (const v of [camera.position, chase.look, chase._goal, view.target, view.goal.target]) { v.x -= dx; v.z -= dz; }
+		camera.updateMatrixWorld();
+		for (const p of places) { p.x -= dx; p.z -= dz; } // miejsca startu (też w opisie położenia)
+		if (target) { target.x -= dx; target.z -= dz; }
+		for (const g of birds.sim.groups) {
+			g.x -= dx; g.z -= dz; g.tx -= dx; g.tz -= dz;
+			if (g.thermal) { g.thermal.x -= dx; g.thermal.z -= dz; }
+			for (const b of g.birds) { b.x -= dx; b.z -= dz; }
+		}
+		precip.camPrev.x -= dx; precip.camPrev.z -= dz;
+		clouds.shiftOrigin(dx, dz);
+		forest.shiftOrigin?.(dx, dz);
+		console.info(`Lot: początek układu przesunięty o ${(dx / 1000).toFixed(1)}, ${(dz / 1000).toFixed(1)} km (${ms.toFixed(1)} ms)`);
+	};
 
 	const frame = () => {
 		timer.update();
@@ -994,6 +1031,11 @@ async function start() {
 		atmo.update(sun, camera.position.y);
 		renderer.toneMappingExposure = state.exposure * autoExposure(sun.y);
 		terrain.update(camera, t);
+		// otwarty świat: daleko od początku układu – początek pod samolot (czyste przesunięcie, bez wczytywania)
+		if (world && Math.hypot(flight.x, flight.z) > REBASE_AT) {
+			const dx = Math.round(flight.x / REBASE_STEP) * REBASE_STEP, dz = Math.round(flight.z / REBASE_STEP) * REBASE_STEP;
+			shiftOrigin(dx, dz);
+		}
 		if (world) {
 			// doczytywanie wokół samolotu (w widoku swobodnym – wokół środka widoku)
 			const f = mode === 'free' && game !== 'menu' ? view.target : flight;
@@ -1095,7 +1137,7 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { world, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

@@ -3,7 +3,7 @@
 // (podniesione płyty) i linie torów dla maski lasu.
 import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
 import { Fn, float, vec3, attribute, varying, positionLocal, uniform, abs, max, min, mix, smoothstep, step, fract, fwidth, dot, select, pow, normalize, cameraPosition, clamp } from 'three/tsl';
-import { onGround, cityLight } from './gfx/ground.js';
+import { onGround, cityLight, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
 import { densify, ribbon } from './roads.js';
 
@@ -76,7 +76,7 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 	const along = varying(attribute('aDist', 'float'), 'vRailDist');
 	const kind = varying(attribute('aKind', 'float'), 'vRailKind');
 	m.colorNode = Fn(() => {
-		const xz = vWorld.xz;
+		const xz = vWorld.xz.add(worldOffset);
 		const fp = max(fwidth(xz.x), fwidth(xz.y)).max(0.03);
 		const across = side.mul(BED / 2); // metry od osi toru
 		const detail = float(1).sub(smoothstep(0.25, 1.2, fp));

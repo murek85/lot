@@ -7,7 +7,7 @@ import {
 	Fn, float, vec2, vec3, floor, attribute, varying, positionLocal, uniform, max, mix, smoothstep, step, fract, dot, normalize,
 	cameraPosition, pow, select, fwidth, instancedBufferAttribute, uv, exp, clamp, length, time,
 } from 'three/tsl';
-import { onGround, cityLight, cityUniforms } from './gfx/ground.js';
+import { onGround, cityLight, cityUniforms, worldOffset } from './gfx/ground.js';
 import { hash12 } from './gfx/noise.js';
 import { valueNoise } from './gfx/noise.js';
 import { rng } from './clouds/noise3d.js';
@@ -380,11 +380,11 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const band = step(0.5, fract(buv.y.div(H.mul(0.45 / 7)).mul(0.5)));
 		const striped = step(light.x, -1.5).mul(step(H.mul(0.55), buv.y));
 		const wallBase = mix(wallC, mix(vec3(0.78, 0.78, 0.76), vec3(0.6, 0.07, 0.04), band), striped);
-		const wallAlb = mix(wallBase.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.div(2)))), glass, win.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin)));
+		const wallAlb = mix(wallBase.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(2)))), glass, win.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin)));
 		// dachówki: drobne pasy wzdłuż połaci, płaskie dachy – plamy papy
 		const tiles = mix(float(0.88), float(1.08), step(0.5, fract(buv.y.div(0.35))).mul(detail));
-		const roofAlb = roofC.mul(tiles).mul(mix(float(0.85), float(1.1), valueNoise(vWorld.xz.div(3))));
-		const flatAlb = roofC.mul(mix(float(0.8), float(1.15), valueNoise(vWorld.xz.div(4))));
+		const roofAlb = roofC.mul(tiles).mul(mix(float(0.85), float(1.1), valueNoise(vWorld.xz.add(worldOffset).div(3))));
+		const flatAlb = roofC.mul(mix(float(0.8), float(1.15), valueNoise(vWorld.xz.add(worldOffset).div(4))));
 		// tylne ściany (wnętrze chłodni widziane z góry) – ciemne
 		const back = select(dot(N, V).lessThan(0), float(0.12), float(1));
 		const albedo = select(kind.lessThan(0.5), wallAlb, select(kind.lessThan(1.5), roofAlb, flatAlb)).mul(back);

@@ -2,15 +2,15 @@
 // pierścień obiektów), kolejka „najbliższe najpierw”, pula wątków (src/world/chunkworker.js), zwalnianie kafli
 // za zasięgiem, wysokość terenu w dowolnym punkcie (z siatek wczytanych kafli). Układ świata: metry względem
 // początku origin (x – wschód, z – południe); przesunięcie początku – rebase().
-import { lonToTileX, latToTileY, localToLonLat, lonLatToLocal } from '../geo.js';
-import { GRID } from './chunkdata.js';
+import { lonToTileX, latToTileY, localToLonLat, EARTH_RADIUS } from '../geo.js';
+import { GRID, CHUNK_Z, shiftOsm } from './chunkdata.js';
 
 /** Kafle z14 w promieniu r (m) od punktu (x, z) układu origin, od najbliższego; [{ x, y, d }]. */
 export function tilesAround(x, z, r, origin, Z = 14) {
 	const c = localToLonLat(x, z, origin);
 	const tx = lonToTileX(c.lon, Z), ty = latToTileY(c.lat, Z);
 	// rozmiar kafla w metrach (szerokość geograficzna punktu)
-	const tileM = (40075016.7 * Math.cos((c.lat * Math.PI) / 180)) / 2 ** Z;
+	const tileM = (2 * Math.PI * EARTH_RADIUS * (origin.merc ? origin.merc.k : Math.cos((c.lat * Math.PI) / 180))) / 2 ** Z;
 	const n = Math.ceil(r / tileM) + 1;
 	const out = [];
 	for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
@@ -43,6 +43,7 @@ export class WorldStreamer {
 		this.origin = { ...origin };
 		this.radius = opts.radius ?? 9000;
 		this.objectRadius = opts.objectRadius ?? 4500;
+		this.Z = opts.z ?? CHUNK_Z; // poziom kafli (daleki teren – FAR_Z)
 		this.onLoad = opts.onLoad ?? (() => {});
 		this.onUnload = opts.onUnload ?? (() => {});
 		this.onObjects = opts.onObjects ?? (() => {});
@@ -63,7 +64,7 @@ export class WorldStreamer {
 	/** Wywoływane co klatkę: punkt odniesienia (samolot) – ustala potrzebne kafle, zleca, zwalnia. */
 	update(x, z) {
 		this.center = { x, z };
-		const want = tilesAround(x, z, this.radius, this.origin);
+		const want = tilesAround(x, z, this.radius, this.origin, this.Z);
 		const keep = new Set();
 		this.queue = [];
 		for (const t of want) {
@@ -80,7 +81,7 @@ export class WorldStreamer {
 			if (!this.pending.has(k)) this.queue.push(t);
 		}
 		// zwalnianie: poza zasięgiem z zapasem 25%
-		const far = new Set(tilesAround(x, z, this.radius * 1.25, this.origin).map((t) => `${t.x}/${t.y}`));
+		const far = new Set(tilesAround(x, z, this.radius * 1.25, this.origin, this.Z).map((t) => `${t.x}/${t.y}`));
 		for (const [k, ch] of this.chunks) {
 			if (far.has(k)) continue;
 			if (ch.objectsOn) this.onObjects(ch, false);
@@ -99,7 +100,7 @@ export class WorldStreamer {
 				const req = ++this.req;
 				this.pending.set(k, req);
 				w.busy++;
-				w.postMessage({ type: 'chunk', req, x: t.x, y: t.y, origin: this.origin });
+				w.postMessage({ type: 'chunk', req, x: t.x, y: t.y, z: this.Z, origin: this.origin });
 			}
 		}
 	}
@@ -125,7 +126,7 @@ export class WorldStreamer {
 	/** Kafel w punkcie (x, z) albo null. */
 	chunkAt(x, z) {
 		const c = localToLonLat(x, z, this.origin);
-		return this.chunks.get(`${Math.floor(lonToTileX(c.lon, 14))}/${Math.floor(latToTileY(c.lat, 14))}`) ?? null;
+		return this.chunks.get(`${Math.floor(lonToTileX(c.lon, this.Z))}/${Math.floor(latToTileY(c.lat, this.Z))}`) ?? null;
 	}
 
 	/** Wysokość terenu (m n.p.m.) w punkcie – dwuliniowo z siatki kafla; poza wczytanymi – ostatnia znana / 0. */
@@ -148,21 +149,23 @@ export class WorldStreamer {
 
 	/** Ile kafli brakuje w promieniu r wokół punktu (do ekranu wczytywania). */
 	missing(x, z, r) {
-		return tilesAround(x, z, r, this.origin).filter((t) => !this.chunks.has(`${t.x}/${t.y}`)).length;
+		return tilesAround(x, z, r, this.origin, this.Z).filter((t) => !this.chunks.has(`${t.x}/${t.y}`)).length;
 	}
 
 	/**
-	 * Nowy początek układu (lon, lat): wszystkie kafle wczytywane od nowa (dane w IndexedDB – szybko); zwraca
-	 * przesunięcie (dx, dz), o które trzeba przesunąć samolot i kamerę.
+	 * Nowy początek układu w punkcie (dx, dz) obecnego (rzut Mercatora – czyste przesunięcie): wczytane kafle
+	 * przesunięte w miejscu (ramy i obiekty; siatki w scenie przesuwa onShift), zlecenia w toku – od nowa.
 	 */
-	rebase(lon, lat) {
-		const p = lonLatToLocal(lon, lat, this.origin);
-		for (const ch of this.chunks.values()) { if (ch.objectsOn) this.onObjects(ch, false); this.onUnload(ch); }
-		this.chunks.clear();
+	rebase(dx, dz) {
+		const ll = localToLonLat(dx, dz, this.origin);
+		this.origin = { lon: ll.lon, lat: ll.lat, merc: this.origin.merc };
+		for (const ch of this.chunks.values()) {
+			ch.frame.x0 -= dx; ch.frame.z0 -= dz;
+			shiftOsm(ch.osm, dx, dz);
+		}
 		this.pending.clear();
 		this.queue = [];
-		this.origin = { lon, lat };
-		return { dx: -p.x, dz: -p.z };
+		if (this.center) this.center = { x: this.center.x - dx, z: this.center.z - dz };
 	}
 
 	dispose() { for (const w of this.workers) w.terminate(); }

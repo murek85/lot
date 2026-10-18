@@ -2,6 +2,13 @@
 // o tyle, o ile przewyższenie rzeźby (suwak) podniosło teren w tym miejscu – sam obiekt zachowuje wysokość – oraz
 // krzywizna Ziemi względem kamery. Dzięki temu obiekty nie odrywają się od terenu przy zmianie przewyższenia.
 import { vec3, dot, texture, uniform } from 'three/tsl';
+import { Vector2 } from 'three/webgpu';
+
+/**
+ * Przesunięcie początku układu (otwarty świat, m): dodawane do współrzędnych wzorów proceduralnych (pola, drzewostany,
+ * rozmieszczenie drzew, szumy nawierzchni), żeby po przesunięciu początku krajobraz wyglądał tak samo. W regionach 0.
+ */
+export const worldOffset = uniform(new Vector2());
 
 /** Śnieg na ziemi 0..1 (pogoda „Śnieg”) – teren i korony drzew bieleją. */
 export const snowCover = uniform(0);

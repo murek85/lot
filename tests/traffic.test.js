@@ -106,7 +106,7 @@ test('pociągi: jadą po szlaku, stają na stacji, na końcu toru zawracają; os
 	if (sim.trains[0].type !== 'freight') assert.ok(stopped, 'postój na stacji');
 });
 
-import { packNetwork, unpackNetwork, projectToGraph } from '../src/traffic/graph.js';
+import { packNetwork, unpackNetwork, projectToGraph, shiftGraph, shiftGrid } from '../src/traffic/graph.js';
 
 test('sieć spakowana do tablic i z powrotem – te same krawędzie, węzły, drogi i siatka', () => {
 	const roads = [road(0, [[-3000, 0], [0, 0], [3000, 0]], 1), road(3, [[0, -2000], [0, 0], [0, 2000]]), road(4, [[500, 10], [900, 600]])];
@@ -168,4 +168,33 @@ test('pociągi: przebudowa sieci – pociąg zostaje na torze i jedzie w tę sam
 	assert.ok(Math.abs(c.z) < 1);
 	assert.equal(Math.sign(c.hx), Math.sign(hx));
 	assert.ok(Math.abs(c.x - x0) < 200);
+});
+
+test('ruch: przebudowa sieci po kawałku – część pojazdów jeszcze na starym grafie, bez zderzeń pasów', () => {
+	const roads = [road(2, [[-3000, 0], [3000, 0]]), road(3, [[0, -2000], [0, 2000]])];
+	const g = buildRoadGraph(roads);
+	const sim = new TrafficSim(g, edgeGrid(g.edges), { radius: 1500, max: 300, seed: 8 });
+	for (let i = 0; i < 300; i++) sim.step(1 / 30, { x: 0, z: 0 });
+	const g2 = buildRoadGraph(roads);
+	sim.rebind(g2, edgeGrid(g2.edges), 5);
+	assert.ok(sim.agents.some((a) => a.g === g) && sim.agents.some((a) => a.g === g2), 'oba grafy w użyciu');
+	for (let i = 0; i < 120; i++) sim.step(1 / 30, { x: 0, z: 0 });
+	assert.ok(sim.agents.every((a) => a.g === g2), 'wszystkie przepięte');
+	for (const k of sim.lanes.keys()) assert.ok(k.startsWith(`${g2.tag}:`));
+});
+
+test('sieć: przesunięcie początku układu – graf (zwykły i spakowany) i siatka krawędzi', () => {
+	const roads = [road(3, [[0, 0], [600, 0]]), road(3, [[300, -400], [300, 400]])];
+	for (const packed of [false, true]) {
+		let g = buildRoadGraph(roads), grid = edgeGrid(g.edges, 256);
+		if (packed) ({ graph: g, grid } = unpackNetwork(packNetwork(g, grid).packed));
+		shiftGraph(g, 14080, -14080);
+		shiftGrid(grid, 14080, -14080);
+		const hit = projectToGraph(g, grid, 100 - 14080, 14080 + 1, 1, 0);
+		assert.ok(hit, packed ? 'spakowany' : 'zwykły');
+		const p = pointAt(g.edges[hit.edge], hit.s);
+		assert.ok(Math.hypot(p.x - (100 - 14080), p.z - 14080) < 1e-3);
+		assert.ok(g.nodes.every((n) => n.z >= 14080 - 400 && n.z <= 14080 + 400));
+	}
+	assert.throws(() => shiftGrid({ cell: 250, map: new Map([['0,0', [1]]]) }, 14080, 0), 'przesunięcie nie jest wielokrotnością komórki');
 });

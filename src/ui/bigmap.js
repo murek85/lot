@@ -7,7 +7,7 @@ const FONT = { city: '700 15px', town: '700 13.5px', village: '600 12px', suburb
 const MIN_ZOOM = { city: 0, town: 0, village: 14, suburb: 22, quarter: 40, hamlet: 45, neighbourhood: 70, isolated_dwelling: 90 };
 
 export class BigMap {
-	/** root – element nakładki (z <canvas> i paskiem), base – mapa bazowa, size – bok regionu (m). */
+	/** root – element nakładki (z <canvas> i paskiem), base – źródło mapy (regionBase albo WorldMap), size – bok regionu (m). */
 	constructor(root, base, size, labels, starts, onTarget) {
 		this.root = root;
 		this.cv = root.querySelector('canvas');
@@ -107,11 +107,13 @@ export class BigMap {
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.fillStyle = 'rgb(46,52,60)';
 		ctx.fillRect(0, 0, W, H);
-		// mapa bazowa
+		// mapa bazowa (region – jedno płótno, otwarty świat – płytki kafli)
+		ctx.save();
+		ctx.translate(W / 2, H / 2);
+		base.drawOn(ctx, this.cx, this.cz, this.pxPerM, Math.hypot(W, H) / 2 / this.pxPerM);
+		ctx.restore();
 		const [x0, y0] = this.toScreen(-this.size / 2, -this.size / 2);
 		const s = this.size * this.pxPerM;
-		ctx.imageSmoothingEnabled = true;
-		ctx.drawImage(base, x0, y0, s, s);
 		ctx.strokeStyle = 'rgba(255,255,255,0.35)';
 		ctx.lineWidth = 1;
 		ctx.strokeRect(x0, y0, s, s);

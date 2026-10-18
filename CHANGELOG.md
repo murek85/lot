@@ -3,6 +3,31 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.25 – otwarty świat bez granic, daleki teren
+
+- **Przesuwanie początku układu**: otwarty świat liczony w rzucie Mercatora o stałej skali (z szerokości startu) –
+  przesunięcie początku to czyste przesunięcie. Gdy samolot odleci ~20 km, początek przesuwa się pod niego o
+  wielokrotność 14 080 m: kafle, siatki, okna gruntu i świateł, mapa, sieci ruchu, ptaki, kamery i chmury
+  przesunięte w miejscu (~20 ms, bez wczytywania), wzory proceduralne (pola, drzewostany, rozmieszczenie drzew,
+  nawierzchnie) liczone w układzie stałym względem Ziemi (`worldOffset`) – krajobraz się nie zmienia.
+  Lot bez ograniczenia ~150 km; zapis lotu pamięta początek układu.
+- **Daleki teren z rzeźbą**: kafle z11 (~12,5 km) do 50 km – rzeźba Terrarium z11, pokrycie z mapy z11, ten sam
+  shader gruntu; pod wczytanymi kaflami z14 odrzucany (maska), styk zasłaniają „fartuchy” kafli. Góry na horyzoncie
+  (z Beskidów widać Babią Górę).
+- Poprawka: kafle wysokości pod kaflem – wszystkie w pokrytym prostokącie (wcześniej tylko narożne).
+
+## 0.24 – mapa i noc w otwartym świecie
+
+- **Minimapa i duża mapa** w otwartym świecie: płytki mapy z kafli (pokrycie, cieniowanie rzeźby, cieki, drogi,
+  tory) rysowane po jednej na klatkę i pamiętane (do 400) – przeleciany obszar zostaje na mapie; minimapa i duża
+  mapa rysują mapę przez wspólny interfejs (`regionBase` dla regionów, `WorldMap` dla świata).
+- **Nazwy miejscowości** z kafli: opis położenia („nad miastem Katowice · Śródmieście”), podpisy w krajobrazie i na
+  mapach – lista rośnie z doczytywaniem.
+- **Światła osad nocą**: latarnie liczone dla każdego kafla (ulice w zabudowie), poświaty wszystkich wczytanych
+  kafli w jednym spricie, plamy światła na ziemi w oknie wokół kamery; okna budynków jak w regionach.
+- Podmiana sieci ruchu bez zacięcia: krok na klatkę (samochody, pociągi, piesi), samochody przepinane po 300 na krok
+  – do tego czasu jadą po starym grafie (pasy i przyczółki osobno dla każdego grafu). Podmiana ~5 ms zamiast ~30 ms.
+
 ## 0.23 – otwarty świat (wersja rozwojowa)
 
 - **Otwarty świat** jako osobny tryb w rozwoju: generator → „Otwarty świat stąd” – kafle mapy (OpenFreeMap z14)

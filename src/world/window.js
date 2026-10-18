@@ -68,6 +68,13 @@ export class GroundWindow {
 		this.tex.needsUpdate = true;
 	}
 
+	/** Nowy początek układu w (dx, dz) – wielokrotność SIZE: piksele trzymają te same miejsca, zmienia się tylko róg. */
+	shift(dx, dz) {
+		if (this.ox === null) return;
+		this.ox -= dx; this.oz -= dz;
+		this.dirty = this.dirty.map(([a, b, c, d]) => [a - dx, b - dx, c - dz, d - dz]);
+	}
+
 	/** Nowy kafel: jego prostokąt (część w oknie) do przepisania. */
 	chunkLoaded(ch) {
 		if (this.ox === null) return;

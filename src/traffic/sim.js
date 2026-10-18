@@ -28,10 +28,13 @@ function rng(seed) {
 	return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; };
 }
 
+let TAG = 0; // numer grafu (pasy i przyczółki osobno dla każdego)
+
 export class TrafficSim {
 	/** graph – z buildRoadGraph, grid – z edgeGrid; opts: { radius, max, seed }. */
 	constructor(graph, grid, opts = {}) {
 		this.g = graph;
+		graph.tag ??= ++TAG;
 		this.grid = grid;
 		this.radius = opts.radius ?? 2500;
 		this.max = opts.max ?? 2500;
@@ -82,7 +85,8 @@ export class TrafficSim {
 		this.baseTarget = sum;
 	}
 
-	lane(a) { return `${a.edge.id}:${a.dir}`; }
+	// pas: graf (po przebudowie sieci część pojazdów jeszcze na starym), krawędź, kierunek
+	lane(a) { return `${a.g.tag}:${a.edge.id}:${a.dir}`; }
 
 	addToLane(a) {
 		const k = this.lane(a);
@@ -115,7 +119,7 @@ export class TrafficSim {
 		for (let i = 0; i < VEHICLES.length; i++) { pick -= VEHICLES[i].share[urban]; if (pick <= 0) { type = i; break; } }
 		const V = VEHICLES[type];
 		const a = {
-			edge: e, dir, s, type, len: V.len, width: V.width,
+			g: this.g, edge: e, dir, s, type, len: V.len, width: V.width,
 			vmax: SPEED[e.cls] * V.speed * (0.85 + this.random() * 0.3), v: 0,
 			color: type === 3 ? [0.75, 0.62, 0.12] : type === 2 && this.random() < 0.5 ? [0.85, 0.85, 0.83] : CAR_COLORS[Math.floor(this.random() * CAR_COLORS.length)],
 			lanePick: this.random(),
@@ -133,7 +137,7 @@ export class TrafficSim {
 	/** Dalsza droga z węzła na końcu krawędzi: bez zawracania (chyba że ślepa), wolą podobną lub ważniejszą klasę. */
 	nextEdge(a) {
 		const nodeId = a.dir === 1 ? a.edge.b : a.edge.a;
-		const node = this.g.nodes[nodeId];
+		const g = a.g, node = g.nodes[nodeId];
 		const opts = node.out.filter((o) => o.edge !== a.edge.id);
 		if (!opts.length) {
 			const back = node.out.find((o) => o.edge === a.edge.id);
@@ -141,7 +145,7 @@ export class TrafficSim {
 		}
 		let sum = 0;
 		const w = opts.map((o) => {
-			const c = this.g.edges[o.edge].cls;
+			const c = g.edges[o.edge].cls;
 			const x = c <= a.edge.cls ? 1 : 0.35 / (1 + c - a.edge.cls);
 			sum += x;
 			return x;
@@ -154,6 +158,7 @@ export class TrafficSim {
 	/** Krok: center – punkt odniesienia (kamera/samolot na ziemi), dt – s. */
 	step(dt, center) {
 		this.center = center;
+		this.rebindStep(300);
 		this.updateTarget();
 		const target = Math.min(this.max, Math.round(this.baseTarget * this.density));
 		this.target = target;
@@ -181,7 +186,7 @@ export class TrafficSim {
 				const nx = this.nextEdge(a);
 				this.removeFromLane(a);
 				if (!nx) { a.dead = true; break; }
-				a.edge = this.g.edges[nx.edge];
+				a.edge = a.g.edges[nx.edge];
 				a.dir = nx.dir;
 				a.s = rest;
 				a.vmax = SPEED[a.edge.cls] * VEHICLES[a.type].speed * (0.85 + a.lanePick * 0.3);
@@ -196,29 +201,40 @@ export class TrafficSim {
 	}
 
 	/**
-	 * Nowa sieć (otwarty świat – graf z kafli wokół samolotu): pojazdy przepięte na najbliższą krawędź nowego grafu
-	 * w tym samym kierunku jazdy; te, których nie da się przepiąć (droga poza nową siecią), znikają.
+	 * Nowa sieć (otwarty świat – graf z kafli wokół samolotu): pojazdy przepinane na najbliższą krawędź nowego grafu
+	 * w tym samym kierunku jazdy – najwyżej batch od razu, reszta w kolejnych krokach (do tego czasu jadą po starym
+	 * grafie); te, których nie da się przepiąć (droga poza nową siecią), znikają.
 	 */
-	rebind(graph, grid) {
-		const old = this.agents;
+	rebind(graph, grid, batch = Infinity) {
 		this.g = graph;
+		graph.tag ??= ++TAG;
 		this.grid = grid;
-		this.lanes = new Map();
 		this.cellCache.clear();
 		this.lastCell = '';
-		this.wayEnds.clear();
-		this.agents = [];
-		for (const a of old) {
+		this.rebindQueue = this.agents.filter((a) => a.g !== graph);
+		this.rebindStep(batch);
+	}
+
+	rebindStep(n) {
+		const q = this.rebindQueue;
+		if (!q?.length) return;
+		const graph = this.g, grid = this.grid, dead = new Set();
+		for (let k = 0; k < n && q.length; k++) {
+			const a = q.pop();
+			if (!this.agents.includes(a) || a.g === graph) continue;
+			this.removeFromLane(a);
 			const hit = projectToGraph(graph, grid, a.x, a.z, a.hx, a.hz, Math.max(6, a.edge.width / 2 + 2));
-			if (!hit) continue;
-			const e = graph.edges[hit.edge];
-			if (e.cls > CAR_MAX_CLASS || (e.oneway && hit.dir !== e.oneway)) continue;
+			const e = hit && graph.edges[hit.edge];
+			if (!e || e.cls > CAR_MAX_CLASS || (e.oneway && hit.dir !== e.oneway)) { dead.add(a); continue; }
+			a.g = graph;
 			a.edge = e;
 			a.dir = hit.dir;
 			a.s = hit.dir === 1 ? hit.s : e.len - hit.s;
 			this.addToLane(a);
-			this.agents.push(a);
 		}
+		if (dead.size) this.agents = this.agents.filter((a) => !dead.has(a));
+		// stare grafy bez pojazdów – ich wysokości przyczółków niepotrzebne
+		if (!q.length) for (const k of this.wayEnds.keys()) if (!k.startsWith(`${graph.tag}:`)) this.wayEnds.delete(k);
 	}
 
 	/** Położenie i kierunek pojazdu: prawy pas (dwukierunkowe), na jednokierunkowych – losowy pas. */
@@ -235,13 +251,14 @@ export class TrafficSim {
 		a.hx = hx; a.hz = hz;
 		if (e.bridge) {
 			// pomost – prosta między przyczółkami drogi (jak w src/bridges.js)
-			let ends = this.wayEnds.get(e.way);
+			const g = a.g, wk = `${g.tag}:${e.way}`;
+			let ends = this.wayEnds.get(wk);
 			if (!ends) {
-				const w = this.g.ways[e.way], first = this.g.edges[w.first], last = this.g.edges[w.last];
+				const w = g.ways[e.way], first = g.edges[w.first], last = g.edges[w.last];
 				ends = [this.heightAt(first.pts[0], first.pts[1]), this.heightAt(last.pts[last.pts.length - 2], last.pts[last.pts.length - 1])];
-				this.wayEnds.set(e.way, ends);
+				this.wayEnds.set(wk, ends);
 			}
-			const t = (e.wayS0 + sAlong) / Math.max(1, this.g.ways[e.way].len);
+			const t = (e.wayS0 + sAlong) / Math.max(1, g.ways[e.way].len);
 			a.y = ends[0] + (ends[1] - ends[0]) * t + 0.6;
 		} else a.y = this.heightAt(a.x, a.z) + 0.05;
 	}

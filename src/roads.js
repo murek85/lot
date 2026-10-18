@@ -7,7 +7,7 @@ import {
 	Fn, float, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, smoothstep, step, fract,
 	fwidth, dot, select,
 } from 'three/tsl';
-import { onGround, cityLight } from './gfx/ground.js';
+import { onGround, cityLight, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
 
 const EARTH_R = 6371000;
@@ -172,7 +172,7 @@ export function makeRoadMaterial(region, atmo, clouds, plane, worldShadow) {
 	const cls = varying(attribute('aCls', 'float'), 'vRoadCls');
 
 	m.colorNode = Fn(() => {
-		const xz = vWorld.xz;
+		const xz = vWorld.xz.add(worldOffset);
 		const footprint = max(fwidth(xz.x), fwidth(xz.y)).max(0.05);
 		const u = side; // −1..1 w poprzek
 		const fromEdge = float(1).sub(abs(u)).mul(width).mul(0.5); // metry od krawędzi

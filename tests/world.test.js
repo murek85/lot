@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chunkFrame, heightTilesFor, chunkHeights, gridNormals, chunkObjects, chunkMask, GRID, COVER_RES, CHUNK_Z, MASK_RES } from '../src/world/chunkdata.js';
+import { chunkFrame, heightTilesFor, chunkHeights, gridNormals, chunkObjects, chunkMask, shiftOsm, GRID, COVER_RES, CHUNK_Z, MASK_RES, FAR_Z } from '../src/world/chunkdata.js';
 import { tilesAround, gridHeightAt } from '../src/world/streamer.js';
 import { worldRegion, WORLD_SIZE } from '../src/world/world.js';
 import { COVER } from '../src/gen/terrain.js';
-import { lonToTileX, latToTileY, lonLatToLocal } from '../src/geo.js';
+import { lonToTileX, latToTileY, lonLatToLocal, localToLonLat } from '../src/geo.js';
 
 const ORIGIN = { lon: 18.7856, lat: 50.3249 }; // Zabrze
 const TX = Math.floor(lonToTileX(ORIGIN.lon, CHUNK_Z)), TY = Math.floor(latToTileY(ORIGIN.lat, CHUNK_Z));
@@ -89,6 +89,7 @@ test('Otwarty świat: region zastępczy – środek w miejscu startu, start w (0
 	const p = lonLatToLocal(r.meta.places[0].lon, r.meta.places[0].lat, r.meta.center);
 	assert.ok(Math.hypot(p.x, p.z) < 1e-6);
 	assert.equal(r.meta.cover.classes, COVER);
+	assert.ok(Math.abs(r.meta.center.merc.k - Math.cos((51.759 * Math.PI) / 180)) < 1e-12, 'rzut Mercatora o skali startu');
 });
 
 test('Otwarty świat: maska dróg, torów i rzek kafla – pas wzdłuż osi, poza nim pusto', () => {
@@ -106,4 +107,55 @@ test('Otwarty świat: maska dróg, torów i rzek kafla – pas wzdłuż osi, poz
 	assert.equal(at(F.x0 + 900, zMid + 30), 0, 'obok drogi');
 	assert.equal(at(F.x0 + 300 + 10, F.z0 + 200), 255, 'pas nadbrzeżny rzeki');
 	assert.equal(at(F.x0 + 300 + 40, F.z0 + 200), 0);
+});
+
+import { addPlaces } from '../src/world/maptiles.js';
+
+test('Otwarty świat: miejscowości z kafli – kolejność ważności, bez powtórzeń, bez nieznanych klas', () => {
+	const list = [];
+	assert.equal(addPlaces(list, [{ name: 'Brynów', cls: 'suburb', x: 0, z: 0 }, { name: 'Katowice', cls: 'city', x: 10, z: 10 }]), 2);
+	assert.equal(addPlaces(list, [{ name: 'Katowice', cls: 'city', x: 500, z: 0 }, { name: 'Pole', cls: 'locality', x: 0, z: 0 }, { name: 'Mysłowice', cls: 'town', x: 9000, z: 0 }]), 1);
+	assert.deepEqual(list.map((p) => p.name), ['Katowice', 'Mysłowice', 'Brynów']);
+	// ta sama nazwa daleko – inna miejscowość
+	assert.equal(addPlaces(list, [{ name: 'Brynów', cls: 'suburb', x: 30000, z: 0 }]), 1);
+});
+
+const MERC = { ...ORIGIN, merc: { k: Math.cos((ORIGIN.lat * Math.PI) / 180) } };
+
+test('Otwarty świat: rzut Mercatora – odwracalny, skala 1 przy starcie, przesunięcie początku to czyste przesunięcie', () => {
+	const p = lonLatToLocal(19.3, 50.6, MERC), q = localToLonLat(p.x, p.z, MERC);
+	assert.ok(Math.abs(q.lon - 19.3) < 1e-9 && Math.abs(q.lat - 50.6) < 1e-9);
+	// skala przy początku jak w rzucie równoodległościowym
+	const a = lonLatToLocal(ORIGIN.lon + 0.01, ORIGIN.lat - 0.01, MERC), b = lonLatToLocal(ORIGIN.lon + 0.01, ORIGIN.lat - 0.01, ORIGIN);
+	assert.ok(Math.abs(a.x - b.x) < 0.01 && Math.abs(a.z - b.z) < 1);
+	// nowy początek 50 km dalej – każdy punkt przesuwa się o ten sam wektor (bez szwów między kaflami)
+	const c2 = { ...localToLonLat(28160, -42240, MERC), merc: MERC.merc };
+	for (const [lon, lat] of [[18.5, 50.1], [19.9, 51.0], [19.2, 50.4]]) {
+		const u = lonLatToLocal(lon, lat, MERC), v = lonLatToLocal(lon, lat, c2);
+		assert.ok(Math.abs(u.x - v.x - 28160) < 1e-6 && Math.abs(u.z - v.z + 42240) < 1e-6);
+	}
+	// kafle z14 w Mercatorze – równe kwadraty
+	const f1 = chunkFrame(TX, TY, MERC), f2 = chunkFrame(TX + 3, TY + 5, MERC);
+	assert.ok(Math.abs(f1.w - f2.w) < 1e-6 && Math.abs(f1.h - f2.h) < 1e-6 && Math.abs(f1.w - f1.h) < 1e-6);
+});
+
+test('Otwarty świat: przesunięcie obiektów kafla o nowy początek', () => {
+	const osm = { roads: [[3, 70, 0, 0, 0, [100, 200, 300, 400], 0]], rails: [[0, 0, 0, 0, [0, 0, 10, 10]]], buildings: [[0, 80, -1, 0, [50, 50, 60, 60]]], waterways: [[30, [1, 2]]], platforms: [[[5, 5]]], stations: [[0, [7, 7], 'X']], places: [{ name: 'A', cls: 'village', x: 1000, z: 2000 }] };
+	shiftOsm(osm, 14080, -28160);
+	assert.deepEqual(osm.roads[0][5], [100 - 140800, 200 + 281600, 300 - 140800, 400 + 281600]);
+	assert.deepEqual(osm.stations[0][1], [7 - 140800, 7 + 281600]);
+	assert.deepEqual([osm.places[0].x, osm.places[0].z], [1000 - 14080, 2000 + 28160]);
+	assert.equal(osm.platforms[0][0][0], 5 - 140800);
+});
+
+test('Otwarty świat: daleki teren – kafel z11 i jego kafle wysokości z11 (z sąsiadami na margines)', () => {
+	const fx = TX >> 3, fy = TY >> 3;
+	const hs = heightTilesFor(fx, fy, FAR_Z, FAR_Z).map(([x, y]) => `${x}/${y}`);
+	assert.ok(hs.includes(`${fx}/${fy}`), 'sam kafel');
+	assert.equal(hs.length, 9);
+	const F = chunkFrame(fx, fy, MERC, FAR_Z);
+	assert.ok(F.w > 12000 && F.w < 13500, `bok ${F.w}`);
+	// kafel z11 to dokładnie 8 × 8 kafli z14
+	const n = chunkFrame(fx * 8, fy * 8, MERC);
+	assert.ok(Math.abs(n.x0 - F.x0) < 1e-6 && Math.abs(n.w * 8 - F.w) < 1e-6);
 });

@@ -319,3 +319,27 @@ export function unpackNetwork(P) {
 	P.keys.forEach((k, i) => map.set(k, P.cellIds.subarray(P.cellOff[i], P.cellOff[i + 1])));
 	return { graph: { nodes, edges, ways }, grid: { cell: P.cell, map, cellsOf: P.cellsOf } };
 }
+
+/** Przesunięcie grafu o (−dx, −dz) (nowy początek układu): punkty krawędzi i węzły (także spakowane – wspólne tablice). */
+export function shiftGraph(g, dx, dz) {
+	const P = g.edges[0]?.P ?? g.nodes[0]?.P;
+	if (P) {
+		for (let i = 0; i < P.pts.length; i += 2) { P.pts[i] -= dx; P.pts[i + 1] -= dz; }
+		for (let i = 0; i < P.nXZ.length; i += 2) { P.nXZ[i] -= dx; P.nXZ[i + 1] -= dz; }
+	} else {
+		for (const e of g.edges) for (let i = 0; i < e.pts.length; i += 2) { e.pts[i] -= dx; e.pts[i + 1] -= dz; }
+	}
+	for (const n of g.nodes) { n.x -= dx; n.z -= dz; }
+}
+
+/** Przesunięcie siatki krawędzi: klucze komórek o (dx, dz) / cell – przesunięcie musi być wielokrotnością komórki. */
+export function shiftGrid(grid, dx, dz) {
+	const di = Math.round(dx / grid.cell), dj = Math.round(dz / grid.cell);
+	if (Math.abs(di * grid.cell - dx) > 1e-6 || Math.abs(dj * grid.cell - dz) > 1e-6) throw new Error(`Przesunięcie ${dx}, ${dz} nie jest wielokrotnością komórki ${grid.cell}`);
+	const map = new Map();
+	for (const [k, ids] of grid.map) {
+		const [i, j] = k.split(',').map(Number);
+		map.set(`${i - di},${j - dj}`, ids);
+	}
+	grid.map = map;
+}

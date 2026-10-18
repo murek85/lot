@@ -4,13 +4,23 @@
 import { Group } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { createForest } from '../forest.js';
-import { unpackNetwork } from '../traffic/graph.js';
+import { unpackNetwork, shiftGraph, shiftGrid } from '../traffic/graph.js';
+import { worldOffset } from '../gfx/ground.js';
 import { GroundWindow, SIZE as WINDOW_SIZE } from './window.js';
+import { WorldMap } from './maptiles.js';
 import { COVER } from '../gen/terrain.js';
 import { WorldStreamer, tilesAround } from './streamer.js';
-import { ChunkView } from './chunkview.js';
+import { ChunkView, NearMask, FarView } from './chunkview.js';
+import { FAR_Z } from './chunkdata.js';
 
 const KEY = 'lot-world';
+/**
+ * Krok przesunięcia początku układu (m): wielokrotność boku okien gruntu i świateł (2816 m – ich piksele zostają
+ * ważne), odstępu drzew (5 m – losowanie drzew bez zmian) i komórek siatek sieci ruchu (256 i 640 m).
+ */
+export const REBASE_STEP = 14080;
+/** Odległość samolotu od początku układu (m), przy której początek przesuwa się pod samolot. */
+export const REBASE_AT = 20000;
 export const WORLD_ID = 'world';
 /** Bok obszaru lotu (m) – bez przesuwania początku układu (etap 2b) dokładność i odwzorowanie wystarczają na ±150 km. */
 export const WORLD_SIZE = 300000;
@@ -32,7 +42,8 @@ export function worldRegion(start) {
 		osm: null,
 		meta: {
 			id: `${WORLD_ID}-${slug(s.name)}`, name: `Otwarty świat · ${s.name}`, generated: true,
-			center: { lon: s.lon, lat: s.lat }, size: WORLD_SIZE,
+			// rzut Mercatora o skali z szerokości startu – przesunięcie początku układu to czyste przesunięcie
+			center: { lon: s.lon, lat: s.lat, merc: { k: Math.cos((s.lat * Math.PI) / 180) } }, size: WORLD_SIZE,
 			places: [{ id: 'start', name: s.name, lon: s.lon, lat: s.lat, cls: 'town' }], labels: [],
 			cover: { classes: COVER, res: 0 },
 		},
@@ -41,14 +52,23 @@ export function worldRegion(start) {
 }
 
 /** Doczytywanie i widok kafli, okno gruntu z drzewami 3D, zaślepka terenu regionu. */
-export function createWorld(region, scene, atmo, clouds, plane, worldShadow) {
+export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lights = null) {
 	const view = new ChunkView(scene, atmo, clouds, plane, worldShadow);
 	let lowest = Infinity;
 	let win = null;
+	// daleki teren (kafle z11 do 50 km) pod maską wczytanych kafli z14
+	const mask = new NearMask();
+	const farView = new FarView(scene, view.U, atmo, clouds, plane, mask);
+	const farStreamer = new WorldStreamer(region.meta.center, {
+		z: FAR_Z, radius: 50000, objectRadius: 0, workers: 2,
+		onLoad: (ch) => { farView.add(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
+		onUnload: (ch) => farView.remove(ch),
+	});
+	const map = new WorldMap();
 	const streamer = new WorldStreamer(region.meta.center, {
 		radius: 9000, objectRadius: 4000,
-		onLoad: (ch) => { view.add(ch); win?.chunkLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 40); } },
-		onUnload: (ch) => view.remove(ch),
+		onLoad: (ch) => { view.add(ch); mask.set(ch, true); win?.chunkLoaded(ch); map.add(ch); lights?.chunkLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 40); } },
+		onUnload: (ch) => { view.remove(ch); mask.set(ch, false); lights?.chunkUnloaded(ch); },
 		onObjects: (ch, on) => view.objects(ch, on),
 	});
 	region.heightAt = (x, z) => streamer.heightAt(x, z);
@@ -76,7 +96,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow) {
 	const within = (x, z, r) => [...streamer.chunks.values()].filter((ch) => Math.hypot(ch.frame.x0 + ch.frame.w / 2 - x, ch.frame.z0 + ch.frame.h / 2 - z) < r);
 	const keys = (x, z, r) => tilesAround(x, z, r, streamer.origin).map((t) => [t.x, t.y]);
 	return {
-		streamer, view, terrain, forest, window: win, net,
+		streamer, view, terrain, forest, window: win, net, map, farStreamer, farView, mask,
 		coverAt: (x, z) => streamer.coverAt(x, z),
 		/**
 		 * Sieć dla symulacji ruchu: drogi z kafli do 5 km (pojazdy jeżdżą do 2,5 km), tory i stacje do 9 km (pociągi
@@ -84,22 +104,26 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow) {
 		 * chodniki i perony z wczytanych kafli do 3 km.
 		 */
 		updateNetwork(x, z, { traffic, trains, people }) {
+			// podmiana rozłożona na klatki: samochody (część od razu, reszta po 300 na krok), pociągi, piesi
 			if (net.ready) {
 				const t0 = performance.now(), d = net.ready;
-				net.ready = null;
-				if (traffic) {
+				const stage = (d.stage = (d.stage ?? 0) + 1);
+				if (stage === 1 && traffic) {
 					const c = unpackNetwork(d.cars);
 					traffic.graph = c.graph;
-					traffic.sim.rebind(c.graph, c.grid);
+					traffic.sim.rebind(c.graph, c.grid, 300);
 				}
-				if (trains) trains.sim.rebind(null, d.stations, unpackNetwork(d.trains));
-				if (people) {
-					const ps = within(net.x, net.z, 3000);
-					people.sim.setRoads(ps.flatMap((ch) => ch.osm.roads), ps.flatMap((ch) => ch.osm.platforms));
+				if (stage === 2 && trains) trains.sim.rebind(null, d.stations, unpackNetwork(d.trains));
+				if (stage === 3) {
+					if (people) {
+						const ps = within(net.x, net.z, 3000);
+						people.sim.setRoads(ps.flatMap((ch) => ch.osm.roads), ps.flatMap((ch) => ch.osm.platforms));
+					}
+					net.ready = null;
+					net.ms = d.ms;
+					net.builds++;
 				}
-				net.ms = d.ms;
-				net.applyMs = performance.now() - t0;
-				net.builds++;
+				net.applyMs = Math.max(stage === 1 ? 0 : net.applyMs, performance.now() - t0);
 				return true;
 			}
 			if (net.pending || (net.x !== null && Math.hypot(x - net.x, z - net.z) < 2000)) return false;
@@ -107,11 +131,53 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow) {
 			netWorker.postMessage({ type: 'net', req: ++net.req, roads: keys(x, z, 5000), rails: keys(x, z, 9000), origin: streamer.origin });
 			return false;
 		},
+		/**
+		 * Nowy początek układu w punkcie (dx, dz) obecnego (wielokrotności REBASE_STEP): wszystko, co świat trzyma
+		 * w metrach, przesunięte w miejscu – kafle (ramy, obiekty, siatki w scenie), okna gruntu i świateł, mapa,
+		 * sieci ruchu; wzory proceduralne zostają na miejscu (worldOffset). Bez ponownego wczytywania.
+		 */
+		rebase(dx, dz, { traffic, trains, people }) {
+			const t0 = performance.now();
+			view.shift(streamer.chunks.values(), dx, dz);
+			streamer.rebase(dx, dz);
+			farView.shift(farStreamer.chunks.values(), dx, dz);
+			farStreamer.rebase(dx, dz);
+			mask.shift(dx, dz);
+			region.meta.center = streamer.origin;
+			win.shift(dx, dz);
+			lights?.shift(dx, dz);
+			map.shift(dx, dz);
+			worldOffset.value.x += dx;
+			worldOffset.value.y += dz;
+			// sieć w budowie (w starym układzie) – od nowa po przesunięciu
+			net.req++; net.pending = false; net.ready = null; net.x = null;
+			const graphs = new Set();
+			if (traffic) {
+				graphs.add(traffic.sim.g);
+				for (const a of traffic.sim.agents) { graphs.add(a.g); a.x -= dx; a.z -= dz; }
+				if (traffic.sim.grid.map.size) shiftGrid(traffic.sim.grid, dx, dz);
+				traffic.sim.cellCache.clear();
+				traffic.sim.lastCell = '';
+			}
+			if (trains) {
+				graphs.add(trains.sim.g);
+				if (trains.sim.grid.map.size) shiftGrid(trains.sim.grid, dx, dz);
+			}
+			if (people) {
+				for (const a of people.sim.agents) { if (a.g) graphs.add(a.g); a.x -= dx; a.z -= dz; }
+				const ps = within(0, 0, 3000);
+				people.sim.setRoads(ps.flatMap((ch) => ch.osm.roads), ps.flatMap((ch) => ch.osm.platforms));
+			}
+			for (const g of graphs) if (g.edges.length) shiftGraph(g, dx, dz);
+			return performance.now() - t0;
+		},
 		/** Co klatkę: punkt doczytywania (samolot albo środek widoku) i kamera. */
 		update(camera, focus, time) {
 			streamer.update(focus.x, focus.z);
+			farStreamer.update(focus.x, focus.z);
 			view.update(camera, focus, time);
 			win.update(camera.position.x, camera.position.z);
+			map.update(focus.x, focus.z);
 			base.value = win.base;
 		},
 		/** Czekanie na kafle wokół punktu (ekran wczytywania): progress(0..1). */

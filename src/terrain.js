@@ -2,7 +2,7 @@
 // (pola w pasach z koleinami, bory z koronami drzew i duktami, zabudowa, woda z odbiciem nieba), oświetlone
 // fizycznie: światło słońca po przejściu przez atmosferę, światło nieba, cienie rzeźby i ścian lasu.
 // Poza regionem ciągnie się płaski „świat zastępczy” z tym samym materiałem – zakrzywiony jak Ziemia aż po horyzont.
-import { cityLight, snowCover } from './gfx/ground.js';
+import { cityLight, snowCover, worldOffset } from './gfx/ground.js';
 import {
 	Mesh, Group, PlaneGeometry, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DataTexture, RGBAFormat,
 	UnsignedByteType, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter,
@@ -120,7 +120,7 @@ const fieldLayout = (r, zone) => {
 export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 	return Fn(() => {
 		const p = vFlat;
-		const xz = p.xz;
+		const xz = p.xz.add(worldOffset); // wzory w układzie stałym względem Ziemi (otwarty świat przesuwa początek)
 		const footprint = max(fwidth(xz.x), fwidth(xz.y)).max(0.05);
 		const sun = atmo.u.lightDir;
 		const sunXZ = sun.xz.div(max(1e-4, length(sun.xz)));
@@ -229,7 +229,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 				forest.assign(mix(forest, near, detail));
 			});
 			// tam, gdzie stoją drzewa 3D, teren pokazuje dno lasu: cień pod koronami, ściółkę i podszyt
-			const dCam = length(xz.sub(src.U.cam));
+			const dCam = length(p.xz.sub(src.U.cam));
 			const trees3d = float(1).sub(smoothstep(src.U.treesFar.mul(0.8), src.U.treesFar, dCam)).mul(step(1, src.U.treesFar));
 			const floorCol = mix(COL.gap.mul(1.5), COL.pineYoung.mul(0.7), valueNoise(xz.div(3.5)).mul(0.6));
 			forest.assign(mix(forest, floorCol, trees3d.mul(mix(float(0.85), float(0.3), young))));

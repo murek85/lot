@@ -15,10 +15,10 @@ async function mapTemplate() {
 	return tpl;
 }
 
-async function heightTile(x, y) {
-	const k = `${x}/${y}`;
+async function heightTile(x, y, HZ = HEIGHT_Z) {
+	const k = `${HZ}/${x}/${y}`;
 	if (heightCache.has(k)) { const v = heightCache.get(k); heightCache.delete(k); heightCache.set(k, v); return v; }
-	const t = await fetchTile(tileKey('terrarium', HEIGHT_Z, x, y), TERRARIUM(HEIGHT_Z, x, y));
+	const t = await fetchTile(tileKey('terrarium', HZ, x, y), TERRARIUM(HZ, x, y));
 	let h = new Float32Array(256 * 256);
 	if (t.buf.byteLength) {
 		const bmp = await createImageBitmap(new Blob([t.buf], { type: 'image/png' }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
@@ -36,22 +36,25 @@ async function heightTile(x, y) {
 self.onmessage = async (e) => {
 	const { type, req, x, y, origin } = e.data;
 	if (type !== 'chunk') return;
+	// z – poziom kafla: CHUNK_Z (pełne kafle) albo FAR_Z (daleki teren: rzeźba z Terrarium tego samego poziomu, samo pokrycie)
+	const Z = e.data.z ?? CHUNK_Z, far = Z !== CHUNK_Z, HZ = far ? Z : HEIGHT_Z;
 	try {
 		const t0 = performance.now();
-		const url = (await mapTemplate()).replace('{z}', CHUNK_Z).replace('{x}', x).replace('{y}', y);
+		const url = (await mapTemplate()).replace('{z}', Z).replace('{x}', x).replace('{y}', y);
 		const [mapT, ...hts] = await Promise.all([
-			fetchTile(tileKey('ofm', CHUNK_Z, x, y), url),
-			...heightTilesFor(x, y).map(async ([hx, hy]) => [`${hx}/${hy}`, await heightTile(hx, hy)]),
+			fetchTile(tileKey('ofm', Z, x, y), url),
+			...heightTilesFor(x, y, Z, HZ).map(async ([hx, hy]) => [`${hx}/${hy}`, await heightTile(hx, hy, HZ)]),
 		]);
-		const F = chunkFrame(x, y, origin);
-		const H = chunkHeights(x, y, new Map(hts));
+		const F = chunkFrame(x, y, origin, Z);
+		const H = chunkHeights(x, y, new Map(hts), Z, HZ);
 		const g = gridNormals(H, F.w / (GRID - 1), F.h / (GRID - 1));
-		const { osm, cover } = chunkObjects(mapT.buf, x, y, origin);
-		const mask = chunkMask(osm, F);
+		const { osm, cover } = chunkObjects(mapT.buf, x, y, origin, Z);
+		const mask = far ? new Uint8Array(0) : chunkMask(osm, F);
 		const msg = {
-			type: 'chunk', req, key: `${x}/${y}`, x, y,
+			type: 'chunk', req, key: `${x}/${y}`, x, y, z: Z,
 			frame: { x0: F.x0, z0: F.z0, w: F.w, h: F.h },
-			heights: g.heights, normals: g.normals, min: g.min, max: g.max, cover, mask, osm,
+			heights: g.heights, normals: g.normals, min: g.min, max: g.max, cover, mask,
+			osm: far ? { roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], places: [] } : osm,
 			ms: performance.now() - t0, cached: mapT.cached,
 		};
 		self.postMessage(msg, [g.heights.buffer, g.normals.buffer, cover.buffer, mask.buffer]);

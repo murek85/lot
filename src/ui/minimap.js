@@ -88,10 +88,24 @@ export async function buildBaseMap(region, osm, res = 4096) {
 	return cv;
 }
 
+/**
+ * Mapa bazowa regionu (jedno płótno) jako źródło mapy: drawOn(ctx, x0, z0, pxPerM) rysuje ją tak, że punkt świata
+ * (x0, z0) wypada w (0, 0) płótna. Ten sam interfejs ma mapa otwartego świata (src/world/maptiles.js).
+ */
+export function regionBase(canvas, size) {
+	return {
+		size,
+		drawOn(ctx, x0, z0, pxPerM) {
+			ctx.imageSmoothingEnabled = true;
+			ctx.drawImage(canvas, (-size / 2 - x0) * pxPerM, (-size / 2 - z0) * pxPerM, size * pxPerM, size * pxPerM);
+		},
+	};
+}
+
 const CLASS_FONT = { city: '700 13px', town: '700 12px', village: '600 11px', suburb: 'italic 500 10.5px', quarter: 'italic 500 10px', hamlet: '500 10px', neighbourhood: 'italic 500 9.5px' };
 
 export class Minimap {
-	/** canvas – płótno minimapy (kwadratowe), base – mapa bazowa, size – bok regionu (m), labels – [{ name, cls, x, z }]. */
+	/** canvas – płótno minimapy (kwadratowe), base – źródło mapy (regionBase albo WorldMap), size – bok regionu (m), labels – [{ name, cls, x, z }]. */
 	constructor(canvas, base, size, labels = [], starts = []) {
 		this.cv = canvas;
 		this.ctx = canvas.getContext('2d');
@@ -129,11 +143,7 @@ export class Minimap {
 		// wycinek mapy bazowej: obrót wokół środka (kurs u góry) i przesunięcie do samolotu
 		ctx.translate(R, R);
 		if (this.rotate) ctx.rotate(-heading);
-		const k = base.width / this.size; // piksele bazy na metr
-		const bx = (px / this.size + 0.5) * base.width, bz = (pz / this.size + 0.5) * base.height;
-		ctx.scale(pxPerM / k, pxPerM / k);
-		ctx.imageSmoothingEnabled = true;
-		ctx.drawImage(base, -bx, -bz);
+		base.drawOn(ctx, px, pz, pxPerM, S.span * 0.75);
 		ctx.restore();
 		// pierścień odległości (połowa promienia) i krawędź
 		ctx.save();

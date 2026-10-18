@@ -411,9 +411,34 @@ Regiony działają jak dotąd.
 - Pomiar: przelot 15 km w 10 s (~20 × szybciej niż samolot) – doczytywanie nadąża, klatka: mediana 13,5 ms, p95 21 ms;
   z drzewami i ruchem nad Katowicami ~75 kl./s.
 
-Jeszcze nie ma (kolejne etapy): minimapy i dużej mapy, świateł osad nocą, szpalerów drzew i linii energetycznych
-(kafle ich nie mają), przesuwania początku układu (lot w promieniu ~150 km od startu), dalekiego terenu z rzeźbą
-za 9 km.
+- **Mapy** (`src/world/maptiles.js`): płytka mapy 192² na kafel (pokrycie w barwach mapy, cieniowanie rzeźby,
+  cieki, drogi, tory), rysowana po jednej na klatkę i pamiętana (do 400 – przeleciany obszar zostaje na mapie).
+  Minimapa i duża mapa rysują mapę przez `drawOn(ctx, x0, z0, pxPerM, r)` – `regionBase` (jedno płótno regionu)
+  albo `WorldMap` (płytki). Nazwy miejscowości z kafli (warstwa „place”) trafiają do map, opisu położenia
+  i podpisów w krajobrazie.
+- **Noc** (`src/world/lights.js`, ten sam interfejs co `src/citylights.js`): latarnie liczone dla kafla (ulice
+  klas 1–4 w zabudowie), poświaty wszystkich wczytanych kafli w jednym spricie (bufor przebudowywany najwyżej
+  2 razy na sekundę), plamy światła na ziemi w oknie 2,8 km wokół kamery (jak okno gruntu).
+- Podmiana sieci ruchu rozłożona na klatki: samochody (po 300 na krok – reszta jedzie po starym grafie), pociągi,
+  piesi; ~5 ms na klatkę.
+
+- **Bez granic** (`src/geo.js`, `world.rebase`): środek otwartego świata ma pole `merc: { k }` – `lonLatToLocal`
+  i `localToLonLat` liczą wtedy Web Mercator o skali k = cos(szerokości startu). Mercator jest jeden dla całej Ziemi,
+  więc nowy początek układu to czyste przesunięcie (kafle policzone przed i po zgadzają się co do milimetra;
+  skala rośnie ~1% na 100 km na północ lub południe od startu). Gdy samolot jest dalej niż 20 km od początku,
+  początek przesuwa się pod niego o wielokrotność 14 080 m (5 × bok okien gruntu i świateł – ich piksele zostają
+  ważne; wielokrotność odstępu drzew 5 m i komórek siatek ruchu 256 / 640 m). Przesuwane w miejscu: pozycje siatek
+  kafli, ramy i obiekty kafli (`shiftOsm`), grafy i siatki ruchu (`shiftGraph`, `shiftGrid`), mapa, latarnie, ptaki,
+  samolot, kamery; chmury dostają przesunięcie pogody i poprawioną poprzednią macierz kamery (akumulacja bez
+  skoku). Wzory proceduralne w shaderach liczą się od `xz + worldOffset` (`src/gfx/ground.js`). ~20 ms raz na
+  kilkanaście km lotu. Zapis lotu pamięta początek układu i przelicza położenie przy wczytaniu.
+- **Daleki teren** (`FarView`, `NearMask` w `src/world/chunkview.js`): drugi `WorldStreamer` z kaflami z11 do 50 km
+  (te same wątki kafli: rzeźba z Terrarium z11, pokrycie z warstw water / landcover / landuse mapy z11), siatka 65²
+  (~195 m) tym samym shaderem gruntu. Pod wczytanymi kaflami z14 piksele dalekiego terenu są odrzucane (maska 64²
+  numerów kafli adresowana w kółko – kafle w Mercatorze tworzą równą siatkę), a na styku szczeliny zasłaniają
+  „fartuchy” kafli z14 (pas opuszczony o 40 m). Za 50 km – płaska podłoga.
+
+Jeszcze nie ma: szpalerów drzew i linii energetycznych (kafle ich nie mają).
 
 ## Struktura
 

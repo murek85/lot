@@ -3,7 +3,7 @@
 // Do tego zbieracz geometrii z gotowymi bryłami (prostopadłościan wzdłuż odcinka, pionowa ściana).
 import { BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DoubleSide } from 'three/webgpu';
 import { Fn, vec3, attribute, varying, positionLocal, uniform, max, dot, normalize, mix, float } from 'three/tsl';
-import { onGround, cityLight } from './ground.js';
+import { onGround, cityLight, worldOffset } from './ground.js';
 import { valueNoise } from './noise.js';
 
 const EARTH_R = 6371000;
@@ -27,7 +27,7 @@ export function makeLitMaterial({ atmo, clouds, plane, worldShadow, doubleSide =
 		const sunE = atmo.sunLight(vWorld.y);
 		let shadow = clouds.groundShadow(vWorld).mul(plane.groundShadow(vWorld));
 		if (worldShadow) shadow = shadow.mul(worldShadow.visibility(vWorld.add(N.mul(0.2)), 0.4));
-		const albedo = col.mul(mix(float(0.88), float(1.08), valueNoise(vWorld.xz.add(vWorld.y).div(1.7))));
+		const albedo = col.mul(mix(float(0.88), float(1.08), valueNoise(vWorld.xz.add(worldOffset).add(vWorld.y).div(1.7))));
 		const sky = atmo.skyIrradiance().mul(N.y.mul(0.5).add(0.5)).add(sunE.mul(max(0, sun.y)).mul(0.08).mul(float(1).sub(N.y)));
 		return albedo.div(Math.PI).mul(sunE.mul(max(0, dot(N, sun))).mul(shadow).add(sky).add(plane.lights.landingLight(vWorld, N)).add(cityLight(vWorld)));
 	})();

@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.23'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.25'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,15 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.25', title: 'Otwarty świat bez granic', items: [
+		['Bez granic', 'otwarty świat nie kończy się po ~150 km – układ współrzędnych przesuwa się za samolotem niezauważalnie.'],
+		['Horyzont', 'daleki teren z rzeźbą do 50 km – góry i doliny na horyzoncie zamiast płaskiej równiny.'],
+	] },
+	{ v: '0.24', title: 'Mapa i noc w otwartym świecie', items: [
+		['Mapy', 'minimapa i duża mapa (Tab) także w otwartym świecie – przeleciany obszar zostaje na mapie.'],
+		['Nazwy', 'miasta, wsie i dzielnice z mapy – w panelu położenia, na mapach i nad krajobrazem.'],
+		['Noc', 'latarnie, plamy światła na ulicach i okna w otwartym świecie jak w regionach.'],
+	] },
 	{ v: '0.23', title: 'Otwarty świat (wersja rozwojowa)', items: [
 		['Otwarty świat', 'generator → „Otwarty świat stąd”: mapa doczytywana w locie wokół samolotu – bez granic regionu (na razie ok. 150 km od startu).'],
 		['Teren', 'ten sam wygląd co w regionach – pola w pasach, bory z drzewami 3D, zabudowa, rzeki, tory, mosty.'],

@@ -46,6 +46,7 @@ export class Clouds {
 			coverage: uniform(0.42),
 			extinction: uniform(0.12), // 1/m przy gęstości 1
 			wind: uniform(new Vector2()), // przesunięcie pogody, m
+			origin: uniform(new Vector2()), // przesunięcie początku układu (otwarty świat), m
 			frame: uniform(0),
 			camPos: uniform(new Vector3()),
 			projInv: uniform(new Matrix4()),
@@ -82,7 +83,7 @@ export class Clouds {
 	/** Gęstość 0..1 w punkcie p (świat, metry); cheap – bez detalu (na marsz w stronę słońca i cienie). */
 	density(p, height, cheap) {
 		const U = this.u;
-		const q = p.xz.add(U.wind);
+		const q = p.xz.add(U.wind).add(U.origin);
 		const w = this.weatherTex.sample(q.div(36000)).level(0);
 		const cov = clamp(w.r.sub(float(1).sub(U.coverage).sub(0.1)).div(0.32), 0, 1);
 		const h = height.sub(U.base).div(U.thickness);
@@ -273,6 +274,16 @@ export class Clouds {
 
 	update(dt) {
 		this.u.wind.value.addScaledVector(this.windVelocity, dt);
+	}
+
+	/**
+	 * Przesunięcie początku układu o (dx, dz) (otwarty świat): pogoda zostaje nad tym samym miejscem Ziemi, a historia
+	 * akumulacji czasowej – ważna (poprzednia macierz kamery w nowym układzie).
+	 */
+	shiftOrigin(dx, dz) {
+		this.u.origin.value.x += dx;
+		this.u.origin.value.y += dz;
+		this.u.prevViewProj.value.multiply(new Matrix4().makeTranslation(dx, 0, dz));
 	}
 
 	/** Tekstura głębi sceny z przebiegu kamery – chmury liczą się tylko do najbliższej powierzchni. */

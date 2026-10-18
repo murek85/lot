@@ -4,11 +4,11 @@
 // obszaru. Geometria w metrach układu świata (początek origin) – materiały jak w regionach.
 import {
 	Mesh, Group, BufferGeometry, BufferAttribute, Float32BufferAttribute, MeshBasicNodeMaterial, DataArrayTexture, RedFormat,
-	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry,
+	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry, DataTexture, RepeatWrapping,
 } from 'three/webgpu';
 import {
 	Fn, float, vec2, vec3, vec4, int, ivec2, attribute, varying, uniform, textureLoad, max, abs, clamp, normalize, floor, fract,
-	smoothstep, positionLocal, step, mix, dot,
+	smoothstep, positionLocal, step, mix, dot, texture, If, Discard,
 } from 'three/tsl';
 import { onGround } from '../gfx/ground.js';
 import { valueNoise, fbm } from '../gfx/noise.js';
@@ -23,24 +23,48 @@ import { createBridges } from '../bridges.js';
 
 const SLOTS = 256;
 
-/** Siatka terenu kafla: GRID² wierzchołków w metrach świata, uv kafla, numer warstwy pokrycia. */
-function terrainGeometry(ch, layer) {
+/**
+ * Siatka terenu kafla: GRID² wierzchołków w metrach świata, uv kafla, numer warstwy pokrycia. skirt – „fartuch”:
+ * pas wzdłuż brzegu opuszczony o tyle metrów (na granicy z dalekim terenem o innej siatce nie widać szczelin).
+ */
+function terrainGeometry(ch, layer, skirt = 0) {
 	const { x0, z0, w, h } = ch.frame;
-	const n = GRID, pos = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2), lay = new Float32Array(n * n).fill(layer);
+	const n = GRID;
+	const ring = [];
+	if (skirt) {
+		for (let i = 0; i < n; i++) ring.push(i);
+		for (let j = 1; j < n; j++) ring.push(j * n + n - 1);
+		for (let i = n - 2; i >= 0; i--) ring.push((n - 1) * n + i);
+		for (let j = n - 2; j >= 1; j--) ring.push(j * n);
+	}
+	const V = n * n + ring.length;
+	const pos = new Float32Array(V * 3), uv = new Float32Array(V * 2), lay = new Float32Array(V).fill(layer), nrm = new Float32Array(V * 3);
 	for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
 		const k = j * n + i;
 		pos.set([x0 + (i / (n - 1)) * w, ch.heights[k], z0 + (j / (n - 1)) * h], k * 3);
 		uv.set([i / (n - 1), j / (n - 1)], k * 2);
 	}
-	const idx = new Uint32Array((n - 1) * (n - 1) * 6);
+	nrm.set(ch.normals);
+	ring.forEach((k, r) => {
+		const v = n * n + r;
+		pos.set([pos[k * 3], pos[k * 3 + 1] - skirt, pos[k * 3 + 2]], v * 3);
+		uv.set([uv[k * 2], uv[k * 2 + 1]], v * 2);
+		nrm.set([nrm[k * 3], nrm[k * 3 + 1], nrm[k * 3 + 2]], v * 3);
+	});
+	const idx = new Uint32Array((n - 1) * (n - 1) * 6 + ring.length * 12);
 	let p = 0;
 	for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
 		const a = j * n + i, b = a + 1, c = a + n, d = c + 1;
 		idx.set([a, c, b, b, c, d], p); p += 6;
 	}
+	// fartuch: obie strony (widać go od środka wczytanego obszaru)
+	for (let r = 0; r < ring.length; r++) {
+		const a = ring[r], b = ring[(r + 1) % ring.length], a2 = n * n + r, b2 = n * n + ((r + 1) % ring.length);
+		idx.set([a, a2, b, b, a2, b2, a, b, a2, b, b2, a2], p); p += 12;
+	}
 	const g = new BufferGeometry();
 	g.setAttribute('position', new BufferAttribute(pos, 3));
-	g.setAttribute('normal', new BufferAttribute(ch.normals, 3));
+	g.setAttribute('normal', new BufferAttribute(nrm, 3));
 	g.setAttribute('uv', new BufferAttribute(uv, 2));
 	g.setAttribute('aLayer', new BufferAttribute(lay, 1));
 	g.setIndex(new BufferAttribute(idx, 1));
@@ -58,7 +82,8 @@ const outsideA = (xz) => {
 };
 
 /** Materiał terenu kafli: ten sam shader gruntu co w regionach (shadeGround), dane z rastra kafla i siatki. */
-function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow) {
+/** hole – maska kafli bliskich ({ tex, ref, size }): daleki teren nie rysuje się tam, gdzie leży kafel z14. */
+function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = null) {
 	const m = new MeshBasicNodeMaterial();
 	const vFlat = varying(vec3(0), 'vWTerFlat');
 	const vN = varying(vec3(0, 1, 0), 'vWTerN');
@@ -107,7 +132,15 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow) {
 			return { h: vFlat.y, hx: N.x.negate().div(ny), hz: N.z.negate().div(ny) };
 		},
 	};
-	m.colorNode = shadeGround(vFlat, src, atmo, clouds, plane, worldShadow);
+	const shade = shadeGround(vFlat, src, atmo, clouds, plane, worldShadow);
+	if (hole) {
+		// kafel z14 pod punktem: siatka kafli w układzie świata (Mercator – równe kwadraty), maska 64² adresowana w kółko
+		m.colorNode = Fn(() => {
+			const t = floor(vFlat.xz.sub(hole.ref).div(hole.size)).add(0.5).div(64);
+			If(hole.tex.sample(t).level(0).r.greaterThan(0.5), () => { Discard(); });
+			return shade;
+		})();
+	} else m.colorNode = shade;
 	m.fog = false;
 	return m;
 }
@@ -170,7 +203,7 @@ export class ChunkView {
 		this.coverTex.image.data.set(ch.cover, layer * COVER_RES * COVER_RES);
 		this.coverTex.addLayerUpdate?.(layer);
 		this.coverTex.needsUpdate = true;
-		ch.terrain = new Mesh(terrainGeometry(ch, layer), this.terrainMat);
+		ch.terrain = new Mesh(terrainGeometry(ch, layer, 40), this.terrainMat);
 		ch.terrain.frustumCulled = false;
 		this.group.add(ch.terrain);
 		this.stats.chunks++;
@@ -267,6 +300,108 @@ export class ChunkView {
 		}
 	}
 
+	/** Nowy początek układu w (dx, dz): siatki wczytanych kafli przesunięte w miejscu (raz każda geometria). */
+	shift(chunks, dx, dz) {
+		const done = new Set();
+		// tylko pozycje (normalne bez zmian), granice przesunięte zamiast liczenia od nowa
+		const move = (g) => {
+			if (!g || done.has(g)) return;
+			done.add(g);
+			const pos = g.attributes.position, a = pos.array, n = pos.count * 3;
+			for (let i = 0; i < n; i += 3) { a[i] -= dx; a[i + 2] -= dz; }
+			pos.needsUpdate = true;
+			if (g.boundingSphere) { g.boundingSphere.center.x -= dx; g.boundingSphere.center.z -= dz; }
+			if (g.boundingBox) { g.boundingBox.min.x -= dx; g.boundingBox.max.x -= dx; g.boundingBox.min.z -= dz; g.boundingBox.max.z -= dz; }
+		};
+		for (const ch of chunks) {
+			move(ch.terrain?.geometry);
+			for (const o of ch.objs?.list ?? []) move(o.geometry);
+		}
+	}
+
 	/** Wysokość podłogi: poniżej najniższego wczytanego terenu. */
 	setFloor(h) { this.floor.base.value = h; }
+}
+
+/** Maska wczytanych kafli z14 (64² adresowane w kółko po numerze kafla) – daleki teren ich nie zasłania. */
+export class NearMask {
+	constructor() {
+		this.data = new Uint8Array(64 * 64);
+		this.tex = new DataTexture(this.data, 64, 64, RedFormat, UnsignedByteType);
+		this.tex.minFilter = this.tex.magFilter = NearestFilter;
+		this.tex.wrapS = this.tex.wrapT = RepeatWrapping;
+		this.tex.needsUpdate = true;
+		this.node = texture(this.tex);
+		this.ref = uniform(new Vector2());
+		this.size = uniform(new Vector2(1, 1));
+		this.hasRef = false;
+	}
+
+	set(ch, on) {
+		const f = ch.frame, mx = ((ch.x % 64) + 64) % 64, my = ((ch.y % 64) + 64) % 64;
+		if (!this.hasRef) {
+			// róg kafla o numerze ≡ 0 (mod 64) w tym samym rzędzie i kolumnie – piksel maski = numer kafla mod 64
+			this.ref.value.set(f.x0 - mx * f.w, f.z0 - my * f.h);
+			this.size.value.set(f.w, f.h);
+			this.hasRef = true;
+		}
+		this.data[my * 64 + mx] = on ? 255 : 0;
+		this.tex.needsUpdate = true;
+	}
+
+	shift(dx, dz) { this.ref.value.x -= dx; this.ref.value.y -= dz; }
+
+	/** Dla materiału terenu: { tex, ref, size }. */
+	get hole() { return { tex: this.node, ref: this.ref, size: this.size }; }
+}
+
+/**
+ * Daleki teren: kafle z11 (~12,5 km) za zasięgiem kafli z14 – siatka 65² z rzeźbą Terrarium z11, pokrycie z mapy
+ * z11, ten sam shader gruntu (z daleka wzory pól i lasów uśredniają się do barw z bliska). Pod wczytanymi kaflami z14
+ * odrzucany (maska), szczeliny na styku zasłaniają fartuchy kafli bliskich.
+ */
+export class FarView {
+	constructor(scene, U, atmo, clouds, plane, mask) {
+		this.slots = 128;
+		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * this.slots), COVER_RES, COVER_RES, this.slots);
+		this.coverTex.format = RedFormat;
+		this.coverTex.type = UnsignedByteType;
+		this.coverTex.minFilter = this.coverTex.magFilter = NearestFilter;
+		this.coverTex.generateMipmaps = false;
+		this.coverTex.needsUpdate = true;
+		this.free = Array.from({ length: this.slots }, (_, i) => this.slots - 1 - i);
+		this.material = terrainMaterial(this.coverTex, U, atmo, clouds, plane, null, mask.hole);
+		this.group = new Group();
+		scene.add(this.group);
+		this.stats = { tiles: 0 };
+	}
+
+	add(ch) {
+		const layer = this.free.pop();
+		if (layer === undefined) return;
+		ch.layer = layer;
+		this.coverTex.image.data.set(ch.cover, layer * COVER_RES * COVER_RES);
+		this.coverTex.needsUpdate = true;
+		ch.terrain = new Mesh(terrainGeometry(ch, layer, 60), this.material);
+		ch.terrain.frustumCulled = false;
+		ch.terrain.renderOrder = -1;
+		this.group.add(ch.terrain);
+		this.stats.tiles++;
+	}
+
+	remove(ch) {
+		if (ch.terrain) { this.group.remove(ch.terrain); ch.terrain.geometry.dispose(); ch.terrain = null; }
+		if (ch.layer !== undefined) { this.free.push(ch.layer); ch.layer = undefined; }
+		this.stats.tiles--;
+	}
+
+	shift(chunks, dx, dz) {
+		for (const ch of chunks) {
+			const pos = ch.terrain?.geometry.attributes.position;
+			if (!pos) continue;
+			const a = pos.array;
+			for (let i = 0; i < a.length; i += 3) { a[i] -= dx; a[i + 2] -= dz; }
+			pos.needsUpdate = true;
+		}
+	}
 }

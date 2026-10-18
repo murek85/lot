@@ -4,7 +4,7 @@
 // Do tego linie koryt (z pasem nadbrzeżnym) dla maski lasu.
 import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
 import { Fn, float, vec2, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, pow, dot, normalize, reflect, fwidth, cameraPosition } from 'three/tsl';
-import { onGround } from './gfx/ground.js';
+import { onGround, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
 import { COL } from './gfx/palette.js';
 import { densify, ribbon } from './roads.js';
@@ -86,7 +86,7 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 	const side = varying(attribute('aSide', 'float'), 'vRiverSide');
 	const width = varying(attribute('aWidth', 'float'), 'vRiverWidth');
 	m.colorNode = Fn(() => {
-		const xz = vWorld.xz;
+		const xz = vWorld.xz.add(worldOffset);
 		const fp = max(fwidth(xz.x), fwidth(xz.y)).max(0.03);
 		// zmarszczki: dwie warstwy szumu płynące w różnych kierunkach, wygaszane z daleka
 		const fine = float(1).sub(clamp(fp.div(3), 0, 1));

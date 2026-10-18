@@ -12,7 +12,7 @@ import { hash12, hash22 } from './gfx/noise.js';
 import { forestStand, forestCover } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
 import { CASTER_LAYER } from './shadows.js';
-import { cityLight, snowCover } from './gfx/ground.js';
+import { cityLight, snowCover, worldOffset } from './gfx/ground.js';
 
 const EARTH_R = 6371000;
 const SPACING = 5;
@@ -103,21 +103,24 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const gx = float(i.mod(n)), gz = float(i.div(n));
 			const base = floor(U.cam.div(SPACING)).sub(n / 2);
 			const cell = base.add(vec2(gx, gz));
-			const h2 = hash22(cell);
+			// losowanie z komórki w układzie stałym względem Ziemi (przesunięcie początku – wielokrotność SPACING)
+			const gcell = cell.add(worldOffset.div(SPACING));
+			const h2 = hash22(gcell);
 			const xz = cell.add(0.15).add(h2.mul(0.7)).mul(SPACING);
 			const uvR = regionUv(xz);
 			const inside = win ? float(1) : step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
-			const fw = forestCover(forestTex, uvR, xz);
-			const st = forestStand(xz);
+			const pxz = xz.add(worldOffset);
+			const fw = forestCover(forestTex, uvR, pxz);
+			const st = forestStand(pxz);
 			// z danymi OSM drzewa omijają prawdziwe drogi (maska), bez nich – wymyślone dukty na granicach oddziałów
 			const notLane = win ? step(forestTex.sample(uvR).level(0).b, 0.4) : maskTex ? step(maskTex.sample(uvR).level(0).r, 0.4) : step(4, st.toEdge);
-			const keep = step(hash12(cell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(notLane).mul(inside);
+			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(notLane).mul(inside);
 			// zasięg: bliski poziom do `near`, daleki od `near` do `far` (te same komórki – bez przeskoków drzew)
 			const d = length(xz.sub(U.cam));
 			const band = isNear ? step(d, U.near) : step(U.near, d).mul(step(d, U.far));
 			vFade.assign(isNear ? float(1) : float(1).sub(smoothstep(U.far.mul(0.86), U.far, d)));
 			// typ i wielkość
-			const r1 = hash12(cell.add(11.1)), r2 = hash12(cell.add(23.3));
+			const r1 = hash12(gcell.add(11.1)), r2 = hash12(gcell.add(23.3));
 			const young = st.young, leafy = st.leafy.mul(young.oneMinus()).max(step(0.93, r1).mul(young.oneMinus()));
 			const H = select(young.greaterThan(0.5), mix(float(6), float(11), r2), select(leafy.greaterThan(0.5), mix(float(16), float(22), r2), mix(float(18), float(25), r2)));
 			const shape = mix(mix(attribute('position', 'vec3'), attribute('aCone', 'vec3'), young), attribute('aRound', 'vec3'), leafy);
@@ -214,6 +217,8 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 		objects: [nearMesh, farMesh],
 		shadowCasters: [nearMesh.userData.shadowMesh, farMesh.userData.shadowMesh],
 		uniforms: U,
+		/** Przesunięcie początku układu o (dx, dz): poprzednia macierz kamery w nowym układzie (wektory ruchu bez skoku). */
+		shiftOrigin(dx, dz) { prev.multiply(new Matrix4().makeTranslation(dx, 0, dz)); },
 		/** Przed renderem klatki (macierze kamery bez drgania TAA). */
 		update(camera) {
 			U.cam.value.set(camera.position.x, camera.position.z);
