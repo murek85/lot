@@ -9,8 +9,9 @@ import { COVER } from '../gen/terrain.js';
 import { lonToTileX, latToTileY, terrariumHeight } from '../geo.js';
 
 export const CHUNK_Z = 14;
-export const GRID = 65; // wierzchołki siatki terenu na bok (≈ 23 m)
-export const COVER_RES = 128; // piksele pokrycia na bok (≈ 12 m)
+export const GRID = 65; // wierzchołki siatki terenu na bok z Terrarium (≈ 24 m)
+export const LOT_GRID = 129; // z wysokości GUGiK we własnych kafach (≈ 12 m)
+export const COVER_RES = 256; // piksele pokrycia na bok (≈ 6 m)
 export const HEIGHT_Z = 12; // kafle Terrarium
 /** Daleki teren (za zasięgiem kafli z14): kafle z11 (~12,5 km) – rzeźba z Terrarium z11, pokrycie z mapy z11. */
 export const FAR_Z = 11;
@@ -68,20 +69,20 @@ export function chunkHeights(x, y, tiles, Z = CHUNK_Z, HZ = HEIGHT_Z) {
 	return H;
 }
 
-/** Normalne z siatki z marginesem (różnice centralne; dx, dz – rozmiar komórki w m). */
-export function gridNormals(H, dx, dz) {
-	const n = GRID + 2;
-	const heights = new Float32Array(GRID * GRID), normals = new Float32Array(GRID * GRID * 3);
+/** Normalne z siatki z marginesem (różnice centralne; dx, dz – rozmiar komórki w m; G – wierzchołki na bok). */
+export function gridNormals(H, dx, dz, G = GRID) {
+	const n = G + 2;
+	const heights = new Float32Array(G * G), normals = new Float32Array(G * G * 3);
 	let min = Infinity, max = -Infinity;
-	for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) {
+	for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
 		const c = (j + 1) * n + (i + 1);
 		const h = H[c];
-		heights[j * GRID + i] = h;
+		heights[j * G + i] = h;
 		if (h < min) min = h;
 		if (h > max) max = h;
 		const gx = (H[c + 1] - H[c - 1]) / (2 * dx), gz = (H[c + n] - H[c - n]) / (2 * dz);
 		const l = Math.hypot(gx, 1, gz);
-		normals.set([-gx / l, 1 / l, -gz / l], (j * GRID + i) * 3);
+		normals.set([-gx / l, 1 / l, -gz / l], (j * G + i) * 3);
 	}
 	return { heights, normals, min, max };
 }
@@ -161,7 +162,7 @@ export function shiftOsm(osm, dx, dz) {
  */
 export function chunkObjectsLot(buf, coverRaw, x, y, origin, Z = CHUNK_Z) {
 	const r = convertLotTile(decodeTile(buf, LOT_LAYERS), Z, x, y, { center: origin });
-	const cover = coverRaw ? new Uint8Array(coverRaw) : new Uint8Array(COVER_RES * COVER_RES).fill(COVER.crop);
+	const cover = coverRaw ? resampleCover(new Uint8Array(coverRaw)) : new Uint8Array(COVER_RES * COVER_RES).fill(COVER.crop);
 	const F = chunkFrame(x, y, origin, Z);
 	for (const c of r.cover) {
 		const rings = c.rings.map((ring) => {
@@ -173,4 +174,51 @@ export function chunkObjectsLot(buf, coverRaw, x, y, origin, Z = CHUNK_Z) {
 	}
 	const { cover: _, ...osm } = r;
 	return { osm, cover };
+}
+
+/** Raster pokrycia innej rozdzielczości (np. starsze kafle 128²) → COVER_RES² (najbliższy piksel). */
+export function resampleCover(c) {
+	const r = Math.round(Math.sqrt(c.length));
+	if (r === COVER_RES) return c;
+	const out = new Uint8Array(COVER_RES * COVER_RES);
+	for (let j = 0; j < COVER_RES; j++) for (let i = 0; i < COVER_RES; i++) out[j * COVER_RES + i] = c[Math.floor((j * r) / COVER_RES) * r + Math.floor((i * r) / COVER_RES)];
+	return out;
+}
+
+/** Wysokości z własnych kafli (Int16, decymetry, (LOT_GRID+2)²) → metry, siatka z marginesem jak chunkHeights. */
+export function lotHeights(raw) {
+	const dm = new Int16Array(raw), H = new Float32Array(dm.length);
+	for (let i = 0; i < dm.length; i++) H[i] = dm[i] === -32768 ? NaN : dm[i] / 10; // NaN – brak danych (poza Polską)
+	return H;
+}
+
+/** Uzupełnienie braków (NaN) wysokości z innego źródła tej samej siatki (Terrarium); zwraca liczbę uzupełnionych. */
+export function fillHeights(H, fallback) {
+	let n = 0;
+	for (let i = 0; i < H.length; i++) if (Number.isNaN(H[i])) { H[i] = fallback[i]; n++; }
+	return n;
+}
+
+/**
+ * Odległość od brzegu (m, do 255) dla pikseli wody rastra pokrycia – głębia i piana jak w regionach. Przybliżenie
+ * dwuprzebiegowe (odległość „szachownicowa” 3–4); piksele poza kaflem nie liczą się jako ląd (woda przecięta brzegiem
+ * kafla nie ma tam fałszywego brzegu).
+ */
+export function shoreDistance(cover, res, pixelM) {
+	const INF = 1e9, d = new Float32Array(res * res);
+	for (let i = 0; i < d.length; i++) d[i] = cover[i] === COVER.water ? INF : 0;
+	const at = (i, j) => (i < 0 || j < 0 || i >= res || j >= res ? INF : d[j * res + i]);
+	for (let j = 0; j < res; j++) for (let i = 0; i < res; i++) {
+		const k = j * res + i;
+		if (!d[k]) continue;
+		d[k] = Math.min(d[k], at(i - 1, j) + 3, at(i, j - 1) + 3, at(i - 1, j - 1) + 4, at(i + 1, j - 1) + 4);
+	}
+	for (let j = res - 1; j >= 0; j--) for (let i = res - 1; i >= 0; i--) {
+		const k = j * res + i;
+		if (!d[k]) continue;
+		d[k] = Math.min(d[k], at(i + 1, j) + 3, at(i, j + 1) + 3, at(i + 1, j + 1) + 4, at(i - 1, j + 1) + 4);
+	}
+	const out = new Uint8Array(res * res);
+	for (let i = 0; i < d.length; i++) out[i] = d[i] >= INF ? 255 : Math.min(255, Math.round((d[i] / 3) * pixelM));
+	return out;
 }

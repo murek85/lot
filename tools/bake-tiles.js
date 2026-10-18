@@ -2,11 +2,15 @@
 //   {z}/{x}/{y}.pbf          – kafle wektorowe ze schematu tools/tiles/lot-schema.yml (Planetiler, z11–z14):
 //                              surowe znaczniki OSM – drogi, tory, budynki z rodzajem i dachem, cieki, woda, linie
 //                              energetyczne, szpalery, stacje, przejazdy, perony, miejscowości;
-//   cover/{z}/{x}/{y}.bin.gz – pokrycie terenu 128² (klasy COVER) z ESA WorldCover 10 m, dla z14 i z11;
+//   cover/{z}/{x}/{y}.bin.gz – pokrycie terenu 256² (klasy COVER) z ESA WorldCover 10 m, dla z14 i z11; w z14 drzewa
+//                              z WorldCover w zabudowie OSM (osiedla, usługi, przemysł – poza lasem OSM) → zabudowa;
+//   height/{z}/{x}/{y}.bin.gz – wysokości z14: 131², z11: 67² (Int16, decymetry; wierzchołki siatki + margines) z numerycznego
+//                              modelu terenu GUGiK (LIDAR, usługa WCS w układzie Web Mercator);
 //   tiles.json               – opis: obszary, granice, lista kafli z14 w całości wewnątrz obszaru (tylko tych gra
 //                              używa – kafle na granicy wyciągu są niepełne, tam zostaje OpenFreeMap).
 // Wejście w tools/.cache/tiles-src/: planetiler.jar, <obszar>-latest.osm.pbf i <obszar>.poly (Geofabrik).
-// Użycie: npm run bake:tiles -- slaskie [--skip-vector]
+// Użycie: npm run bake:tiles -- slaskie [--skip-vector] [--skip-cover] [--skip-height]
+// Dane © współtwórcy OpenStreetMap (ODbL), ESA WorldCover 2021 (CC BY 4.0), GUGiK (NMT).
 // Dane © współtwórcy OpenStreetMap (ODbL), ESA WorldCover 2021 (CC BY 4.0).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,12 +18,17 @@ import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { lonToTileX, latToTileY } from '../src/geo.js';
 import { tilePointLonLat } from '../src/gen/tiles.js';
-import { worldCoverClass } from '../src/gen/terrain.js';
+import { worldCoverClass, COVER } from '../src/gen/terrain.js';
+import { decodeTile } from '../src/gen/mvt.js';
+import { rasterizePolygon } from '../src/gen/convert.js';
+import { readFloatTiff } from './lib/tiff.js';
 import { openCog } from './lib/cog.js';
 import { pool } from './lib/net.js';
 import { readPoly, inPoly } from './lib/poly.js';
 
-const RES = 128; // piksele pokrycia na bok kafla (jak COVER_RES w src/world/chunkdata.js)
+const RES = 256; // piksele pokrycia na bok kafla (jak COVER_RES w src/world/chunkdata.js)
+const HN = 131; // siatka wysokości kafla z14: 129 wierzchołków (~12 m) + margines po jednym z każdej strony
+const WCS = 'https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WCS/DigitalTerrainModelFormatTIFF';
 const WC_PX = 12000; // pikseli WorldCover na stopień
 const WORLDCOVER = (lat3, lon3) => `https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N${String(lat3).padStart(2, '0')}E${String(lon3).padStart(3, '0')}_Map.tif`;
 const SRC = path.join(import.meta.dirname, '.cache', 'tiles-src');
@@ -98,6 +107,7 @@ async function coverTiles(z, list) {
 				const tile = await f.cog.tile(Math.floor(px / tileW), Math.floor(py / tileH));
 				out[k] = worldCoverClass(tile[(py % tileH) * tileW + (px % tileW)]);
 			}
+			if (z === 14) builtFromOsm(out, x, y);
 			const file = path.join(OUT, 'cover', String(z), String(x), `${y}.bin.gz`);
 			fs.mkdirSync(path.dirname(file), { recursive: true });
 			fs.writeFileSync(file, zlib.gzipSync(Buffer.from(out.buffer), { level: 9 }));
@@ -108,16 +118,83 @@ async function coverTiles(z, list) {
 		log(`  pokrycie z${z}: ${done}/${list.length}`);
 	}
 }
-await coverTiles(11, z11);
-await coverTiles(14, z14);
+/**
+ * Drzewa z WorldCover w zabudowie (ogrody, skwery, szpalery na osiedlach) – jako zabudowa, chyba że OSM ma tam las:
+ * inaczej w miastach stałyby gęste lasy 3D. Wielokąty z własnych kafli wektorowych (warstwy landuse, wood).
+ */
+function builtFromOsm(out, x, y) {
+	const file = path.join(OUT, '14', String(x), `${y}.pbf`);
+	if (!fs.existsSync(file)) return;
+	const b = fs.readFileSync(file);
+	const t = decodeTile(b.buffer.slice(b.byteOffset, b.byteOffset + b.length), ['landuse', 'wood']);
+	const mark = (layer, val) => {
+		const m = new Uint8Array(RES * RES);
+		for (const f of t.layers[layer]?.features ?? []) {
+			if (f.type !== 3) continue;
+			const rings = f.geom.map((r) => r.map((v) => v - 2048));
+			rasterizePolygon(m, RES, 4096, rings, val);
+		}
+		return m;
+	};
+	const built = mark('landuse', 1), wood = mark('wood', 1);
+	for (let i = 0; i < out.length; i++) if (out[i] === COVER.forest && built[i] && !wood[i]) out[i] = COVER.built;
+}
+
+/**
+ * Wysokości z GUGiK (WCS, Web Mercator): środki pikseli dokładnie w wierzchołkach siatki: z14 – 129² (+ margines,
+ * 131²), z11 (daleki teren) – 65² (67²); obie z tego samego modelu, więc na styku bliskiego i dalekiego terenu
+ * nie ma uskoku między źródłami.
+ */
+async function heightTiles(list, z = 14, HN = 131) {
+	const R = 6378137;
+	let done = 0, skipped = 0, failed = 0;
+	await pool(list, 6, async ([x, y]) => {
+		const file = path.join(OUT, 'height', String(z), String(x), `${y}.bin.gz`);
+		if (fs.existsSync(file)) { skipped++; return; }
+		const S = (2 * Math.PI * R) / 2 ** z, c = S / (HN - 3);
+		const x0 = -Math.PI * R + x * S, y1 = Math.PI * R - y * S;
+		const bx = [x0 - 1.5 * c, x0 + S + 1.5 * c], by = [y1 - S - 1.5 * c, y1 + 1.5 * c];
+		const url = `${WCS}?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=DTM_PL-KRON86-NH_TIFF&FORMAT=image/tiff`
+			+ '&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/3857&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/3857'
+			+ `&SUBSET=x(${bx[0]},${bx[1]})&SUBSET=y(${by[0]},${by[1]})&SCALESIZE=x(${HN}),y(${HN})&INTERPOLATION=BILINEAR`;
+		for (let attempt = 1; attempt <= 5; attempt++) {
+			try {
+				const res = await fetch(url, { headers: { 'User-Agent': 'lot-prototyp/0.1 (gra; wypiekanie terenu)' } });
+				if (!res.ok || !String(res.headers.get('content-type')).includes('tiff')) throw new Error(`${res.status}`);
+				const { width, height, data } = readFloatTiff(Buffer.from(await res.arrayBuffer()));
+				if (width !== HN || height !== HN) throw new Error(`rozmiar ${width}×${height}`);
+				const dm = new Int16Array(HN * HN);
+				// poza Polską usługa zwraca 0 (brak danych) – znacznik −32768: gra uzupełnia tam rzeźbę z Terrarium
+				for (let i = 0; i < dm.length; i++) dm[i] = data[i] === 0 || !(data[i] > -500) ? -32768 : Math.max(-32000, Math.min(32000, Math.round(data[i] * 10)));
+				fs.mkdirSync(path.dirname(file), { recursive: true });
+				fs.writeFileSync(file, zlib.gzipSync(Buffer.from(dm.buffer), { level: 9 }));
+				break;
+			} catch (e) {
+				if (attempt === 5) { failed++; console.warn(`  wysokość ${x}/${y}: ${e.message}`); }
+				else await new Promise((r) => setTimeout(r, 2000 * attempt));
+			}
+		}
+		if (++done % 200 === 0) log(`  wysokości: ${done + skipped}/${list.length}`);
+	});
+	log(`  wysokości: pobrane ${done - failed}, wcześniej ${skipped}, błędy ${failed}`);
+}
+
+if (!args.includes('--skip-cover')) {
+	await coverTiles(11, z11);
+	await coverTiles(14, z14);
+}
+if (!args.includes('--skip-height')) {
+	await heightTiles(z14, 14, HN);
+	await heightTiles(z11, 11, 67);
+}
 
 // --- 4. opis ---
 const manifestFile = path.join(OUT, 'tiles.json');
 const old = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : { areas: {} };
 old.areas[area] = { bounds: [W, S, E, N], built: new Date().toISOString().slice(0, 10), z14: z14.map(([x, y]) => `${x}/${y}`), z11: z11.map(([x, y]) => `${x}/${y}` ) };
 const manifest = {
-	name: 'Lot nad Polską – własne kafle', version: 1, coverRes: RES,
-	attribution: 'Dane © współtwórcy OpenStreetMap (ODbL) · ESA WorldCover 2021 (CC BY 4.0)',
+	name: 'Lot nad Polską – własne kafle', version: 3, coverRes: RES, heightRes: HN, farHeightRes: 67,
+	attribution: 'Dane © współtwórcy OpenStreetMap (ODbL) · ESA WorldCover 2021 (CC BY 4.0) · NMT © GUGiK',
 	areas: old.areas,
 };
 fs.writeFileSync(manifestFile, JSON.stringify(manifest));

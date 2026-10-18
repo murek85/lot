@@ -56,7 +56,7 @@ export function ringGeometry(inner, outer) {
 }
 
 /** Jasność lasu z tekstury koron względem lasu z drzew 3D (pomiar: średnia jasność obrazu w obu strefach). */
-export const farForest = uniform(0.45);
+export const farForest = uniform(0.5);
 
 let WAVES = null;
 const wavesTex = () => (WAVES ??= texture(createWaveTexture()));
@@ -174,7 +174,10 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const ang = hash12(zone.add(3.7)).sub(0.5).mul(1.9);
 			const ca = cos(ang), sa = sin(ang);
 			const r = vec2(xz.x.mul(ca).sub(xz.y.mul(sa)), xz.x.mul(sa).add(xz.y.mul(ca)));
-			const { id, edgeM, across: acrossM } = fieldLayout(r, zone);
+			// lite (daleki teren otwartego świata): bloki pól bez podziału na pasy – z ~10 km i tak niewidoczne
+			const { id, edgeM, across: acrossM } = src.lite
+				? { id: hash12(floor(r.div(vec2(430, 330))).add(zone.mul(7.1))), edgeM: float(50), across: r.x }
+				: fieldLayout(r, zone);
 			const border = smoothstep(1.2, 2.6, edgeM.add(footprint.mul(0.5)));
 			const headland = smoothstep(10, 14, edgeM).oneMinus().mul(float(1).sub(smoothstep(1.5, 6, footprint)));
 			const crop = vec3(0).toVar();
@@ -188,7 +191,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 				.Else(() => { crop.assign(COL.meadowB); });
 			// odcień pola, wilgotność gleby i niejednorodność łanu w kilku skalach
 			crop.mulAssign(mix(float(0.85), float(1.15), hash12(vec2(id.mul(91), 7))));
-			const moist = fbm(xz.div(90).add(id.mul(50)), 3);
+			const moist = src.lite ? valueNoise(xz.div(90).add(id.mul(50))) : fbm(xz.div(90).add(id.mul(50)), 3);
 			const patchy = valueNoise(xz.div(14).add(id.mul(30))).mul(0.6).add(valueNoise(xz.div(3.5)).mul(0.4));
 			crop.mulAssign(mix(float(0.72), float(1.22), moist).mul(mix(float(0.9), float(1.08), patchy)));
 			// ścieżki technologiczne (dwa ślady kół co 18 m) i rzędy kukurydzy co 0,75 m – gasną z odległością

@@ -232,3 +232,35 @@ test('Obszar własnych kafli: plik .poly i punkt w wielokącie (z otworem)', () 
 	assert.ok(!inPoly(rings, 19, 51), 'otwór');
 	assert.ok(!inPoly(rings, 21, 51));
 });
+
+import { shoreDistance, resampleCover, lotHeights, fillHeights } from '../src/world/chunkdata.js';
+
+test('Otwarty świat: odległość od brzegu w wodzie (głębia, piana), woda przecięta brzegiem kafla bez fałszywego brzegu', () => {
+	const R = 32, c = new Uint8Array(R * R).fill(COVER.grass);
+	// jezioro: kolumny 8…31 (sięga prawej krawędzi kafla)
+	for (let j = 0; j < R; j++) for (let i = 8; i < R; i++) c[j * R + i] = COVER.water;
+	const d = shoreDistance(c, R, 6);
+	assert.equal(d[16 * R + 4], 0, 'ląd');
+	assert.equal(d[16 * R + 8], 6, 'pierwszy piksel wody – 1 piksel od brzegu');
+	assert.ok(d[16 * R + 20] > d[16 * R + 10], 'dalej od brzegu – głębiej');
+	assert.ok(Math.abs(d[16 * R + 31] - 23 * 6) <= 6, 'przy krawędzi kafla – odległość od prawdziwego brzegu');
+});
+
+test('Otwarty świat: raster pokrycia innej rozdzielczości i wysokości GUGiK (decymetry)', () => {
+	const old = new Uint8Array(128 * 128).fill(COVER.forest);
+	old[0] = COVER.water;
+	const r = resampleCover(old);
+	assert.equal(r.length, COVER_RES * COVER_RES);
+	assert.equal(r[0], COVER.water);
+	assert.equal(r[COVER_RES + 1], COVER.water, 'piksel 128² → 2×2 piksele 256²');
+	assert.equal(r[COVER_RES * COVER_RES - 1], COVER.forest);
+	const h = lotHeights(new Int16Array([8007, -25, 0]).buffer);
+	assert.deepEqual([...h].map((v) => +v.toFixed(1)), [800.7, -2.5, 0]);
+});
+
+test('Wysokości GUGiK: brak danych poza Polską (znacznik) uzupełniany z drugiego źródła', () => {
+	const h = lotHeights(new Int16Array([5000, -32768, 4980, -32768]).buffer);
+	assert.ok(Number.isNaN(h[1]) && Number.isNaN(h[3]));
+	assert.equal(fillHeights(h, new Float32Array([1, 702.5, 3, 699])), 2);
+	assert.deepEqual([...h].map((v) => +v.toFixed(1)), [500, 702.5, 498, 699]);
+});

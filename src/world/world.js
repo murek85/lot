@@ -111,7 +111,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 		streamer, view, terrain, forest, window: win, net, map, farStreamer, farView, mask,
 		coverAt: (x, z) => streamer.coverAt(x, z),
 		/**
-		 * Sieć dla symulacji ruchu: drogi z kafli do 5 km (pojazdy jeżdżą do 2,5 km), tory i stacje do 9 km (pociągi
+		 * Sieć dla symulacji ruchu: drogi z kafli do 5 km (pojazdy jeżdżą do 2,5 km), tory i stacje do 12 km (pociągi
 		 * do 6 km) – budowane w wątku; tu tylko podmiana: pojazdy i pociągi przepinane na nowy graf (bez znikania),
 		 * chodniki i perony z wczytanych kafli do 3 km.
 		 */
@@ -140,7 +140,9 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 			}
 			if (net.pending || (net.x !== null && Math.hypot(x - net.x, z - net.z) < 2000)) return false;
 			net.x = x; net.z = z; net.pending = true;
-			netWorker.postMessage({ type: 'net', req: ++net.req, roads: keys(x, z, 5000), rails: keys(x, z, 9000), origin: streamer.origin });
+			// tory do 12 km: pociągi jeżdżą do 6 km od samolotu, a przebudowa co 2 km – z zapasem nie dojeżdżają do sztucznego
+			// końca sieci (tam zawracałyby jak na końcu toru)
+			netWorker.postMessage({ type: 'net', req: ++net.req, roads: keys(x, z, 5000), rails: keys(x, z, 12000), origin: streamer.origin });
 			return false;
 		},
 		/**

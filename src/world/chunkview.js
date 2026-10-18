@@ -4,7 +4,7 @@
 // obszaru. Geometria w metrach układu świata (początek origin) – materiały jak w regionach.
 import {
 	Mesh, Group, BufferGeometry, BufferAttribute, Float32BufferAttribute, MeshBasicNodeMaterial, DataArrayTexture, RedFormat,
-	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry, DataTexture, RepeatWrapping,
+	UnsignedByteType, NearestFilter, Vector2, PlaneGeometry, DataTexture, RepeatWrapping, RGFormat,
 } from 'three/webgpu';
 import {
 	Fn, float, vec2, vec3, vec4, int, ivec2, attribute, varying, uniform, textureLoad, max, abs, clamp, normalize, floor, fract,
@@ -27,12 +27,14 @@ import { COVER } from '../gen/terrain.js';
 const SLOTS = 256;
 
 /**
- * Siatka terenu kafla: GRID² wierzchołków w metrach świata, uv kafla, numer warstwy pokrycia. skirt – „fartuch”:
- * pas wzdłuż brzegu opuszczony o tyle metrów (na granicy z dalekim terenem o innej siatce nie widać szczelin).
+ * Siatka terenu kafla w metrach świata, uv kafla, numer warstwy pokrycia: ch.n² wierzchołków (65 z Terrarium, 129
+ * z GUGiK), co stride-ty (dalekie kafle – mniej trójkątów). skirt – „fartuch”: pas wzdłuż brzegu opuszczony o tyle
+ * metrów (na granicy z dalekim terenem o innej siatce nie widać szczelin).
  */
-function terrainGeometry(ch, layer, skirt = 0) {
+function terrainGeometry(ch, layer, skirt = 0, stride = 1) {
 	const { x0, z0, w, h } = ch.frame;
-	const n = GRID;
+	const N = ch.n ?? GRID, n = (N - 1) / stride + 1;
+	const src = (i, j) => j * stride * N + i * stride; // indeks w danych kafla
 	const ring = [];
 	if (skirt) {
 		for (let i = 0; i < n; i++) ring.push(i);
@@ -43,11 +45,11 @@ function terrainGeometry(ch, layer, skirt = 0) {
 	const V = n * n + ring.length;
 	const pos = new Float32Array(V * 3), uv = new Float32Array(V * 2), lay = new Float32Array(V).fill(layer), nrm = new Float32Array(V * 3);
 	for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-		const k = j * n + i;
-		pos.set([x0 + (i / (n - 1)) * w, ch.heights[k], z0 + (j / (n - 1)) * h], k * 3);
+		const k = j * n + i, q = src(i, j);
+		pos.set([x0 + (i / (n - 1)) * w, ch.heights[q], z0 + (j / (n - 1)) * h], k * 3);
 		uv.set([i / (n - 1), j / (n - 1)], k * 2);
+		nrm.set([ch.normals[q * 3], ch.normals[q * 3 + 1], ch.normals[q * 3 + 2]], k * 3);
 	}
-	nrm.set(ch.normals);
 	ring.forEach((k, r) => {
 		const v = n * n + r;
 		pos.set([pos[k * 3], pos[k * 3 + 1] - skirt, pos[k * 3 + 2]], v * 3);
@@ -74,6 +76,14 @@ function terrainGeometry(ch, layer, skirt = 0) {
 	return g;
 }
 
+/** Pokrycie i odległość od brzegu kafla do warstwy tekstury RG (R – klasa, G – metry od brzegu w wodzie). */
+function packCover(tex, ch, layer) {
+	const d = tex.image.data, o = layer * COVER_RES * COVER_RES * 2, c = ch.cover, sh = ch.shore;
+	for (let i = 0; i < c.length; i++) { d[o + i * 2] = c[i]; d[o + i * 2 + 1] = sh ? sh[i] : 255; }
+	tex.addLayerUpdate?.(layer); // tylko ta warstwa do karty (cała tekstura to ~33 MB)
+	tex.needsUpdate = true;
+}
+
 // klasy pokrycia 0–3 i 4–7 jako wagi (jak w terenie regionu)
 const oneHotA = (c) => max(vec4(0), vec4(1).sub(abs(vec4(c).sub(vec4(0, 1, 2, 3)))));
 const oneHotB = (c) => max(vec4(0), vec4(1).sub(abs(vec4(c).sub(vec4(4, 5, 6, 7)))));
@@ -86,7 +96,7 @@ const outsideA = (xz) => {
 
 /** Materiał terenu kafli: ten sam shader gruntu co w regionach (shadeGround), dane z rastra kafla i siatki. */
 /** hole – maska kafli bliskich ({ tex, ref, size }): daleki teren nie rysuje się tam, gdzie leży kafel z14. */
-function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = null) {
+function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = null, lite = false) {
 	const m = new MeshBasicNodeMaterial();
 	const vFlat = varying(vec3(0), 'vWTerFlat');
 	const vN = varying(vec3(0, 1, 0), 'vWTerN');
@@ -99,8 +109,9 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 		vLayer.assign(attribute('aLayer', 'float'));
 		return onGround(positionLocal, U.cam);
 	})();
+	let shore = float(40);
 	const src = {
-		U, isRing: false, hasOsm: true,
+		U, isRing: false, hasOsm: true, lite,
 		// pokrycie: cztery sąsiednie piksele rastra kafla dwuliniowo, z poszarpanym szumem brzegiem (jak w regionach)
 		cover(xz) {
 			const jitter = vec2(valueNoise(xz.div(38)), valueNoise(xz.div(38).add(71.3))).sub(0.5).mul(1.4)
@@ -118,8 +129,12 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 			// (src/world/window.js), więc korony z daleka i drzewa z bliska się pokrywają
 			const q = vUv.mul(COVER_RES).sub(0.5);
 			const q0 = floor(q), g = fract(q);
-			const isF = (o) => step(abs(load0(q0.add(o)).sub(1)), 0.5);
-			const dens = mix(mix(isF(vec2(0, 0)), isF(vec2(1, 0)), g.x), mix(isF(vec2(0, 1)), isF(vec2(1, 1)), g.x), g.y);
+			// jeden odczyt na piksel: klasa (R) do gęstości lasu i odległość od brzegu (G, metry) do głębi wody i piany
+			const tex = (o) => textureLoad(coverTex, ivec2(clamp(q0.add(o), vec2(0), vec2(COVER_RES - 1))), 0).depth(layer).rg.mul(255);
+			const t00 = tex(vec2(0, 0)), t10 = tex(vec2(1, 0)), t01 = tex(vec2(0, 1)), t11 = tex(vec2(1, 1));
+			const isF = (t) => step(abs(floor(t.x.add(0.5)).sub(1)), 0.5);
+			const dens = mix(mix(isF(t00), isF(t10), g.x), mix(isF(t01), isF(t11), g.x), g.y);
+			shore = mix(mix(t00.y, t10.y, g.x), mix(t01.y, t11.y, g.x), g.y);
 			const edgeNoise = valueNoise(xz.div(23)).mul(0.6).add(valueNoise(xz.div(6.5)).mul(0.4)).sub(0.5).mul(0.42);
 			const fw = smoothstep(0.42, 0.58, dens.add(edgeNoise));
 			const others = max(1e-4, wA.x.add(wA.z).add(wA.w).add(dot(wB, vec4(1))));
@@ -128,6 +143,7 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 			wB.assign(wB.mul(rest));
 			return { wA, wB };
 		},
+		shoreM: () => shore,
 		// wysokość i spadki z siatki kafla (normalne policzone w wątku – wspólne na brzegach kafli)
 		ground() {
 			const N = normalize(vN);
@@ -179,8 +195,8 @@ export class ChunkView {
 		this.atmo = atmo; this.clouds = clouds; this.plane = plane; this.worldShadow = worldShadow;
 		this.camXZ = uniform(new Vector2());
 		this.U = { cam: this.camXZ, time: uniform(0), treeH: uniform(17), treesFar: uniform(0) };
-		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * SLOTS), COVER_RES, COVER_RES, SLOTS);
-		this.coverTex.format = RedFormat;
+		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * SLOTS * 2), COVER_RES, COVER_RES, SLOTS);
+		this.coverTex.format = RGFormat;
 		this.coverTex.type = UnsignedByteType;
 		this.coverTex.minFilter = this.coverTex.magFilter = NearestFilter;
 		this.coverTex.generateMipmaps = false;
@@ -198,6 +214,9 @@ export class ChunkView {
 		this.inflight = 0; // zlecenia obiektów w wątkach
 		this.ready = []; // [kafel, dane] – do zbudowania siatek (po jednym na klatkę)
 		this.streamer = null; // ustawia createWorld
+		this.loaded = new Set(); // kafle z terenem w scenie
+		this.center = { x: 0, z: 0 };
+		this.lodAt = 0;
 		this.stats = { chunks: 0, objectChunks: 0, buildMs: 0 };
 	}
 
@@ -206,16 +225,17 @@ export class ChunkView {
 		const layer = this.free.pop();
 		if (layer === undefined) { console.warn('Brak wolnych warstw pokrycia'); return; }
 		ch.layer = layer;
-		this.coverTex.image.data.set(ch.cover, layer * COVER_RES * COVER_RES);
-		this.coverTex.addLayerUpdate?.(layer);
-		this.coverTex.needsUpdate = true;
-		ch.terrain = new Mesh(terrainGeometry(ch, layer, 40), this.terrainMat);
+		packCover(this.coverTex, ch, layer);
+		ch.stride = this.strideFor(ch, 1);
+		ch.terrain = new Mesh(terrainGeometry(ch, layer, 40, ch.stride), this.terrainMat);
+		this.loaded.add(ch);
 		ch.terrain.frustumCulled = false;
 		this.group.add(ch.terrain);
 		this.stats.chunks++;
 	}
 
 	remove(ch) {
+		this.loaded.delete(ch);
 		this.objects(ch, false);
 		if (ch.terrain) { this.group.remove(ch.terrain); ch.terrain.geometry.dispose(); ch.terrain = null; }
 		if (ch.layer !== undefined) { this.free.push(ch.layer); ch.layer = undefined; }
@@ -235,6 +255,16 @@ export class ChunkView {
 		for (const o of ch.objs.list) { o.parent?.remove(o); o.geometry?.dispose(); }
 		ch.objs = null;
 		this.stats.objectChunks--;
+	}
+
+	/**
+	 * Gęstość siatki kafla: gęste kafle (GUGiK, 129²) bliżej niż ~5 km – pełne (tam stoją obiekty, ich wysokości
+	 * liczone są na pełnej siatce), dalej – co drugi wierzchołek; histereza 5–6 km.
+	 */
+	strideFor(ch, cur) {
+		if ((ch.n ?? GRID) < 129) return 1;
+		const d = Math.hypot(ch.frame.x0 + ch.frame.w / 2 - this.center.x, ch.frame.z0 + ch.frame.h / 2 - this.center.z);
+		return d > 6000 ? 2 : d < 5000 ? 1 : cur;
 	}
 
 	buildObjects(ch, d) {
@@ -283,6 +313,8 @@ export class ChunkView {
 			return i < 0 || j < 0 || i >= R || j >= R ? -1 : ch.cover[j * R + i];
 		};
 		const det = createDetails(ch.osm, reg, ter, ...A, { coverAt, classes: COVER, shared: this.shared.details, seed: (ch.x * 7919 + ch.y) % 100000 });
+		// zasięg widoczności szczegółów (drzewa przydrożne i przewody z daleka są poniżej piksela; słupy widać dalej)
+		for (const o of [...det.objects, ...det.shadowCasters]) o.userData.detailRange = o.isInstancedMesh ? 2200 : o.isLineSegments ? 2500 : 6000;
 		list.push(...det.objects, ...det.shadowCasters);
 		// budynki: geometria z wątku, materiały wspólne dla wszystkich kafli
 		if (d.buildings.tiles.length) {
@@ -298,6 +330,23 @@ export class ChunkView {
 
 	/** Co klatkę: krzywizna względem kamery, budowa obiektów z kolejki (najbliższy kafel), podłoga. */
 	update(camera, center, time = 0) {
+		this.center = { x: center.x, z: center.z };
+		// poziom szczegółów siatek terenu – dwa razy na sekundę
+		if (performance.now() - this.lodAt > 500) {
+			this.lodAt = performance.now();
+			const cx = camera.position.x, cz = camera.position.z;
+			for (const ch of this.loaded) {
+				if (ch.objs) {
+					const d = Math.max(0, Math.hypot(ch.frame.x0 + ch.frame.w / 2 - cx, ch.frame.z0 + ch.frame.h / 2 - cz) - ch.frame.w * 0.7);
+					for (const o of ch.objs.list) if (o.userData.detailRange) o.visible = d < o.userData.detailRange;
+				}
+				const s2 = this.strideFor(ch, ch.stride);
+				if (s2 === ch.stride || !ch.terrain) continue;
+				ch.stride = s2;
+				ch.terrain.geometry.dispose();
+				ch.terrain.geometry = terrainGeometry(ch, ch.layer, 40, s2);
+			}
+		}
 		this.camXZ.value.set(camera.position.x, camera.position.z);
 		this.U.time.value = time;
 		this.roadMat.userData.camXZ.value.set(camera.position.x, camera.position.z);
@@ -397,14 +446,14 @@ export class NearMask {
 export class FarView {
 	constructor(scene, U, atmo, clouds, plane, mask) {
 		this.slots = 128;
-		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * this.slots), COVER_RES, COVER_RES, this.slots);
-		this.coverTex.format = RedFormat;
+		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * this.slots * 2), COVER_RES, COVER_RES, this.slots);
+		this.coverTex.format = RGFormat;
 		this.coverTex.type = UnsignedByteType;
 		this.coverTex.minFilter = this.coverTex.magFilter = NearestFilter;
 		this.coverTex.generateMipmaps = false;
 		this.coverTex.needsUpdate = true;
 		this.free = Array.from({ length: this.slots }, (_, i) => this.slots - 1 - i);
-		this.material = terrainMaterial(this.coverTex, U, atmo, clouds, plane, null, mask.hole);
+		this.material = terrainMaterial(this.coverTex, U, atmo, clouds, plane, null, mask.hole, true); // lżejsze wzory pól
 		this.group = new Group();
 		scene.add(this.group);
 		this.stats = { tiles: 0 };
@@ -414,8 +463,7 @@ export class FarView {
 		const layer = this.free.pop();
 		if (layer === undefined) return;
 		ch.layer = layer;
-		this.coverTex.image.data.set(ch.cover, layer * COVER_RES * COVER_RES);
-		this.coverTex.needsUpdate = true;
+		packCover(this.coverTex, ch, layer);
 		ch.terrain = new Mesh(terrainGeometry(ch, layer, 60), this.material);
 		ch.terrain.frustumCulled = false;
 		ch.terrain.renderOrder = 1; // po kaflach z14 – piksele pod nimi odpadają na teście głębi przed kosztownym cieniowaniem

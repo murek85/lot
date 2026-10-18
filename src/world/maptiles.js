@@ -35,16 +35,16 @@ function drawTile(ch) {
 	const cv = new OffscreenCanvas(n, n);
 	const ctx = cv.getContext('2d');
 	const img = ctx.createImageData(n, n);
-	const H = ch.heights, cellX = f.w / (GRID - 1), cellZ = f.h / (GRID - 1);
+	const H = ch.heights, G = ch.n ?? GRID, cellX = f.w / (G - 1), cellZ = f.h / (G - 1);
 	for (let j = 0; j < n; j++) {
 		const cj = Math.min(COVER_RES - 1, Math.floor((j / n) * COVER_RES));
-		const gj = Math.min(GRID - 2, Math.max(1, Math.round((j / n) * (GRID - 1))));
+		const gj = Math.min(G - 2, Math.max(1, Math.round((j / n) * (G - 1))));
 		for (let i = 0; i < n; i++) {
 			const ci = Math.min(COVER_RES - 1, Math.floor((i / n) * COVER_RES));
-			const gi = Math.min(GRID - 2, Math.max(1, Math.round((i / n) * (GRID - 1))));
+			const gi = Math.min(G - 2, Math.max(1, Math.round((i / n) * (G - 1))));
 			const col = MAP_COLORS[ch.cover[cj * COVER_RES + ci]] ?? MAP_COLORS[0];
 			// cieniowanie od płn.-zach., jak na mapie bazowej regionu (wzmocnione – większość Polski jest płaska)
-			const dx = (H[gj * GRID + gi + 1] - H[gj * GRID + gi - 1]) / (2 * cellX), dz = (H[(gj + 1) * GRID + gi] - H[(gj - 1) * GRID + gi]) / (2 * cellZ);
+			const dx = (H[gj * G + gi + 1] - H[gj * G + gi - 1]) / (2 * cellX), dz = (H[(gj + 1) * G + gi] - H[(gj - 1) * G + gi]) / (2 * cellZ);
 			const shade = Math.max(0.55, Math.min(1.25, 1 - (dx + dz) * 2.2 * 1.5));
 			const k = (j * n + i) * 4;
 			img.data[k] = col[0] * shade; img.data[k + 1] = col[1] * shade; img.data[k + 2] = col[2] * shade; img.data[k + 3] = 255;

@@ -26,11 +26,11 @@ export function tilesAround(x, z, r, origin, Z = 14) {
  * na niej kładziemy drogi i budynki, żeby nie chowały się pod garbami między wierzchołkami.
  */
 export function gridHeightAt(ch, x, z) {
-	const f = ch.frame, H = ch.heights;
-	const fx = Math.min(GRID - 1.0001, Math.max(0, ((x - f.x0) / f.w) * (GRID - 1)));
-	const fz = Math.min(GRID - 1.0001, Math.max(0, ((z - f.z0) / f.h) * (GRID - 1)));
+	const f = ch.frame, H = ch.heights, G = ch.n ?? GRID;
+	const fx = Math.min(G - 1.0001, Math.max(0, ((x - f.x0) / f.w) * (G - 1)));
+	const fz = Math.min(G - 1.0001, Math.max(0, ((z - f.z0) / f.h) * (G - 1)));
 	const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
-	const a = H[j * GRID + i], b = H[j * GRID + i + 1], c = H[(j + 1) * GRID + i], d = H[(j + 1) * GRID + i + 1];
+	const a = H[j * G + i], b = H[j * G + i + 1], c = H[(j + 1) * G + i], d = H[(j + 1) * G + i + 1];
 	return u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
 }
 

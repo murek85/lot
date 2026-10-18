@@ -95,7 +95,9 @@ async function start() {
 	}
 
 	const canvas = $('view');
-	const renderer = new WebGPURenderer({ canvas, antialias: false, reversedDepthBuffer: true, powerPreference: 'high-performance' });
+	// ?prof – znaczniki czasu GPU (pomiar wydajności: __lot.gpuTime(n) – sam czas karty na klatkę, ms)
+	const PROF = new URLSearchParams(location.search).has('prof');
+	const renderer = new WebGPURenderer({ canvas, antialias: false, reversedDepthBuffer: true, powerPreference: 'high-performance', trackTimestamp: PROF });
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	renderer.toneMapping = ACESFilmicToneMapping;
@@ -797,6 +799,7 @@ async function start() {
 	// środek układu (otwarty świat przesuwa go razem z początkiem układu – region.meta.center)
 	let center = region.meta.center;
 	const worldFocus = { x: 0, z: 0 };
+	let sunDirNow = null; // kierunek słońca z ostatniej klatki (pomiar GPU)
 	// otwarty świat: pamięć kafli przycinana minutę po starcie i co 10 minut (najdawniej używane kafle)
 	if (world) {
 		const trim = () => trimTileCache().catch((e) => console.warn('Pamięć kafli:', e));
@@ -819,6 +822,7 @@ async function start() {
 		precip.camPrev.x -= dx; precip.camPrev.z -= dz;
 		clouds.shiftOrigin(dx, dz);
 		forest.shiftOrigin?.(dx, dz);
+		post.resetHistory(); // wygładzanie bez historii z poprzedniego układu (bez smug i mignięcia)
 		console.info(`Lot: początek układu przesunięty o ${(dx / 1000).toFixed(1)}, ${(dz / 1000).toFixed(1)} km (${ms.toFixed(1)} ms)`);
 	};
 
@@ -1074,6 +1078,7 @@ async function start() {
 		details?.update(camera);
 		buildings?.update(camera);
 		// cienie wokół miejsca, na które patrzymy (samolot albo środek widoku swobodnego)
+		sunDirNow = key;
 		worldShadow.update(mode !== 'free' ? plane.model.position : view.target, key);
 		post.render();
 
@@ -1159,7 +1164,21 @@ async function start() {
 		for (let i = 0; i < n; i++) { post.render(); await queue.onSubmittedWorkDone(); }
 		return (performance.now() - t0) / n;
 	};
-	window.__lot = { world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	/** Czas GPU na klatkę (ms) ze znaczników czasu – tylko z ?prof; mediana z n klatek (cienie świata + scena + obraz). */
+	const gpuTime = async (n = 20) => {
+		if (!PROF) return null;
+		const out = [];
+		for (let i = 0; i < n; i++) {
+			if (sunDirNow) worldShadow.update(mode !== 'free' ? plane.model.position : view.target, sunDirNow);
+			post.render();
+			await renderer.backend.device.queue.onSubmittedWorkDone();
+			await renderer.resolveTimestampsAsync('render');
+			out.push(renderer.info.render.timestamp);
+		}
+		out.sort((a, b) => a - b);
+		return out[n >> 1];
+	};
+	window.__lot = { gpuTime, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

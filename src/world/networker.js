@@ -14,8 +14,12 @@ export const GRID_CARS = 256, GRID_TRAINS = 640;
 let tpl = null, originKey = '';
 const LOT = new URL('../../data/tiles/lot/', import.meta.url).href;
 let lotp = null;
+let lotStamp = '';
 const lotTiles = () => (lotp ??= fetch(`${LOT}tiles.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
-	.then((m) => new Set(Object.values(m?.areas ?? {}).flatMap((a) => a.z14))));
+	.then((m) => {
+		lotStamp = `v${m?.version ?? 0}-${Object.values(m?.areas ?? {}).map((a) => a.built).join('.')}`;
+		return new Set(Object.values(m?.areas ?? {}).flatMap((a) => a.z14));
+	}));
 const cache = new Map(); // "x/y" → osm kafla (ostatnio używane)
 
 async function osmOf(x, y, origin) {
@@ -24,7 +28,7 @@ async function osmOf(x, y, origin) {
 	// te same drogi co w scenie: własne kafle w ich obszarze, poza nim – OpenFreeMap (jak src/world/chunkworker.js)
 	let osm;
 	if ((await lotTiles()).has(k)) {
-		const t = await fetchTile(`lot/${CHUNK_Z}/${x}/${y}`, `${LOT}${CHUNK_Z}/${x}/${y}.pbf`);
+		const t = await fetchTile(`lot/${lotStamp}/${CHUNK_Z}/${x}/${y}`, `${LOT}${CHUNK_Z}/${x}/${y}.pbf`);
 		({ osm } = chunkObjectsLot(t.buf, null, x, y, origin));
 	} else {
 		tpl ??= (await (await fetch(OFM)).json()).tiles[0];

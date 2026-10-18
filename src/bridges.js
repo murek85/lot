@@ -68,6 +68,7 @@ export function createBridges(osm, region, terrain, atmo, clouds, plane, worldSh
 			const m = pts.length / 2 - 1;
 			for (let i = 0; i < m; i++) { cx += pts[i * 2]; cz += pts[i * 2 + 1]; }
 			cx /= m; cz /= m;
+			if (!(best > 1) || !(m > 0)) continue; // zdegenerowany obrys (punkty w jednym miejscu) – bez peronu
 			const tx = (pts[bi] - pts[bi - 2]) / best, tz = (pts[bi + 1] - pts[bi - 1]) / best;
 			pts = [cx - tx * best / 2, cz - tz * best / 2, cx + tx * best / 2, cz + tz * best / 2];
 		}

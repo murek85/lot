@@ -457,7 +457,14 @@ Regiony działają jak dotąd.
   (`cover/{z}/{x}/{y}.bin.gz`) i opis `tiles.json` z listą kafli z14 w całości wewnątrz wielokąta obszaru.
   W grze (`src/world/chunkworker.js`): kafel z listy – własne dane (`convertLotTile` w `src/gen/lottiles.js`,
   znaczniki → klasy tą samą logiką co narzędzia regionów: `src/gen/osmtags.js`), poza listą – OpenFreeMap.
+  Do tego rastry wysokości `height/14/{x}/{y}.bin.gz` (131², Int16 w decymetrach – wierzchołki siatki 129² i
+  margines) i `height/11/…` dla dalekiego terenu (67²; poza Polską znacznik braku danych – gra bierze tam Terrarium) z numerycznego modelu terenu GUGiK (usługa WCS, zapytanie w EPSG:3857 o obszar kafla tak, by środki
+  pikseli wypadły w wierzchołkach siatki; ~1,5 s na kafel, 6 naraz – Śląskie ~25 minut, przerwane wypiekanie
+  dokańcza tylko brakujące). Pokrycie 256²: drzewa z WorldCover w zabudowie OSM (warstwy landuse i wood) – zabudowa.
   Hosting kafli (wersja przeglądarkowa) – do ustalenia; teraz serwer gry podaje je z dysku.
+- **Pomiar wydajności**: `http://localhost:4190/?prof` – znaczniki czasu GPU (`await __lot.gpuTime(20)`); koszt
+  warstwy najlepiej mierzyć na przemian z nią i bez niej, z wstrzymaną pętlą gry (`__lot.renderer.setAnimationLoop(null)`,
+  potem `__lot.post.render()` i `device.queue.onSubmittedWorkDone()`), bo pojedyncze pomiary wahają się o kilka ms.
 - **Obiekty w wątkach**: przy wejściu kafla w pierścień obiektów wątek kafli liczy geometrię budynków
   (`buildBuildingTiles`, `src/buildgeo.js` – bez Three.js poza triangulacją z `three.core.js`) i dróg (`ribbon`,
   `src/gfx/ribbon.js`) z zapamiętanych danych kafla i oddaje tablice bez kopiowania; wątek główny tworzy z nich

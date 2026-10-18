@@ -3,6 +3,46 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.30 – drobne poprawki otwartego świata
+
+- **Bez uskoku na styku terenu bliskiego i dalekiego w górach**: daleki teren w obszarze własnych kafli też z GUGiK
+  (kafle z11, siatka 65²); poza Polską (brak danych – znacznik w pliku) rzeźba uzupełniana z Terrarium.
+- **Przesunięcie początku układu bez mignięcia wygładzania**: historia TRAA od nowa w klatce przesunięcia (three
+  trzyma poprzednie macierze kamery u siebie – wektory ruchu tej jednej klatki byłyby błędne).
+- **Pociągi**: sieć torów do 12 km (wcześniej 9) – składy nie dojeżdżają do sztucznego końca sieci, gdzie
+  zawracałyby jak na końcu toru.
+- Poprawka: perony z zdegenerowanym obrysem dawały wierzchołki NaN w siatce mostów i peronów (błędy
+  „computeBoundingSphere … NaN” w konsoli, także w regionach).
+- Skala rzutu Mercatora (~1% na 100 km na płn./płd. od startu) – świadomy kompromis (przesunięcie początku jako
+  czyste przesunięcie), opisany w README.
+
+## 0.29 – wydajność otwartego świata
+
+- Pomiar: `?prof` w adresie włącza znaczniki czasu GPU (`__lot.gpuTime()`), a pomiar warstw – na przemian
+  z warstwą i bez (pętla gry wstrzymana): nad Katowicami klatka 19 ms, z tego stały koszt nieba, chmur
+  i obrazu końcowego 5,9 ms, teren bliski 3,6, las 3D 1,9, szczegóły (drzewa przydrożne, przewody) 1,6, woda
+  z torami i mostami 1,1, daleki teren 0,8; trójkąty terenu nie są wąskim gardłem (połowa siatki – ten sam czas),
+  tylko cieniowanie pikseli.
+- Drzewa przydrożne i przewody tylko do ~2–2,5 km od kamery (słupy dalej): szczegóły 1,6 → 0,3 ms.
+- Teren kafli: gęstość lasu i odległość od brzegu z jednego odczytu tekstury (12 → 8 odczytów na piksel).
+- Daleki teren: pola bez podziału na pasy i prostszy szum wilgotności (z ~10 km niewidoczne) – 0,5–0,9 ms.
+- Razem: klatka w grze nad Katowicami (250 m nad terenem) – mediana 23,1 → 22,7 ms, 95% klatek 30,8 → 29,4 ms;
+  reszty nie da się zbić bez straty jakości (cieniowanie terenu jak w regionach).
+
+## 0.28 – jakość obrazu otwartego świata
+
+- **Rzeźba z GUGiK** w obszarze własnych kafli: numeryczny model terenu z LIDAR (usługa WCS GUGiK, w układzie Web
+  Mercator – piksele dokładnie w wierzchołkach siatki), siatka 129² (~12 m) zamiast 65² z Terrarium (~24 m, dane
+  ~30 m) – ostre doliny, skarpy, nasypy, hałdy. Dalej niż ~6 km od samolotu – co drugi wierzchołek (histereza
+  5–6 km; obiekty stoją tylko na pełnej siatce).
+- **Pokrycie terenu 256²** (~6 m) zamiast 128² – gładsze brzegi lasów, pól i wody (także na kafelkach OpenFreeMap).
+- **Las w miastach**: drzewa z WorldCover w zabudowie OSM (osiedla, usługi, przemysł – poza lasem z OSM) jako
+  zabudowa – bez gęstych lasów 3D w ogrodach i na skwerach.
+- **Brzegi wody** w otwartym świecie: odległość od brzegu liczona w wątku kafla (kanał G tekstury pokrycia) – płycizny
+  przy brzegu, głęboka toń w nurcie, piana na linii brzegu jak w regionach.
+- Las z daleka – jasność dopasowana także przy niskim słońcu (pomiar w południe i o 7:30).
+- Klucze pamięci kafli ze znacznikiem wypieczenia – po ponownym `bake:tiles` gra nie bierze starych kafli z IndexedDB.
+
 ## 0.27 – własne kafle (pilot: województwo śląskie)
 
 - **Własne kafle otwartego świata**: `npm run bake:tiles -- slaskie` buduje z wyciągu OpenStreetMap (Geofabrik)

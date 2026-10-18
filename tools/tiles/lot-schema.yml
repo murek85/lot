@@ -159,3 +159,24 @@ layers:
     - key: place
     - key: name
     - key: name:pl
+- id: landuse
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      landuse: [residential, commercial, retail, industrial, garages, construction, railway]
+    attributes:
+    - key: landuse
+- id: wood
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      landuse: forest
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      natural: wood

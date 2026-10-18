@@ -85,5 +85,11 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 		outNode = vec4(outNode.rgb.mul(float(1).sub(ov.a)).add(ov.rgb), 1);
 	}
 	pipeline.outputNode = outNode;
-	return { pipeline, scenePass, saturation, flash, veil, veilColor, tiltShift: ts, render: () => pipeline.render() };
+	/**
+	 * Historia wygładzania od nowa (z bieżącej klatki) – po przesunięciu początku układu otwartego świata wektory ruchu
+	 * jednej klatki są błędne (three trzyma poprzednie macierze kamery u siebie), więc lepiej nie sięgać do historii.
+	 * TRAA zaczyna od nowa przy zmianie rozmiaru – udajemy ją, psując zapamiętany rozmiar historii.
+	 */
+	const resetHistory = () => { if (aa._historyRenderTarget) aa._historyRenderTarget.width = 0; };
+	return { pipeline, scenePass, saturation, flash, veil, veilColor, tiltShift: ts, resetHistory, render: () => pipeline.render() };
 }
