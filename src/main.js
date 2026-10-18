@@ -36,7 +36,8 @@ import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
 import { sunPosition, sunDirection, dayOfYear } from './sun.js';
 import { nightSky, moonIllumination } from './moon.js';
-import { lonLatToLocal } from './geo.js';
+import { lonLatToLocal, localToLonLat } from './geo.js';
+import { formatLatLon, relativeWind, edgeWarning, windFromText, drawCompass } from './ui/nav.js';
 import { transmittance, ATMOSPHERE } from './atmosphere/model.js';
 import { GameMenu, VERSION } from './ui/menu.js';
 import { loadingScreen, nextFrames } from './ui/loading.js';
@@ -209,6 +210,9 @@ async function start() {
 	// regiony wygenerowane: miejscowości z mapy (bez odmiany nazw – opis położenia używa „nad miejscowością X”)
 	const placeList = region.meta.places ? region.meta.places.map((p) => ({ ...p, note: PLACE_KIND[p.cls] ?? 'miejscowość' })) : PLACES;
 	const places = placeList.map((p) => ({ ...p, ...lonLatToLocal(p.lon, p.lat, region.meta.center) }));
+	// opis położenia: miejsca startu (z odmianą) i wszystkie miejscowości regionu (meta.labels – npm run bake:labels)
+	const placeNames = new Set(places.map((p) => p.name));
+	const positionPlaces = [...places, ...(region.meta.labels ?? []).filter((l) => !placeNames.has(l.name)).map((l) => ({ ...l, ...lonLatToLocal(l.lon, l.lat, region.meta.center) }))];
 	const placeById = (id) => places.find((p) => p.id === id) ?? places[0];
 	const startAt = (placeId, agl = 420) => {
 		const p = placeById(placeId);
@@ -379,7 +383,7 @@ async function start() {
 		if (['sound', 'volume', 'engineVolume', 'ambientVolume', 'uiSounds'].includes(k)) audio.setSettings(settings);
 		if (k === 'cockpitFov') { cockpitCam.fov = v; if (mode === 'cockpit') { camera.fov = v; camera.updateProjectionMatrix(); } }
 	};
-	const flightTitle = (f) => describePosition(f.x, f.z, places);
+	const flightTitle = (f) => describePosition(f.x, f.z, positionPlaces);
 	const dateText = (d) => { const t = new Date(Date.UTC(YEAR, 0, d)); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; };
 	const snapshot = () => ({ v: 1, saved: Date.now(), aircraft: plane.type, flight: { ...flight }, env: { ...env }, state: { hour: state.hour, day: state.day, cover: state.cover, haze: state.haze }, mode, landing: plane.lights.landing });
 	const enterFlight = (view) => {
@@ -643,6 +647,7 @@ async function start() {
 	};
 	const timer = new Timer();
 	let frames = 0, fpsTime = 0;
+	const compassCanvas = $('compass-c'), compassCtx = compassCanvas.getContext('2d');
 	const { center } = region.meta;
 
 	const frame = () => {
@@ -887,6 +892,13 @@ async function start() {
 		worldShadow.update(mode !== 'free' ? plane.model.position : view.target, key);
 		post.render();
 
+		// pasek kursu (co klatkę – płynnie); przy granicy mapy znacznik kursu powrotu
+		if (game === 'flying') {
+			const hdg = ((flight.heading * 180) / Math.PI + 360) % 360;
+			const back = edgeWarning(flight.x, flight.z, region.size / 2);
+			drawCompass(compassCtx, compassCanvas.width, compassCanvas.height, hdg, back ? back.deg : null);
+			$('compass-hdg').textContent = `${String(Math.round(hdg) % 360).padStart(3, '0')}°`;
+		}
 		frames++;
 		fpsTime += dt;
 		if (fpsTime > 0.5) {
@@ -897,6 +909,17 @@ async function start() {
 			$('agl').textContent = Math.max(0, Math.round(agl));
 			$('thr').textContent = Math.round(flight.throttle * 100);
 			$('clock').textContent = `${hhmm(state.hour)} · ${dateText(state.day)}`;
+			// panel położenia: miejsce, współrzędne, wiatr względem samolotu, granica mapy
+			$('nav-where').textContent = flightTitle(flight);
+			const ll = localToLonLat(flight.x, flight.z, center);
+			$('nav-coords').textContent = `${formatLatLon(ll.lat, ll.lon)} · ${region.meta.name}`;
+			const rw = relativeWind(wx.wind.x, wx.wind.z, flight.heading);
+			$('wind-arrow').style.transform = `rotate(${rw.arrow}rad)`;
+			$('wind-arrow').style.visibility = rw.speed ? 'visible' : 'hidden';
+			$('wind-text').textContent = rw.speed ? `Wiatr ${rw.text} · z ${windFromText(wx.wind.x, wx.wind.z)}` : 'Wiatr: cisza';
+			const edge = edgeWarning(flight.x, flight.z, region.size / 2);
+			$('nav-edge').hidden = !edge;
+			if (edge) $('nav-edge').textContent = edge.text;
 			$('clock-rate').textContent = rate === 0 ? '❚❚ stop' : `▶ ×${rate}`;
 			$('clock').parentElement.classList.toggle('stopped', rate === 0);
 			$('clock').parentElement.classList.toggle('fast', rate > 1);

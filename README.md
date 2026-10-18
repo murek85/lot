@@ -78,6 +78,19 @@ Regiony z polem `gen` wypieka `npm run bake:gen -- <id>` (`tools/bake-gen.js`) t
 (`src/gen/build.js`), z miejscami startu i odmianą nazw z `src/regions.js`; kafle zostają w `tools/.cache/tiles/`.
 Zabrze to ponad 6 razy więcej budynków niż Bory – gra zajmuje wtedy ok. 2 GB pamięci.
 
+## Nawigacja w locie
+
+- **Pasek kursu** u góry ekranu: taśma kompasu (N, NE, E… i co 30°), kurs w stopniach; przy granicy mapy – czerwony
+  znacznik kursu powrotu.
+- **Panel położenia** (lewy dół): gdzie jesteśmy – „nad Zabrzem · Biskupice” (miasto i dzielnica), „nad miejscowością
+  Rytel”, poza zabudową „6 km na płn.-zach. od Tucholi” (od miejscowości bliskiej i ważnej, nie od najbliższego
+  przysiółka); współrzędne geograficzne i region; **wiatr względem samolotu** (strzałka, prędkość, czołowy / w ogon /
+  boczny z lewej lub prawej, skąd wieje); **ostrzeżenie o granicy mapy** poniżej 3 km z kursem powrotu.
+- **Nazwy miejscowości** w danych regionu (`meta.labels`: miasta, wsie, dzielnice, przysiółki – do 900): z warstwy
+  „place” kafli OpenFreeMap – `npm run bake:labels -- <region>` dopisuje je do istniejącego regionu (Zabrze 900,
+  Beskid Śląski 900, Bory Tucholskie 560), generator w grze zapisuje je od razu. Do nich – odmiana nazw miejsc
+  startu z `src/regions.js`.
+
 ## Czas w grze
 
 Zegar w locie płynie: **zatrzymany**, **rzeczywisty** (×1), **przyspieszony ×10** albo **szybki ×60** (godzina w minutę –
@@ -370,6 +383,7 @@ src/ui/menu.js             menu, pauza, plan lotu, zapisy, ustawienia
 src/ui/menu.css            styl menu, ekranu startowego i wczytywania
 src/ui/loading.js          ekrany wczytywania (tło 2D, karta, postęp)
 src/gen/                   generator regionów: worker, klient, dekoder MVT, kafle, konwersja, IndexedDB
+src/ui/nav.js              nawigacja: współrzędne, wiatr względny, granica mapy, pasek kursu
 src/ui/places.js           miejsca startu, pory, pogoda, opis położenia, pamięć przeglądarki
 src/plane/model.js         model Dromadera
 src/plane/wilga.js         model PZL-104 Wilga 35

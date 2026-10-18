@@ -48,6 +48,13 @@
 		<div class="clock" title="T – zatrzymaj / wznów czas · Shift+T – przyspieszenie"><b id="clock">07:15</b><span id="clock-rate">▶ ×1</span></div>
 		<div class="mode">kamera: <span id="mode">za samolotem</span> (C)</div>
 	</div>
+	<div id="compass" aria-label="Kurs"><canvas id="compass-c" width="460" height="44"></canvas><b id="compass-hdg">000°</b></div>
+	<div id="nav" aria-label="Położenie">
+		<div id="nav-where">—</div>
+		<div id="nav-coords"></div>
+		<div id="nav-wind"><i id="wind-arrow" aria-hidden="true">↑</i><span id="wind-text"></span></div>
+		<div id="nav-edge" hidden></div>
+	</div>
 	<div id="esc-hint">Esc – pauza i menu</div>
 	<div id="fps"></div>
 	<div id="credits">Wysokości: AWS Terrain Tiles · Pokrycie: ESA WorldCover 2021 (CC BY 4.0) · Drogi, budynki, tory: © współtwórcy OpenStreetMap (ODbL)</div>

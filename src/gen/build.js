@@ -3,7 +3,7 @@
 // Terrarium → siatka wysokości, woda i brzegi. Pobieranie, dekodowanie PNG i zapis dostarcza wołający (io).
 import { decodeTile } from './mvt.js';
 import { tilesFor } from './tiles.js';
-import { convertTile, rasterizePolygon, pickPlaces, COVER, COVER_PRIORITY, UNSET } from './convert.js';
+import { convertTile, rasterizePolygon, pickPlaces, pickLabels, COVER, COVER_PRIORITY, UNSET } from './convert.js';
 import { packTerrain, SHORE_STEP } from './terrain.js';
 import { localToLonLat, lonToTileX, latToTileY, regionBounds } from '../geo.js';
 
@@ -133,6 +133,7 @@ export async function buildRegion(params, io) {
 		shore: { file: 'shore.bin.gz', res: n, metersPerUnit: SHORE_STEP, zero: 128 },
 		osm: { file: 'osm.json.gz', counts },
 		places,
+		labels: pickLabels(allPlaces, half, center, localToLonLat),
 		generated: { terrain, buildings, mapTiles: list.length, heightTiles: hList.length, downloadMB: +(bytes / 1e6).toFixed(1) },
 		sources: SOURCES,
 		baked: new Date().toISOString(),

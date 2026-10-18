@@ -73,22 +73,38 @@ export const DEFAULT_SETTINGS = {
 
 const DIRS = ['płn.', 'płn.-wsch.', 'wsch.', 'płd.-wsch.', 'płd.', 'płd.-zach.', 'zach.', 'płn.-zach.'];
 
+// promień „nad” (m) i waga przy wyborze punktu odniesienia dla rodzajów miejscowości (bez rodzaju – jak miasteczko)
+const RADIUS = { city: 3500, town: 1800, village: 900, suburb: 900, quarter: 700, hamlet: 450, neighbourhood: 400, isolated_dwelling: 200 };
+const WEIGHT = { city: 4, town: 2.5, village: 1.2, suburb: 0.5, quarter: 0.4, hamlet: 0.5, neighbourhood: 0.3, isolated_dwelling: 0.2 };
+const MAIN = new Set(['city', 'town', 'village']);
+const instr = (p) => p.instr ?? (p.cls === 'city' || p.cls === 'town' ? `miastem ${p.name}` : `miejscowością ${p.name}`);
+const gen = (p) => p.gen ?? (p.cls === 'city' || p.cls === 'town' ? `miasta ${p.name}` : `miejscowości ${p.name}`);
+
 /**
- * Opis położenia punktu (x – wschód, z – południe, metry) względem najbliższego miejsca z listy
- * [{ name, gen, x, z }]: „nad Tucholą” (do 1,5 km) albo „6 km na płn.-zach. od Tucholi”.
+ * Opis położenia punktu (x – wschód, z – południe, metry) względem miejscowości z listy [{ name, gen?, instr?, cls?,
+ * x, z }]: w mieście z dzielnicą – „nad Zabrzem · Biskupice”, we wsi – „nad Tucholą” / „nad miejscowością Rytel”,
+ * poza zabudową – „6 km na płn.-zach. od Tucholi” (od miejscowości ważnej i bliskiej: odległość / waga rodzaju).
  */
 export function describePosition(x, z, places) {
-	let best = null, bd = Infinity;
+	let main = null, mainK = Infinity, local = null, localK = Infinity, ref = null, refK = Infinity;
 	for (const p of places) {
-		const d = Math.hypot(x - p.x, z - p.z);
-		if (d < bd) { bd = d; best = p; }
+		const d = Math.hypot(x - p.x, z - p.z), c = p.cls ?? 'town';
+		const k = d / (RADIUS[c] ?? 1500);
+		if (k < 1) {
+			if (MAIN.has(c)) { if (k < mainK) { mainK = k; main = p; } } else if (k < localK) { localK = k; local = p; }
+		}
+		const w = d / (WEIGHT[c] ?? 2.5);
+		if (w < refK) { refK = w; ref = p; }
 	}
-	if (!best) return '';
-	if (bd < 1500) return best.instr ? `nad ${best.instr}` : `nad miejscowością ${best.name}`;
+	if (main && local && local.name !== main.name) return `nad ${instr(main)} · ${local.name}`;
+	if (main) return `nad ${instr(main)}`;
+	if (local) return local.cls === 'hamlet' || local.cls === 'isolated_dwelling' ? `nad ${instr(local)}` : `nad dzielnicą ${local.name}`;
+	if (!ref) return '';
+	const d = Math.hypot(x - ref.x, z - ref.z);
 	// kierunek od miejsca do punktu: 0 = północ (−z), zgodnie z ruchem wskazówek zegara
-	const ang = (Math.atan2(x - best.x, -(z - best.z)) + 2 * Math.PI) % (2 * Math.PI);
+	const ang = (Math.atan2(x - ref.x, -(z - ref.z)) + 2 * Math.PI) % (2 * Math.PI);
 	const dir = DIRS[Math.round(ang / (Math.PI / 4)) % 8];
-	return `${Math.round(bd / 1000)} km na ${dir} od ${best.gen ?? `miejscowości ${best.name}`}`;
+	return `${Math.max(1, Math.round(d / 1000))} km na ${dir} od ${gen(ref)}`;
 }
 
 /** Kurs w stopniach (0–359) z kursu w radianach. */

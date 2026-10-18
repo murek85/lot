@@ -30,7 +30,7 @@ test('„Co nowego”: wersje od bieżącej do 0.1, bieżąca zgodna z numerem w
 	const { readFileSync } = await import('node:fs');
 	const src = readFileSync(new URL('../src/ui/menu.js', import.meta.url), 'utf8');
 	const versions = [...src.matchAll(/\{ v: '(\d+\.\d+)'/g)].map((m) => m[1]);
-	assert.deepEqual(versions, ['0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
+	assert.deepEqual(versions, ['0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
 	assert.ok(src.includes(`'PROTOTYP ${versions[0]}'`));
 	const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 	assert.deepEqual([...log.matchAll(/^## (\d+\.\d+)/gm)].map((m) => m[1]), versions);
@@ -46,4 +46,28 @@ test('zegar: upływ z tempem, przez północ do następnego dnia, po 31 grudnia 
 	assert.equal(advanceClock(23.9, 365, 3600, 1).day, 1);
 	assert.ok(TIME_SPEEDS.some((s) => s.id === DEFAULT_PLAN.timeSpeed));
 	assert.deepEqual(TIME_SPEEDS.map((s) => s.rate), [0, 1, 10, 60]);
+});
+
+test('nawigacja: współrzędne, wiatr względem samolotu, granica mapy, opis położenia z dzielnicą', async () => {
+	const { formatLatLon, relativeWind, edgeWarning } = await import('../src/ui/nav.js');
+	const { describePosition: dp } = await import('../src/ui/places.js');
+	assert.equal(formatLatLon(50.3249, 18.7857), '50°19′ N 18°47′ E');
+	// lot na północ (kurs 0), wiatr wieje na południe (z północy) – czołowy
+	assert.ok(relativeWind(0, 10, 0).text.includes('czołowy'));
+	assert.ok(relativeWind(0, -10, 0).text.includes('w ogon'));
+	assert.ok(relativeWind(-10, 0, 0).text.includes('z prawej'), 'wieje na zachód = z prawej przy kursie na północ');
+	assert.equal(relativeWind(0, 0, 1).text, 'cisza');
+	assert.equal(edgeWarning(0, 0, 23000), null);
+	const e = edgeWarning(21500, 0, 23000);
+	assert.ok(e && e.text.includes('1,5 km') && e.deg === 270, e?.text);
+	assert.ok(edgeWarning(24000, 0, 23000).text.startsWith('Poza mapą'));
+	const pl = [
+		{ name: 'Zabrze', gen: 'Zabrza', instr: 'Zabrzem', cls: 'city', x: 0, z: 0 },
+		{ name: 'Biskupice', cls: 'suburb', x: 1500, z: -800 },
+		{ name: 'Kopienice', cls: 'hamlet', x: 9000, z: 0 },
+	];
+	assert.equal(dp(1400, -700, pl), 'nad Zabrzem · Biskupice');
+	assert.equal(dp(200, 300, pl), 'nad Zabrzem');
+	assert.equal(dp(9100, 50, pl), 'nad miejscowością Kopienice');
+	assert.equal(dp(0, -7000, pl), '7 km na płn. od Zabrza', 'odniesienie do miasta, nie bliższego przysiółka');
 });

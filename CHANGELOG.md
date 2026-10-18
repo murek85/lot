@@ -3,6 +3,12 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.17 – nawigacja w locie
+
+- Pasek kursu (kompas) u góry ekranu i panel położenia: miejscowość z dzielnicą, odległość i kierunek od ważnej
+  miejscowości, współrzędne, wiatr względem samolotu, ostrzeżenie o granicy mapy z kursem powrotu.
+- Nazwy miejscowości regionów (do 900) z kafli OpenFreeMap – `npm run bake:labels`; generator zapisuje je od razu.
+
 ## 0.16 – upływ czasu
 
 - Czas w locie płynie: zatrzymany, rzeczywisty, ×10, ×60; wybór w planie lotu i na pauzie, klawisze T (stop / start)

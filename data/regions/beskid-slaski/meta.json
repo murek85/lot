@@ -135,5 +135,5407 @@
 			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
 		}
 	],
-	"baked": "2026-10-18T08:42:31.600Z"
+	"baked": "2026-10-18T08:42:31.600Z",
+	"labels": [
+		{
+			"name": "Bielsko-Biała",
+			"cls": "city",
+			"lon": 19.04489,
+			"lat": 49.82212
+		},
+		{
+			"name": "Kęty",
+			"cls": "town",
+			"lon": 19.22393,
+			"lat": 49.88291
+		},
+		{
+			"name": "Skoczów",
+			"cls": "town",
+			"lon": 18.78776,
+			"lat": 49.7999
+		},
+		{
+			"name": "Ustroń",
+			"cls": "town",
+			"lon": 18.80283,
+			"lat": 49.71815
+		},
+		{
+			"name": "Szczyrk",
+			"cls": "town",
+			"lon": 19.02546,
+			"lat": 49.7166
+		},
+		{
+			"name": "Żywiec",
+			"cls": "town",
+			"lon": 19.20305,
+			"lat": 49.68903
+		},
+		{
+			"name": "Wisła",
+			"cls": "town",
+			"lon": 18.87092,
+			"lat": 49.65237
+		},
+		{
+			"name": "Jabłonków",
+			"cls": "town",
+			"lon": 18.76458,
+			"lat": 49.57674
+		},
+		{
+			"name": "Chybie",
+			"cls": "village",
+			"lon": 18.8152,
+			"lat": 49.89689
+		},
+		{
+			"name": "Bestwina",
+			"cls": "village",
+			"lon": 19.05858,
+			"lat": 49.89744
+		},
+		{
+			"name": "Nidek",
+			"cls": "village",
+			"lon": 19.31906,
+			"lat": 49.90418
+		},
+		{
+			"name": "Landek",
+			"cls": "village",
+			"lon": 18.87215,
+			"lat": 49.8805
+		},
+		{
+			"name": "Pisarzowice",
+			"cls": "village",
+			"lon": 19.14543,
+			"lat": 49.88357
+		},
+		{
+			"name": "Drogomyśl",
+			"cls": "village",
+			"lon": 18.75694,
+			"lat": 49.86923
+		},
+		{
+			"name": "Ligota",
+			"cls": "village",
+			"lon": 18.95001,
+			"lat": 49.87825
+		},
+		{
+			"name": "Bulowice",
+			"cls": "village",
+			"lon": 19.28054,
+			"lat": 49.87731
+		},
+		{
+			"name": "Pruchna",
+			"cls": "village",
+			"lon": 18.68353,
+			"lat": 49.86628
+		},
+		{
+			"name": "Rudzica",
+			"cls": "village",
+			"lon": 18.88792,
+			"lat": 49.85577
+		},
+		{
+			"name": "Mazańcowice",
+			"cls": "village",
+			"lon": 18.99077,
+			"lat": 49.85975
+		},
+		{
+			"name": "Bujaków",
+			"cls": "village",
+			"lon": 19.19344,
+			"lat": 49.85222
+		},
+		{
+			"name": "Międzyrzecze Górne",
+			"cls": "village",
+			"lon": 18.94062,
+			"lat": 49.84225
+		},
+		{
+			"name": "Kozy",
+			"cls": "village",
+			"lon": 19.14517,
+			"lat": 49.84628
+		},
+		{
+			"name": "Czaniec",
+			"cls": "village",
+			"lon": 19.26204,
+			"lat": 49.84875
+		},
+		{
+			"name": "Roczyny",
+			"cls": "village",
+			"lon": 19.31041,
+			"lat": 49.83803
+		},
+		{
+			"name": "Pierściec",
+			"cls": "village",
+			"lon": 18.8199,
+			"lat": 49.83588
+		},
+		{
+			"name": "Simoradz",
+			"cls": "village",
+			"lon": 18.75866,
+			"lat": 49.81075
+		},
+		{
+			"name": "Jasienica",
+			"cls": "village",
+			"lon": 18.9196,
+			"lat": 49.81346
+		},
+		{
+			"name": "Porąbka",
+			"cls": "village",
+			"lon": 19.21735,
+			"lat": 49.81945
+		},
+		{
+			"name": "Grodziec",
+			"cls": "village",
+			"lon": 18.86948,
+			"lat": 49.80064
+		},
+		{
+			"name": "Jaworze",
+			"cls": "village",
+			"lon": 18.94034,
+			"lat": 49.79248
+		},
+		{
+			"name": "Międzybrodzie Bialskie",
+			"cls": "village",
+			"lon": 19.19429,
+			"lat": 49.78745
+		},
+		{
+			"name": "Ogrodzona",
+			"cls": "village",
+			"lon": 18.725,
+			"lat": 49.77085
+		},
+		{
+			"name": "Górki Małe",
+			"cls": "village",
+			"lon": 18.85466,
+			"lat": 49.76463
+		},
+		{
+			"name": "Wilkowice",
+			"cls": "village",
+			"lon": 19.09286,
+			"lat": 49.76263
+		},
+		{
+			"name": "Tresna",
+			"cls": "village",
+			"lon": 19.20596,
+			"lat": 49.74001
+		},
+		{
+			"name": "Łysina",
+			"cls": "village",
+			"lon": 19.30188,
+			"lat": 49.74673
+		},
+		{
+			"name": "Goleszów",
+			"cls": "village",
+			"lon": 18.74024,
+			"lat": 49.73369
+		},
+		{
+			"name": "Brenna",
+			"cls": "village",
+			"lon": 18.91889,
+			"lat": 49.72511
+		},
+		{
+			"name": "Buczkowice",
+			"cls": "village",
+			"lon": 19.06916,
+			"lat": 49.72853
+		},
+		{
+			"name": "Rybarzowice",
+			"cls": "village",
+			"lon": 19.09586,
+			"lat": 49.73003
+		},
+		{
+			"name": "Łodygowice",
+			"cls": "village",
+			"lon": 19.14033,
+			"lat": 49.73046
+		},
+		{
+			"name": "Łękawica",
+			"cls": "village",
+			"lon": 19.26573,
+			"lat": 49.71979
+		},
+		{
+			"name": "Jaszowiec",
+			"cls": "village",
+			"lon": 18.83953,
+			"lat": 49.69924
+		},
+		{
+			"name": "Leszna Górna",
+			"cls": "village",
+			"lon": 18.71831,
+			"lat": 49.69588
+		},
+		{
+			"name": "Wędrynia",
+			"cls": "village",
+			"lon": 18.71307,
+			"lat": 49.66661
+		},
+		{
+			"name": "Nydek",
+			"cls": "village",
+			"lon": 18.75673,
+			"lat": 49.6561
+		},
+		{
+			"name": "Twardorzeczka",
+			"cls": "village",
+			"lon": 19.10727,
+			"lat": 49.66042
+		},
+		{
+			"name": "Pewel Mała",
+			"cls": "village",
+			"lon": 19.27951,
+			"lat": 49.66282
+		},
+		{
+			"name": "Wieprz",
+			"cls": "village",
+			"lon": 19.17859,
+			"lat": 49.64363
+		},
+		{
+			"name": "Trzebinia",
+			"cls": "village",
+			"lon": 19.22502,
+			"lat": 49.65095
+		},
+		{
+			"name": "Bystrzyca",
+			"cls": "village",
+			"lon": 18.72049,
+			"lat": 49.63635
+		},
+		{
+			"name": "Bystra",
+			"cls": "village",
+			"lon": 19.18731,
+			"lat": 49.62146
+		},
+		{
+			"name": "Sopotnia Mała",
+			"cls": "village",
+			"lon": 19.27587,
+			"lat": 49.6149
+		},
+		{
+			"name": "Węgierska Górka",
+			"cls": "village",
+			"lon": 19.11959,
+			"lat": 49.60882
+		},
+		{
+			"name": "Milików",
+			"cls": "village",
+			"lon": 18.71943,
+			"lat": 49.58565
+		},
+		{
+			"name": "Sopotnia Wielka",
+			"cls": "village",
+			"lon": 19.29568,
+			"lat": 49.59274
+		},
+		{
+			"name": "Istebna",
+			"cls": "village",
+			"lon": 18.89354,
+			"lat": 49.57483
+		},
+		{
+			"name": "Piosek",
+			"cls": "village",
+			"lon": 18.80202,
+			"lat": 49.55952
+		},
+		{
+			"name": "Szare",
+			"cls": "village",
+			"lon": 19.04595,
+			"lat": 49.55916
+		},
+		{
+			"name": "Milówka",
+			"cls": "village",
+			"lon": 19.08773,
+			"lat": 49.55766
+		},
+		{
+			"name": "Łomna Dolna",
+			"cls": "village",
+			"lon": 18.70585,
+			"lat": 49.5482
+		},
+		{
+			"name": "Koniaków",
+			"cls": "village",
+			"lon": 18.94434,
+			"lat": 49.55227
+		},
+		{
+			"name": "Mosty koło Jabłonkowa",
+			"cls": "village",
+			"lon": 18.75413,
+			"lat": 49.52759
+		},
+		{
+			"name": "Jaworzynka",
+			"cls": "village",
+			"lon": 18.85908,
+			"lat": 49.5279
+		},
+		{
+			"name": "Laliki",
+			"cls": "village",
+			"lon": 19.01387,
+			"lat": 49.5318
+		},
+		{
+			"name": "Skalite",
+			"cls": "village",
+			"lon": 18.89794,
+			"lat": 49.49708
+		},
+		{
+			"name": "Zwardoń",
+			"cls": "village",
+			"lon": 18.97325,
+			"lat": 49.50384
+		},
+		{
+			"name": "Rajcza",
+			"cls": "village",
+			"lon": 19.10131,
+			"lat": 49.50322
+		},
+		{
+			"name": "Czerne",
+			"cls": "village",
+			"lon": 18.81933,
+			"lat": 49.49401
+		},
+		{
+			"name": "Jarząbkowice",
+			"cls": "village",
+			"lon": 18.70952,
+			"lat": 49.90269
+		},
+		{
+			"name": "Zabłocie",
+			"cls": "village",
+			"lon": 18.77677,
+			"lat": 49.90518
+		},
+		{
+			"name": "Mnich",
+			"cls": "village",
+			"lon": 18.80918,
+			"lat": 49.88759
+		},
+		{
+			"name": "Zaborze",
+			"cls": "village",
+			"lon": 18.8072,
+			"lat": 49.87283
+		},
+		{
+			"name": "Ochaby Wielkie",
+			"cls": "village",
+			"lon": 18.76024,
+			"lat": 49.85245
+		},
+		{
+			"name": "Rudnik",
+			"cls": "village",
+			"lon": 18.68891,
+			"lat": 49.84083
+		},
+		{
+			"name": "Ochaby Małe",
+			"cls": "village",
+			"lon": 18.76351,
+			"lat": 49.84586
+		},
+		{
+			"name": "Roztropice",
+			"cls": "village",
+			"lon": 18.85309,
+			"lat": 49.84148
+		},
+		{
+			"name": "Kobiernice",
+			"cls": "village",
+			"lon": 19.2147,
+			"lat": 49.85095
+		},
+		{
+			"name": "Kiczyce",
+			"cls": "village",
+			"lon": 18.79388,
+			"lat": 49.82856
+		},
+		{
+			"name": "Dębowiec",
+			"cls": "village",
+			"lon": 18.72034,
+			"lat": 49.81364
+		},
+		{
+			"name": "Bielowicko",
+			"cls": "village",
+			"lon": 18.85574,
+			"lat": 49.81823
+		},
+		{
+			"name": "Iskrzyczyn",
+			"cls": "village",
+			"lon": 18.74023,
+			"lat": 49.7967
+		},
+		{
+			"name": "Groń",
+			"cls": "village",
+			"lon": 19.30023,
+			"lat": 49.80823
+		},
+		{
+			"name": "Międzyświeć",
+			"cls": "village",
+			"lon": 18.76676,
+			"lat": 49.78811
+		},
+		{
+			"name": "Biery",
+			"cls": "village",
+			"lon": 18.90645,
+			"lat": 49.79486
+		},
+		{
+			"name": "Wielka Puszcza",
+			"cls": "village",
+			"lon": 19.29169,
+			"lat": 49.79364
+		},
+		{
+			"name": "Harbutowice",
+			"cls": "village",
+			"lon": 18.80724,
+			"lat": 49.77728
+		},
+		{
+			"name": "Górki Wielkie",
+			"cls": "village",
+			"lon": 18.85253,
+			"lat": 49.77217
+		},
+		{
+			"name": "Międzybrodzie Żywieckie",
+			"cls": "village",
+			"lon": 19.2219,
+			"lat": 49.76945
+		},
+		{
+			"name": "Bystra",
+			"cls": "village",
+			"lon": 19.06,
+			"lat": 49.76047
+		},
+		{
+			"name": "Kocierz Rychwałdzki",
+			"cls": "village",
+			"lon": 19.31219,
+			"lat": 49.75911
+		},
+		{
+			"name": "Kocierz Moszczanicki",
+			"cls": "village",
+			"lon": 19.25784,
+			"lat": 49.74287
+		},
+		{
+			"name": "Dzięgielów",
+			"cls": "village",
+			"lon": 18.70835,
+			"lat": 49.719
+		},
+		{
+			"name": "Cisownica",
+			"cls": "village",
+			"lon": 18.76108,
+			"lat": 49.715
+		},
+		{
+			"name": "Gilowice",
+			"cls": "village",
+			"lon": 19.30895,
+			"lat": 49.71193
+		},
+		{
+			"name": "Kalna",
+			"cls": "village",
+			"lon": 19.10431,
+			"lat": 49.70873
+		},
+		{
+			"name": "Pietrzykowice",
+			"cls": "village",
+			"lon": 19.16082,
+			"lat": 49.69937
+		},
+		{
+			"name": "Rychwałd",
+			"cls": "village",
+			"lon": 19.27005,
+			"lat": 49.69928
+		},
+		{
+			"name": "Liszna Górna",
+			"cls": "village",
+			"lon": 18.70423,
+			"lat": 49.69203
+		},
+		{
+			"name": "Leśna",
+			"cls": "village",
+			"lon": 19.13774,
+			"lat": 49.67239
+		},
+		{
+			"name": "Jawornik",
+			"cls": "village",
+			"lon": 18.83333,
+			"lat": 49.66667
+		},
+		{
+			"name": "Ostre",
+			"cls": "village",
+			"lon": 19.0851,
+			"lat": 49.66129
+		},
+		{
+			"name": "Świnna",
+			"cls": "village",
+			"lon": 19.25589,
+			"lat": 49.66645
+		},
+		{
+			"name": "Mutne",
+			"cls": "village",
+			"lon": 19.30685,
+			"lat": 49.66186
+		},
+		{
+			"name": "Karpętna",
+			"cls": "village",
+			"lon": 18.68087,
+			"lat": 49.63074
+		},
+		{
+			"name": "Przybędza",
+			"cls": "village",
+			"lon": 19.12977,
+			"lat": 49.63138
+		},
+		{
+			"name": "Gródek (kraj morawsko-śląski)",
+			"cls": "village",
+			"lon": 18.73731,
+			"lat": 49.61661
+		},
+		{
+			"name": "Cięcina",
+			"cls": "village",
+			"lon": 19.14147,
+			"lat": 49.61447
+		},
+		{
+			"name": "Koszarzyska",
+			"cls": "village",
+			"lon": 18.69464,
+			"lat": 49.59009
+		},
+		{
+			"name": "Nawsie",
+			"cls": "village",
+			"lon": 18.75855,
+			"lat": 49.58683
+		},
+		{
+			"name": "Cisiec",
+			"cls": "village",
+			"lon": 19.10488,
+			"lat": 49.59147
+		},
+		{
+			"name": "Żabnica",
+			"cls": "village",
+			"lon": 19.15031,
+			"lat": 49.58296
+		},
+		{
+			"name": "Pioseczna",
+			"cls": "village",
+			"lon": 18.78736,
+			"lat": 49.57467
+		},
+		{
+			"name": "Kamesznica",
+			"cls": "village",
+			"lon": 19.04788,
+			"lat": 49.57129
+		},
+		{
+			"name": "Bukowiec",
+			"cls": "village",
+			"lon": 18.82683,
+			"lat": 49.55114
+		},
+		{
+			"name": "Herczawa",
+			"cls": "village",
+			"lon": 18.83324,
+			"lat": 49.52017
+		},
+		{
+			"name": "Sól-Kiczora",
+			"cls": "village",
+			"lon": 19.04755,
+			"lat": 49.51037
+		},
+		{
+			"name": "Złatna",
+			"cls": "village",
+			"lon": 19.17613,
+			"lat": 49.49502
+		},
+		{
+			"name": "Frelichów",
+			"cls": "village",
+			"lon": 18.80915,
+			"lat": 49.90435
+		},
+		{
+			"name": "Hecznarowice",
+			"cls": "village",
+			"lon": 19.16771,
+			"lat": 49.90178
+		},
+		{
+			"name": "Nowa Wieś",
+			"cls": "village",
+			"lon": 19.21695,
+			"lat": 49.90678
+		},
+		{
+			"name": "Janowice",
+			"cls": "village",
+			"lon": 19.09137,
+			"lat": 49.88753
+		},
+		{
+			"name": "Bronów",
+			"cls": "village",
+			"lon": 18.92131,
+			"lat": 49.87754
+		},
+		{
+			"name": "Iłownica",
+			"cls": "village",
+			"lon": 18.85479,
+			"lat": 49.86446
+		},
+		{
+			"name": "Międzyrzecze Dolne",
+			"cls": "village",
+			"lon": 18.94223,
+			"lat": 49.85424
+		},
+		{
+			"name": "Łazy",
+			"cls": "village",
+			"lon": 18.89013,
+			"lat": 49.82532
+		},
+		{
+			"name": "Brzezinka",
+			"cls": "village",
+			"lon": 19.3166,
+			"lat": 49.82777
+		},
+		{
+			"name": "Pogórze",
+			"cls": "village",
+			"lon": 18.83826,
+			"lat": 49.79941
+		},
+		{
+			"name": "Kozubnik",
+			"cls": "village",
+			"lon": 19.22254,
+			"lat": 49.80035
+		},
+		{
+			"name": "Kostkowice",
+			"cls": "village",
+			"lon": 18.70703,
+			"lat": 49.79143
+		},
+		{
+			"name": "Gumna",
+			"cls": "village",
+			"lon": 18.692,
+			"lat": 49.77382
+		},
+		{
+			"name": "Kisielów",
+			"cls": "village",
+			"lon": 18.75649,
+			"lat": 49.77042
+		},
+		{
+			"name": "Bładnice Dolne",
+			"cls": "village",
+			"lon": 18.7885,
+			"lat": 49.77304
+		},
+		{
+			"name": "Godziszów",
+			"cls": "village",
+			"lon": 18.7575,
+			"lat": 49.76046
+		},
+		{
+			"name": "Czernichów",
+			"cls": "village",
+			"lon": 19.21208,
+			"lat": 49.75648
+		},
+		{
+			"name": "Kozakowice Górne",
+			"cls": "village",
+			"lon": 18.76287,
+			"lat": 49.74513
+		},
+		{
+			"name": "Kozakowice Dolne",
+			"cls": "village",
+			"lon": 18.77581,
+			"lat": 49.75078
+		},
+		{
+			"name": "Bażanowice",
+			"cls": "village",
+			"lon": 18.70208,
+			"lat": 49.73833
+		},
+		{
+			"name": "Bierna",
+			"cls": "village",
+			"lon": 19.17078,
+			"lat": 49.72773
+		},
+		{
+			"name": "Godziszka",
+			"cls": "village",
+			"lon": 19.07536,
+			"lat": 49.71286
+		},
+		{
+			"name": "Zarzecze",
+			"cls": "village",
+			"lon": 19.17538,
+			"lat": 49.71919
+		},
+		{
+			"name": "Jelenica",
+			"cls": "village",
+			"lon": 18.802,
+			"lat": 49.70552
+		},
+		{
+			"name": "Poniwiec",
+			"cls": "village",
+			"lon": 18.81394,
+			"lat": 49.70334
+		},
+		{
+			"name": "Słotwina",
+			"cls": "village",
+			"lon": 19.07709,
+			"lat": 49.69951
+		},
+		{
+			"name": "Lipowa",
+			"cls": "village",
+			"lon": 19.09403,
+			"lat": 49.6748
+		},
+		{
+			"name": "Sienna",
+			"cls": "village",
+			"lon": 19.13771,
+			"lat": 49.68035
+		},
+		{
+			"name": "Radziechowy",
+			"cls": "village",
+			"lon": 19.14604,
+			"lat": 49.64735
+		},
+		{
+			"name": "Przyłęków",
+			"cls": "village",
+			"lon": 19.25316,
+			"lat": 49.64151
+		},
+		{
+			"name": "Juszczyna",
+			"cls": "village",
+			"lon": 19.22128,
+			"lat": 49.62962
+		},
+		{
+			"name": "Brzuśnik",
+			"cls": "village",
+			"lon": 19.17144,
+			"lat": 49.62356
+		},
+		{
+			"name": "Nieledwia",
+			"cls": "village",
+			"lon": 19.07029,
+			"lat": 49.54452
+		},
+		{
+			"name": "Bąków",
+			"cls": "village",
+			"lon": 18.73742,
+			"lat": 49.9009
+		},
+		{
+			"name": "Kowale",
+			"cls": "village",
+			"lon": 18.84045,
+			"lat": 49.82604
+		},
+		{
+			"name": "Wiślica",
+			"cls": "village",
+			"lon": 18.78009,
+			"lat": 49.82287
+		},
+		{
+			"name": "Świętoszówka",
+			"cls": "village",
+			"lon": 18.8915,
+			"lat": 49.80457
+		},
+		{
+			"name": "Bładnice Górne",
+			"cls": "village",
+			"lon": 18.79076,
+			"lat": 49.75818
+		},
+		{
+			"name": "Meszna",
+			"cls": "village",
+			"lon": 19.06311,
+			"lat": 49.74637
+		},
+		{
+			"name": "Okrajnik",
+			"cls": "village",
+			"lon": 19.27438,
+			"lat": 49.73749
+		},
+		{
+			"name": "Rychwałdek",
+			"cls": "village",
+			"lon": 19.28135,
+			"lat": 49.68022
+		},
+		{
+			"name": "Boconowice",
+			"cls": "village",
+			"lon": 18.7384,
+			"lat": 49.56907
+		},
+		{
+			"name": "Wieszczęta",
+			"cls": "village",
+			"lon": 18.86692,
+			"lat": 49.83276
+		},
+		{
+			"name": "Wilamowice",
+			"cls": "village",
+			"lon": 18.75758,
+			"lat": 49.79957
+		},
+		{
+			"name": "Łączka",
+			"cls": "village",
+			"lon": 18.72813,
+			"lat": 49.77614
+		},
+		{
+			"name": "Kojkowice",
+			"cls": "village",
+			"lon": 18.69091,
+			"lat": 49.70295
+		},
+		{
+			"name": "Hałcnów",
+			"cls": "suburb",
+			"lon": 19.09248,
+			"lat": 49.85189
+		},
+		{
+			"name": "Kamienica",
+			"cls": "suburb",
+			"lon": 19.01607,
+			"lat": 49.79222
+		},
+		{
+			"name": "Malinka",
+			"cls": "suburb",
+			"lon": 18.93489,
+			"lat": 49.63738
+		},
+		{
+			"name": "Leszczyny",
+			"cls": "suburb",
+			"lon": 19.06421,
+			"lat": 49.80014
+		},
+		{
+			"name": "Straconka",
+			"cls": "suburb",
+			"lon": 19.09619,
+			"lat": 49.7965
+		},
+		{
+			"name": "Jurzyków",
+			"cls": "suburb",
+			"lon": 18.84408,
+			"lat": 49.63175
+		},
+		{
+			"name": "Komorowice Krakowskie",
+			"cls": "suburb",
+			"lon": 19.05404,
+			"lat": 49.86017
+		},
+		{
+			"name": "Złote Łany",
+			"cls": "suburb",
+			"lon": 19.06603,
+			"lat": 49.80881
+		},
+		{
+			"name": "Łyżbice",
+			"cls": "suburb",
+			"lon": 18.68211,
+			"lat": 49.66688
+		},
+		{
+			"name": "Biała Wschód",
+			"cls": "suburb",
+			"lon": 19.05567,
+			"lat": 49.83055
+		},
+		{
+			"name": "Śródmieście",
+			"cls": "suburb",
+			"lon": 19.04467,
+			"lat": 49.8205
+		},
+		{
+			"name": "Lipnik",
+			"cls": "suburb",
+			"lon": 19.09826,
+			"lat": 49.82162
+		},
+		{
+			"name": "Aleksandrowice",
+			"cls": "suburb",
+			"lon": 19.00871,
+			"lat": 49.80806
+		},
+		{
+			"name": "Stare Bielsko",
+			"cls": "suburb",
+			"lon": 19.0045,
+			"lat": 49.83275
+		},
+		{
+			"name": "Biała Krakowska",
+			"cls": "suburb",
+			"lon": 19.06779,
+			"lat": 49.82462
+		},
+		{
+			"name": "Wapienica",
+			"cls": "suburb",
+			"lon": 18.98338,
+			"lat": 49.80572
+		},
+		{
+			"name": "Mikuszowice Śląskie",
+			"cls": "suburb",
+			"lon": 19.06379,
+			"lat": 49.78479
+		},
+		{
+			"name": "Mikuszowice Krakowskie",
+			"cls": "suburb",
+			"lon": 19.07528,
+			"lat": 49.78389
+		},
+		{
+			"name": "Lipowiec",
+			"cls": "suburb",
+			"lon": 18.82813,
+			"lat": 49.74958
+		},
+		{
+			"name": "Dolne Przedmieście",
+			"cls": "suburb",
+			"lon": 19.04209,
+			"lat": 49.83116
+		},
+		{
+			"name": "Biała Śródmieście",
+			"cls": "suburb",
+			"lon": 19.05211,
+			"lat": 49.82084
+		},
+		{
+			"name": "Suche",
+			"cls": "suburb",
+			"lon": 18.98154,
+			"lat": 49.68288
+		},
+		{
+			"name": "Zabłocie",
+			"cls": "suburb",
+			"lon": 19.18978,
+			"lat": 49.67951
+		},
+		{
+			"name": "Hermanice",
+			"cls": "suburb",
+			"lon": 18.80283,
+			"lat": 49.74994
+		},
+		{
+			"name": "Górne Przedmieście",
+			"cls": "suburb",
+			"lon": 19.02998,
+			"lat": 49.82067
+		},
+		{
+			"name": "Śródmieście",
+			"cls": "suburb",
+			"lon": 19.20305,
+			"lat": 49.68895
+		},
+		{
+			"name": "Komorowice Śląskie",
+			"cls": "suburb",
+			"lon": 19.02322,
+			"lat": 49.8574
+		},
+		{
+			"name": "Sporysz",
+			"cls": "suburb",
+			"lon": 19.22161,
+			"lat": 49.67423
+		},
+		{
+			"name": "Podlesie",
+			"cls": "suburb",
+			"lon": 19.17207,
+			"lat": 49.69022
+		},
+		{
+			"name": "Kocurów-Koleby",
+			"cls": "suburb",
+			"lon": 19.23399,
+			"lat": 49.68608
+		},
+		{
+			"name": "Dolny Bór",
+			"cls": "suburb",
+			"lon": 18.81649,
+			"lat": 49.81655
+		},
+		{
+			"name": "Nierodzim",
+			"cls": "suburb",
+			"lon": 18.80278,
+			"lat": 49.76389
+		},
+		{
+			"name": "Moszczanica",
+			"cls": "suburb",
+			"lon": 19.23378,
+			"lat": 49.70504
+		},
+		{
+			"name": "Rędzina",
+			"cls": "suburb",
+			"lon": 19.23773,
+			"lat": 49.71478
+		},
+		{
+			"name": "Oczków",
+			"cls": "suburb",
+			"lon": 19.2323,
+			"lat": 49.72561
+		},
+		{
+			"name": "Zaolší",
+			"cls": "quarter",
+			"lon": 18.70202,
+			"lat": 49.63228
+		},
+		{
+			"name": "Škubňa",
+			"cls": "quarter",
+			"lon": 18.72807,
+			"lat": 49.63543
+		},
+		{
+			"name": "V Pasekách",
+			"cls": "quarter",
+			"lon": 18.76252,
+			"lat": 49.6279
+		},
+		{
+			"name": "Purkrechtní Bělá",
+			"cls": "quarter",
+			"lon": 18.7609,
+			"lat": 49.57851
+		},
+		{
+			"name": "Poremba",
+			"cls": "quarter",
+			"lon": 18.73512,
+			"lat": 49.62874
+		},
+		{
+			"name": "Pod Gruněm",
+			"cls": "quarter",
+			"lon": 18.74343,
+			"lat": 49.62828
+		},
+		{
+			"name": "Na Pasekách",
+			"cls": "quarter",
+			"lon": 18.71208,
+			"lat": 49.6219
+		},
+		{
+			"name": "Hradecké zadky",
+			"cls": "quarter",
+			"lon": 18.74276,
+			"lat": 49.62285
+		},
+		{
+			"name": "Łazy",
+			"cls": "hamlet",
+			"lon": 19.14861,
+			"lat": 49.79083
+		},
+		{
+			"name": "Grabka",
+			"cls": "hamlet",
+			"lon": 18.91917,
+			"lat": 49.75833
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.96445,
+			"lat": 49.71833
+		},
+		{
+			"name": "Stawy",
+			"cls": "hamlet",
+			"lon": 18.94,
+			"lat": 49.66833
+		},
+		{
+			"name": "Łukaśne",
+			"cls": "hamlet",
+			"lon": 19.03417,
+			"lat": 49.64722
+		},
+		{
+			"name": "Żor",
+			"cls": "hamlet",
+			"lon": 19.06833,
+			"lat": 49.60611
+		},
+		{
+			"name": "Bobki",
+			"cls": "hamlet",
+			"lon": 19.00472,
+			"lat": 49.58528
+		},
+		{
+			"name": "Płone",
+			"cls": "hamlet",
+			"lon": 19.21139,
+			"lat": 49.56667
+		},
+		{
+			"name": "Niwa",
+			"cls": "hamlet",
+			"lon": 19.11116,
+			"lat": 49.53222
+		},
+		{
+			"name": "Huta",
+			"cls": "hamlet",
+			"lon": 19.21639,
+			"lat": 49.51111
+		},
+		{
+			"name": "Sťaté",
+			"cls": "hamlet",
+			"lon": 18.77303,
+			"lat": 49.50632
+		},
+		{
+			"name": "Bory",
+			"cls": "hamlet",
+			"lon": 18.97306,
+			"lat": 49.89556
+		},
+		{
+			"name": "Buk",
+			"cls": "hamlet",
+			"lon": 19.28884,
+			"lat": 49.89685
+		},
+		{
+			"name": "Pustki",
+			"cls": "hamlet",
+			"lon": 18.87628,
+			"lat": 49.8824
+		},
+		{
+			"name": "Folwark",
+			"cls": "hamlet",
+			"lon": 19.13504,
+			"lat": 49.8587
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.92177,
+			"lat": 49.82225
+		},
+		{
+			"name": "Huta",
+			"cls": "hamlet",
+			"lon": 18.9203,
+			"lat": 49.72196
+		},
+		{
+			"name": "Gaj",
+			"cls": "hamlet",
+			"lon": 18.75222,
+			"lat": 49.69917
+		},
+		{
+			"name": "Upłaz",
+			"cls": "hamlet",
+			"lon": 18.90814,
+			"lat": 49.69163
+		},
+		{
+			"name": "Szwedura",
+			"cls": "hamlet",
+			"lon": 19.02917,
+			"lat": 49.6625
+		},
+		{
+			"name": "Kolibiska",
+			"cls": "hamlet",
+			"lon": 18.80287,
+			"lat": 49.61957
+		},
+		{
+			"name": "Radvanov",
+			"cls": "hamlet",
+			"lon": 18.78604,
+			"lat": 49.59951
+		},
+		{
+			"name": "Piła",
+			"cls": "hamlet",
+			"lon": 18.89445,
+			"lat": 49.57278
+		},
+		{
+			"name": "Kępki",
+			"cls": "hamlet",
+			"lon": 19.16278,
+			"lat": 49.575
+		},
+		{
+			"name": "Góra",
+			"cls": "hamlet",
+			"lon": 19.28149,
+			"lat": 49.58103
+		},
+		{
+			"name": "Groń",
+			"cls": "hamlet",
+			"lon": 18.98126,
+			"lat": 49.55785
+		},
+		{
+			"name": "Kolonia",
+			"cls": "hamlet",
+			"lon": 19.27109,
+			"lat": 49.55754
+		},
+		{
+			"name": "Raj",
+			"cls": "hamlet",
+			"lon": 18.935,
+			"lat": 49.54528
+		},
+		{
+			"name": "Dadoki",
+			"cls": "hamlet",
+			"lon": 19.18278,
+			"lat": 49.54139
+		},
+		{
+			"name": "Markov",
+			"cls": "hamlet",
+			"lon": 18.80303,
+			"lat": 49.51436
+		},
+		{
+			"name": "Raj",
+			"cls": "hamlet",
+			"lon": 18.9725,
+			"lat": 49.51278
+		},
+		{
+			"name": "Cerla",
+			"cls": "hamlet",
+			"lon": 19.20961,
+			"lat": 49.50882
+		},
+		{
+			"name": "Bory",
+			"cls": "hamlet",
+			"lon": 18.8978,
+			"lat": 49.49354
+		},
+		{
+			"name": "Koło",
+			"cls": "hamlet",
+			"lon": 18.96556,
+			"lat": 49.89722
+		},
+		{
+			"name": "Bagno",
+			"cls": "hamlet",
+			"lon": 18.92278,
+			"lat": 49.89222
+		},
+		{
+			"name": "Kąty",
+			"cls": "hamlet",
+			"lon": 19.09982,
+			"lat": 49.8887
+		},
+		{
+			"name": "Knaj",
+			"cls": "hamlet",
+			"lon": 18.73294,
+			"lat": 49.87491
+		},
+		{
+			"name": "Polana (województwo małopolskie)",
+			"cls": "hamlet",
+			"lon": 19.29054,
+			"lat": 49.87306
+		},
+		{
+			"name": "Bagna",
+			"cls": "hamlet",
+			"lon": 18.74056,
+			"lat": 49.85083
+		},
+		{
+			"name": "Gaje",
+			"cls": "hamlet",
+			"lon": 19.16746,
+			"lat": 49.84507
+		},
+		{
+			"name": "Łęg",
+			"cls": "hamlet",
+			"lon": 19.23786,
+			"lat": 49.84378
+		},
+		{
+			"name": "Dół",
+			"cls": "hamlet",
+			"lon": 19.30408,
+			"lat": 49.84211
+		},
+		{
+			"name": "Las",
+			"cls": "hamlet",
+			"lon": 18.69778,
+			"lat": 49.8175
+		},
+		{
+			"name": "Farzyna",
+			"cls": "hamlet",
+			"lon": 18.94658,
+			"lat": 49.81209
+		},
+		{
+			"name": "Łazy",
+			"cls": "hamlet",
+			"lon": 19.24821,
+			"lat": 49.81234
+		},
+		{
+			"name": "Groń",
+			"cls": "hamlet",
+			"lon": 19.23355,
+			"lat": 49.80643
+		},
+		{
+			"name": "Gaj",
+			"cls": "hamlet",
+			"lon": 18.85163,
+			"lat": 49.76791
+		},
+		{
+			"name": "Groń",
+			"cls": "hamlet",
+			"lon": 19.09306,
+			"lat": 49.76861
+		},
+		{
+			"name": "Żar",
+			"cls": "hamlet",
+			"lon": 19.23295,
+			"lat": 49.7806
+		},
+		{
+			"name": "Głębce",
+			"cls": "hamlet",
+			"lon": 18.89203,
+			"lat": 49.74564
+		},
+		{
+			"name": "Łąki",
+			"cls": "hamlet",
+			"lon": 19.26522,
+			"lat": 49.74536
+		},
+		{
+			"name": "Jatny",
+			"cls": "hamlet",
+			"lon": 18.91345,
+			"lat": 49.73174
+		},
+		{
+			"name": "Bór",
+			"cls": "hamlet",
+			"lon": 19.12195,
+			"lat": 49.73055
+		},
+		{
+			"name": "Młaki",
+			"cls": "hamlet",
+			"lon": 18.9675,
+			"lat": 49.7175
+		},
+		{
+			"name": "Budzin",
+			"cls": "hamlet",
+			"lon": 18.75973,
+			"lat": 49.69545
+		},
+		{
+			"name": "Orłowo",
+			"cls": "hamlet",
+			"lon": 18.89195,
+			"lat": 49.68944
+		},
+		{
+			"name": "Gronik",
+			"cls": "hamlet",
+			"lon": 18.91529,
+			"lat": 49.6719
+		},
+		{
+			"name": "Capuci",
+			"cls": "hamlet",
+			"lon": 19.18806,
+			"lat": 49.6575
+		},
+		{
+			"name": "Łazy",
+			"cls": "hamlet",
+			"lon": 19.11111,
+			"lat": 49.6325
+		},
+		{
+			"name": "Byrcy",
+			"cls": "hamlet",
+			"lon": 19.29073,
+			"lat": 49.62252
+		},
+		{
+			"name": "Bugaj",
+			"cls": "hamlet",
+			"lon": 19.05333,
+			"lat": 49.59889
+		},
+		{
+			"name": "Dół",
+			"cls": "hamlet",
+			"lon": 19.29146,
+			"lat": 49.60468
+		},
+		{
+			"name": "Buki",
+			"cls": "hamlet",
+			"lon": 18.91408,
+			"lat": 49.59141
+		},
+		{
+			"name": "Łazy",
+			"cls": "hamlet",
+			"lon": 19.02945,
+			"lat": 49.58722
+		},
+		{
+			"name": "Pielowa",
+			"cls": "hamlet",
+			"lon": 19.24417,
+			"lat": 49.58861
+		},
+		{
+			"name": "Skała",
+			"cls": "hamlet",
+			"lon": 18.94892,
+			"lat": 49.58008
+		},
+		{
+			"name": "Na Bór",
+			"cls": "hamlet",
+			"lon": 19.16055,
+			"lat": 49.57667
+		},
+		{
+			"name": "Deje",
+			"cls": "hamlet",
+			"lon": 18.93611,
+			"lat": 49.55389
+		},
+		{
+			"name": "Zadek",
+			"cls": "hamlet",
+			"lon": 19.0175,
+			"lat": 49.56778
+		},
+		{
+			"name": "Suš",
+			"cls": "hamlet",
+			"lon": 18.84278,
+			"lat": 49.545
+		},
+		{
+			"name": "Groń",
+			"cls": "hamlet",
+			"lon": 18.87391,
+			"lat": 49.54285
+		},
+		{
+			"name": "Buki",
+			"cls": "hamlet",
+			"lon": 18.88139,
+			"lat": 49.54861
+		},
+		{
+			"name": "Kule",
+			"cls": "hamlet",
+			"lon": 19.10754,
+			"lat": 49.5414
+		},
+		{
+			"name": "Ficki",
+			"cls": "hamlet",
+			"lon": 19.13778,
+			"lat": 49.54889
+		},
+		{
+			"name": "Komory",
+			"cls": "hamlet",
+			"lon": 19.14,
+			"lat": 49.545
+		},
+		{
+			"name": "Niemcy",
+			"cls": "hamlet",
+			"lon": 19.20306,
+			"lat": 49.55167
+		},
+		{
+			"name": "Bařiny",
+			"cls": "hamlet",
+			"lon": 18.80736,
+			"lat": 49.52179
+		},
+		{
+			"name": "Kępki",
+			"cls": "hamlet",
+			"lon": 19.02861,
+			"lat": 49.52222
+		},
+		{
+			"name": "Łaski",
+			"cls": "hamlet",
+			"lon": 19.07472,
+			"lat": 49.49722
+		},
+		{
+			"name": "Lora",
+			"cls": "hamlet",
+			"lon": 19.17861,
+			"lat": 49.50972
+		},
+		{
+			"name": "Brehy",
+			"cls": "hamlet",
+			"lon": 18.81691,
+			"lat": 49.49598
+		},
+		{
+			"name": "Kopaniny",
+			"cls": "hamlet",
+			"lon": 18.89583,
+			"lat": 49.88613
+		},
+		{
+			"name": "Wydrzyniec",
+			"cls": "hamlet",
+			"lon": 19.04778,
+			"lat": 49.89111
+		},
+		{
+			"name": "Podlas",
+			"cls": "hamlet",
+			"lon": 19.10776,
+			"lat": 49.89424
+		},
+		{
+			"name": "Górna",
+			"cls": "hamlet",
+			"lon": 18.74471,
+			"lat": 49.87488
+		},
+		{
+			"name": "Gołysz",
+			"cls": "hamlet",
+			"lon": 18.7968,
+			"lat": 49.87086
+		},
+		{
+			"name": "Nędza",
+			"cls": "hamlet",
+			"lon": 18.82352,
+			"lat": 49.87456
+		},
+		{
+			"name": "Dąbki",
+			"cls": "hamlet",
+			"lon": 18.83472,
+			"lat": 49.87889
+		},
+		{
+			"name": "Dół",
+			"cls": "hamlet",
+			"lon": 18.97431,
+			"lat": 49.86925
+		},
+		{
+			"name": "Pasieki",
+			"cls": "hamlet",
+			"lon": 19.13015,
+			"lat": 49.86452
+		},
+		{
+			"name": "Dwór",
+			"cls": "hamlet",
+			"lon": 19.23921,
+			"lat": 49.86222
+		},
+		{
+			"name": "Berno",
+			"cls": "hamlet",
+			"lon": 19.30842,
+			"lat": 49.85341
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 19.14054,
+			"lat": 49.84501
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 18.8207,
+			"lat": 49.83677
+		},
+		{
+			"name": "Małe Kozy",
+			"cls": "hamlet",
+			"lon": 19.1254,
+			"lat": 49.827
+		},
+		{
+			"name": "Bagrówka",
+			"cls": "hamlet",
+			"lon": 19.1438,
+			"lat": 49.83744
+		},
+		{
+			"name": "Łazy",
+			"cls": "hamlet",
+			"lon": 19.19806,
+			"lat": 49.83611
+		},
+		{
+			"name": "Góry",
+			"cls": "hamlet",
+			"lon": 19.2283,
+			"lat": 49.81589
+		},
+		{
+			"name": "Kąty",
+			"cls": "hamlet",
+			"lon": 18.88445,
+			"lat": 49.78194
+		},
+		{
+			"name": "Zadki",
+			"cls": "hamlet",
+			"lon": 18.91874,
+			"lat": 49.79176
+		},
+		{
+			"name": "Kosy",
+			"cls": "hamlet",
+			"lon": 19.19911,
+			"lat": 49.7775
+		},
+		{
+			"name": "Zamek",
+			"cls": "hamlet",
+			"lon": 18.71269,
+			"lat": 49.73893
+		},
+		{
+			"name": "Koleby",
+			"cls": "hamlet",
+			"lon": 19.16333,
+			"lat": 49.75111
+		},
+		{
+			"name": "Jany",
+			"cls": "hamlet",
+			"lon": 19.29691,
+			"lat": 49.74406
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.69591,
+			"lat": 49.72741
+		},
+		{
+			"name": "Raj",
+			"cls": "hamlet",
+			"lon": 18.74889,
+			"lat": 49.72361
+		},
+		{
+			"name": "Malina",
+			"cls": "hamlet",
+			"lon": 18.91671,
+			"lat": 49.71836
+		},
+		{
+			"name": "Lachy",
+			"cls": "hamlet",
+			"lon": 18.955,
+			"lat": 49.71417
+		},
+		{
+			"name": "Dyry",
+			"cls": "hamlet",
+			"lon": 19.2604,
+			"lat": 49.71682
+		},
+		{
+			"name": "Bąki",
+			"cls": "hamlet",
+			"lon": 19.30917,
+			"lat": 49.71028
+		},
+		{
+			"name": "Kąty",
+			"cls": "hamlet",
+			"lon": 19.16812,
+			"lat": 49.70981
+		},
+		{
+			"name": "Potok",
+			"cls": "hamlet",
+			"lon": 18.72611,
+			"lat": 49.6889
+		},
+		{
+			"name": "Bugaj",
+			"cls": "hamlet",
+			"lon": 19.07028,
+			"lat": 49.695
+		},
+		{
+			"name": "Grace",
+			"cls": "hamlet",
+			"lon": 19.27648,
+			"lat": 49.69567
+		},
+		{
+			"name": "Tokarnia",
+			"cls": "hamlet",
+			"lon": 18.86761,
+			"lat": 49.67663
+		},
+		{
+			"name": "Kobyla",
+			"cls": "hamlet",
+			"lon": 18.9268,
+			"lat": 49.67636
+		},
+		{
+			"name": "Grabowa",
+			"cls": "hamlet",
+			"lon": 18.94554,
+			"lat": 49.67813
+		},
+		{
+			"name": "Potok",
+			"cls": "hamlet",
+			"lon": 19.31889,
+			"lat": 49.68111
+		},
+		{
+			"name": "Bór",
+			"cls": "hamlet",
+			"lon": 19.07939,
+			"lat": 49.66402
+		},
+		{
+			"name": "Dół",
+			"cls": "hamlet",
+			"lon": 19.25402,
+			"lat": 49.64167
+		},
+		{
+			"name": "Do Boru",
+			"cls": "hamlet",
+			"lon": 19.30444,
+			"lat": 49.63417
+		},
+		{
+			"name": "Bąki",
+			"cls": "hamlet",
+			"lon": 19.125,
+			"lat": 49.62222
+		},
+		{
+			"name": "Pal",
+			"cls": "hamlet",
+			"lon": 19.18828,
+			"lat": 49.6206
+		},
+		{
+			"name": "Lnisko",
+			"cls": "hamlet",
+			"lon": 19.26167,
+			"lat": 49.60833
+		},
+		{
+			"name": "Połom",
+			"cls": "hamlet",
+			"lon": 18.91463,
+			"lat": 49.59433
+		},
+		{
+			"name": "Briok",
+			"cls": "hamlet",
+			"lon": 18.92639,
+			"lat": 49.5825
+		},
+		{
+			"name": "Stoczek",
+			"cls": "hamlet",
+			"lon": 18.97528,
+			"lat": 49.58361
+		},
+		{
+			"name": "Jasień",
+			"cls": "hamlet",
+			"lon": 18.71588,
+			"lat": 49.57644
+		},
+		{
+			"name": "Bystré",
+			"cls": "hamlet",
+			"lon": 18.82843,
+			"lat": 49.57681
+		},
+		{
+			"name": "Dupny",
+			"cls": "hamlet",
+			"lon": 18.86186,
+			"lat": 49.58128
+		},
+		{
+			"name": "Prusów",
+			"cls": "hamlet",
+			"lon": 19.16806,
+			"lat": 49.57306
+		},
+		{
+			"name": "Lyng",
+			"cls": "hamlet",
+			"lon": 18.83848,
+			"lat": 49.56026
+		},
+		{
+			"name": "Gawły",
+			"cls": "hamlet",
+			"lon": 19.06861,
+			"lat": 49.54111
+		},
+		{
+			"name": "Myto",
+			"cls": "hamlet",
+			"lon": 18.9638,
+			"lat": 49.51125
+		},
+		{
+			"name": "Bór",
+			"cls": "hamlet",
+			"lon": 19.00424,
+			"lat": 49.51915
+		},
+		{
+			"name": "Szpaki",
+			"cls": "hamlet",
+			"lon": 19.04077,
+			"lat": 49.51508
+		},
+		{
+			"name": "Surzy",
+			"cls": "hamlet",
+			"lon": 19.11778,
+			"lat": 49.51111
+		},
+		{
+			"name": "Rieky",
+			"cls": "hamlet",
+			"lon": 18.89766,
+			"lat": 49.50257
+		},
+		{
+			"name": "Ryłki",
+			"cls": "hamlet",
+			"lon": 19.10528,
+			"lat": 49.505
+		},
+		{
+			"name": "Lúčisko",
+			"cls": "hamlet",
+			"lon": 18.70627,
+			"lat": 49.49457
+		},
+		{
+			"name": "Sihly",
+			"cls": "hamlet",
+			"lon": 18.82205,
+			"lat": 49.49461
+		},
+		{
+			"name": "Łęg",
+			"cls": "hamlet",
+			"lon": 18.74667,
+			"lat": 49.89944
+		},
+		{
+			"name": "Podlas",
+			"cls": "hamlet",
+			"lon": 18.92693,
+			"lat": 49.89958
+		},
+		{
+			"name": "Burzej",
+			"cls": "hamlet",
+			"lon": 18.95893,
+			"lat": 49.89936
+		},
+		{
+			"name": "Nadsole",
+			"cls": "hamlet",
+			"lon": 19.18917,
+			"lat": 49.89694
+		},
+		{
+			"name": "Widłak",
+			"cls": "hamlet",
+			"lon": 19.20692,
+			"lat": 49.90248
+		},
+		{
+			"name": "Kątek",
+			"cls": "hamlet",
+			"lon": 18.70361,
+			"lat": 49.89333
+		},
+		{
+			"name": "Zamachy",
+			"cls": "hamlet",
+			"lon": 18.8725,
+			"lat": 49.88778
+		},
+		{
+			"name": "Oblask",
+			"cls": "hamlet",
+			"lon": 18.935,
+			"lat": 49.88111
+		},
+		{
+			"name": "Wielkie Doły",
+			"cls": "hamlet",
+			"lon": 19.18004,
+			"lat": 49.89138
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.87528,
+			"lat": 49.85361
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 19.24275,
+			"lat": 49.85345
+		},
+		{
+			"name": "Liszok",
+			"cls": "hamlet",
+			"lon": 18.68021,
+			"lat": 49.8417
+		},
+		{
+			"name": "Bałkan",
+			"cls": "hamlet",
+			"lon": 18.99722,
+			"lat": 49.85111
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.76722,
+			"lat": 49.83417
+		},
+		{
+			"name": "Stary Dwór",
+			"cls": "hamlet",
+			"lon": 19.13662,
+			"lat": 49.83773
+		},
+		{
+			"name": "Pole",
+			"cls": "hamlet",
+			"lon": 18.71139,
+			"lat": 49.82194
+		},
+		{
+			"name": "Łęg",
+			"cls": "hamlet",
+			"lon": 18.72917,
+			"lat": 49.81222
+		},
+		{
+			"name": "Raj",
+			"cls": "hamlet",
+			"lon": 18.8525,
+			"lat": 49.78444
+		},
+		{
+			"name": "Z Pól",
+			"cls": "hamlet",
+			"lon": 18.91189,
+			"lat": 49.79329
+		},
+		{
+			"name": "Pijaki",
+			"cls": "hamlet",
+			"lon": 19.14389,
+			"lat": 49.79472
+		},
+		{
+			"name": "Raki",
+			"cls": "hamlet",
+			"lon": 19.18883,
+			"lat": 49.78711
+		},
+		{
+			"name": "Piekło",
+			"cls": "hamlet",
+			"lon": 19.15305,
+			"lat": 49.77806
+		},
+		{
+			"name": "Nażary",
+			"cls": "hamlet",
+			"lon": 18.89056,
+			"lat": 49.75805
+		},
+		{
+			"name": "Piekło",
+			"cls": "hamlet",
+			"lon": 19.0691,
+			"lat": 49.76531
+		},
+		{
+			"name": "Kapla",
+			"cls": "hamlet",
+			"lon": 19.09549,
+			"lat": 49.76232
+		},
+		{
+			"name": "Beskid",
+			"cls": "hamlet",
+			"lon": 19.26269,
+			"lat": 49.76017
+		},
+		{
+			"name": "Cerla",
+			"cls": "hamlet",
+			"lon": 19.30639,
+			"lat": 49.76139
+		},
+		{
+			"name": "Podlas",
+			"cls": "hamlet",
+			"lon": 18.8575,
+			"lat": 49.74778
+		},
+		{
+			"name": "Wały",
+			"cls": "hamlet",
+			"lon": 19.10057,
+			"lat": 49.74978
+		},
+		{
+			"name": "Flaki",
+			"cls": "hamlet",
+			"lon": 19.26139,
+			"lat": 49.73917
+		},
+		{
+			"name": "Bekry",
+			"cls": "hamlet",
+			"lon": 19.30166,
+			"lat": 49.74695
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 19.10404,
+			"lat": 49.73557
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 19.14857,
+			"lat": 49.73098
+		},
+		{
+			"name": "Sowy",
+			"cls": "hamlet",
+			"lon": 19.07669,
+			"lat": 49.7016
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 18.75461,
+			"lat": 49.69177
+		},
+		{
+			"name": "Na Groń",
+			"cls": "hamlet",
+			"lon": 18.895,
+			"lat": 49.68722
+		},
+		{
+			"name": "Dział",
+			"cls": "hamlet",
+			"lon": 19.15256,
+			"lat": 49.69353
+		},
+		{
+			"name": "Krzosy",
+			"cls": "hamlet",
+			"lon": 18.93022,
+			"lat": 49.67715
+		},
+		{
+			"name": "Markówka",
+			"cls": "hamlet",
+			"lon": 18.90083,
+			"lat": 49.66611
+		},
+		{
+			"name": "Gruby",
+			"cls": "hamlet",
+			"lon": 19.13873,
+			"lat": 49.66466
+		},
+		{
+			"name": "Bieguni",
+			"cls": "hamlet",
+			"lon": 19.18472,
+			"lat": 49.65528
+		},
+		{
+			"name": "Kowale",
+			"cls": "hamlet",
+			"lon": 19.17918,
+			"lat": 49.64404
+		},
+		{
+			"name": "Bugaj",
+			"cls": "hamlet",
+			"lon": 19.26167,
+			"lat": 49.64472
+		},
+		{
+			"name": "Szymury",
+			"cls": "hamlet",
+			"lon": 19.2975,
+			"lat": 49.63333
+		},
+		{
+			"name": "Bugaj",
+			"cls": "hamlet",
+			"lon": 19.18861,
+			"lat": 49.62278
+		},
+		{
+			"name": "Pod Stožkem",
+			"cls": "hamlet",
+			"lon": 18.80548,
+			"lat": 49.607
+		},
+		{
+			"name": "Mraźnica",
+			"cls": "hamlet",
+			"lon": 18.86325,
+			"lat": 49.60656
+		},
+		{
+			"name": "Barania",
+			"cls": "hamlet",
+			"lon": 19.08305,
+			"lat": 49.59778
+		},
+		{
+			"name": "Chupki",
+			"cls": "hamlet",
+			"lon": 19.09806,
+			"lat": 49.61028
+		},
+		{
+			"name": "Zuzula",
+			"cls": "hamlet",
+			"lon": 19.2575,
+			"lat": 49.59972
+		},
+		{
+			"name": "Groníček",
+			"cls": "hamlet",
+			"lon": 18.8097,
+			"lat": 49.59378
+		},
+		{
+			"name": "Wilcze",
+			"cls": "hamlet",
+			"lon": 18.87434,
+			"lat": 49.58529
+		},
+		{
+			"name": "Pilorz",
+			"cls": "hamlet",
+			"lon": 18.92132,
+			"lat": 49.58562
+		},
+		{
+			"name": "Grygusie",
+			"cls": "hamlet",
+			"lon": 19.29613,
+			"lat": 49.58895
+		},
+		{
+			"name": "Karch",
+			"cls": "hamlet",
+			"lon": 18.86167,
+			"lat": 49.57972
+		},
+		{
+			"name": "Błaje",
+			"cls": "hamlet",
+			"lon": 19.05641,
+			"lat": 49.57401
+		},
+		{
+			"name": "Kępki",
+			"cls": "hamlet",
+			"lon": 19.09719,
+			"lat": 49.56556
+		},
+		{
+			"name": "Na Skałce",
+			"cls": "hamlet",
+			"lon": 19.28266,
+			"lat": 49.56771
+		},
+		{
+			"name": "Vojtova",
+			"cls": "hamlet",
+			"lon": 18.80645,
+			"lat": 49.549
+		},
+		{
+			"name": "Byrty",
+			"cls": "hamlet",
+			"lon": 18.89889,
+			"lat": 49.54833
+		},
+		{
+			"name": "Bagno",
+			"cls": "hamlet",
+			"lon": 18.94361,
+			"lat": 49.54806
+		},
+		{
+			"name": "Jopki",
+			"cls": "hamlet",
+			"lon": 19.11367,
+			"lat": 49.54927
+		},
+		{
+			"name": "Lipowska",
+			"cls": "hamlet",
+			"lon": 19.22196,
+			"lat": 49.52878
+		},
+		{
+			"name": "Cupeľ",
+			"cls": "hamlet",
+			"lon": 18.8929,
+			"lat": 49.49686
+		},
+		{
+			"name": "Grapa",
+			"cls": "hamlet",
+			"lon": 18.92889,
+			"lat": 49.49833
+		},
+		{
+			"name": "Groń",
+			"cls": "hamlet",
+			"lon": 18.97084,
+			"lat": 49.50945
+		},
+		{
+			"name": "Zorek",
+			"cls": "hamlet",
+			"lon": 19.16444,
+			"lat": 49.50611
+		},
+		{
+			"name": "Sułki",
+			"cls": "hamlet",
+			"lon": 19.18335,
+			"lat": 49.50057
+		},
+		{
+			"name": "Dwór",
+			"cls": "hamlet",
+			"lon": 18.73679,
+			"lat": 49.89478
+		},
+		{
+			"name": "Rychułd",
+			"cls": "hamlet",
+			"lon": 18.70114,
+			"lat": 49.88877
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 19.09395,
+			"lat": 49.88502
+		},
+		{
+			"name": "Harszówki Dolne",
+			"cls": "hamlet",
+			"lon": 19.17833,
+			"lat": 49.88333
+		},
+		{
+			"name": "Opitów",
+			"cls": "hamlet",
+			"lon": 18.81518,
+			"lat": 49.86826
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 18.92172,
+			"lat": 49.87818
+		},
+		{
+			"name": "Za Lasem",
+			"cls": "hamlet",
+			"lon": 19.07002,
+			"lat": 49.87947
+		},
+		{
+			"name": "Zalesie",
+			"cls": "hamlet",
+			"lon": 18.89776,
+			"lat": 49.86257
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.97752,
+			"lat": 49.86143
+		},
+		{
+			"name": "Zagroda",
+			"cls": "hamlet",
+			"lon": 19.15792,
+			"lat": 49.85924
+		},
+		{
+			"name": "Górki",
+			"cls": "hamlet",
+			"lon": 19.21055,
+			"lat": 49.86306
+		},
+		{
+			"name": "Rudawka",
+			"cls": "hamlet",
+			"lon": 18.95833,
+			"lat": 49.84139
+		},
+		{
+			"name": "Węgry",
+			"cls": "hamlet",
+			"lon": 18.97361,
+			"lat": 49.85167
+		},
+		{
+			"name": "Pustki",
+			"cls": "hamlet",
+			"lon": 19.00731,
+			"lat": 49.84996
+		},
+		{
+			"name": "Lebzak",
+			"cls": "hamlet",
+			"lon": 18.77383,
+			"lat": 49.83064
+		},
+		{
+			"name": "Pasieki",
+			"cls": "hamlet",
+			"lon": 18.82858,
+			"lat": 49.82447
+		},
+		{
+			"name": "Pagóry",
+			"cls": "hamlet",
+			"lon": 19.26722,
+			"lat": 49.835
+		},
+		{
+			"name": "Kąty",
+			"cls": "hamlet",
+			"lon": 18.88389,
+			"lat": 49.81745
+		},
+		{
+			"name": "Młyny",
+			"cls": "hamlet",
+			"lon": 19.22195,
+			"lat": 49.81503
+		},
+		{
+			"name": "Dębina",
+			"cls": "hamlet",
+			"lon": 18.81917,
+			"lat": 49.8025
+		},
+		{
+			"name": "Ubocz",
+			"cls": "hamlet",
+			"lon": 19.18986,
+			"lat": 49.79593
+		},
+		{
+			"name": "Krzepty",
+			"cls": "hamlet",
+			"lon": 18.68167,
+			"lat": 49.78
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.85747,
+			"lat": 49.77438
+		},
+		{
+			"name": "Magurka",
+			"cls": "hamlet",
+			"lon": 19.13467,
+			"lat": 49.76723
+		},
+		{
+			"name": "Dudki",
+			"cls": "hamlet",
+			"lon": 19.18594,
+			"lat": 49.77254
+		},
+		{
+			"name": "Kęciki",
+			"cls": "hamlet",
+			"lon": 18.86028,
+			"lat": 49.75333
+		},
+		{
+			"name": "Działy",
+			"cls": "hamlet",
+			"lon": 19.09444,
+			"lat": 49.75861
+		},
+		{
+			"name": "Kosorki",
+			"cls": "hamlet",
+			"lon": 19.25667,
+			"lat": 49.75306
+		},
+		{
+			"name": "Błatnia",
+			"cls": "hamlet",
+			"lon": 18.9375,
+			"lat": 49.74639
+		},
+		{
+			"name": "Dolinka",
+			"cls": "hamlet",
+			"lon": 18.94278,
+			"lat": 49.74556
+		},
+		{
+			"name": "Pinkas",
+			"cls": "hamlet",
+			"lon": 18.89722,
+			"lat": 49.73417
+		},
+		{
+			"name": "Skałka",
+			"cls": "hamlet",
+			"lon": 18.96778,
+			"lat": 49.72972
+		},
+		{
+			"name": "Cerla",
+			"cls": "hamlet",
+			"lon": 19.25332,
+			"lat": 49.7297
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.74472,
+			"lat": 49.71778
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 18.9175,
+			"lat": 49.72134
+		},
+		{
+			"name": "Siągi",
+			"cls": "hamlet",
+			"lon": 18.95583,
+			"lat": 49.71083
+		},
+		{
+			"name": "Dół",
+			"cls": "hamlet",
+			"lon": 19.09444,
+			"lat": 49.71417
+		},
+		{
+			"name": "Poręby",
+			"cls": "hamlet",
+			"lon": 19.31722,
+			"lat": 49.72
+		},
+		{
+			"name": "Goryle",
+			"cls": "hamlet",
+			"lon": 19.07225,
+			"lat": 49.70328
+		},
+		{
+			"name": "Dział",
+			"cls": "hamlet",
+			"lon": 19.27583,
+			"lat": 49.70222
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 19.08731,
+			"lat": 49.65959
+		},
+		{
+			"name": "Janoty",
+			"cls": "hamlet",
+			"lon": 19.23278,
+			"lat": 49.6625
+		},
+		{
+			"name": "Sroki",
+			"cls": "hamlet",
+			"lon": 19.11438,
+			"lat": 49.62726
+		},
+		{
+			"name": "Juraszki",
+			"cls": "hamlet",
+			"lon": 19.29889,
+			"lat": 49.6332
+		},
+		{
+			"name": "Potok",
+			"cls": "hamlet",
+			"lon": 19.14555,
+			"lat": 49.61194
+		},
+		{
+			"name": "Puścizna",
+			"cls": "hamlet",
+			"lon": 19.2351,
+			"lat": 49.62475
+		},
+		{
+			"name": "Widzowie",
+			"cls": "hamlet",
+			"lon": 19.23946,
+			"lat": 49.58774
+		},
+		{
+			"name": "Na Borki",
+			"cls": "hamlet",
+			"lon": 19.2975,
+			"lat": 49.59055
+		},
+		{
+			"name": "Bahenec",
+			"cls": "hamlet",
+			"lon": 18.8253,
+			"lat": 49.58191
+		},
+		{
+			"name": "Zawady",
+			"cls": "hamlet",
+			"lon": 19.06361,
+			"lat": 49.57
+		},
+		{
+			"name": "Na Borze",
+			"cls": "hamlet",
+			"lon": 19.28604,
+			"lat": 49.56954
+		},
+		{
+			"name": "Sigła",
+			"cls": "hamlet",
+			"lon": 18.93159,
+			"lat": 49.56027
+		},
+		{
+			"name": "Beskid",
+			"cls": "hamlet",
+			"lon": 18.98449,
+			"lat": 49.55927
+		},
+		{
+			"name": "Zajavoří",
+			"cls": "hamlet",
+			"lon": 18.80103,
+			"lat": 49.54565
+		},
+		{
+			"name": "Łacki",
+			"cls": "hamlet",
+			"lon": 18.87017,
+			"lat": 49.53995
+		},
+		{
+			"name": "Klaucy",
+			"cls": "hamlet",
+			"lon": 19.12861,
+			"lat": 49.54028
+		},
+		{
+			"name": "Milówki",
+			"cls": "hamlet",
+			"lon": 19.16902,
+			"lat": 49.54172
+		},
+		{
+			"name": "Pnie",
+			"cls": "hamlet",
+			"lon": 18.99167,
+			"lat": 49.53056
+		},
+		{
+			"name": "Młaki",
+			"cls": "hamlet",
+			"lon": 19.08294,
+			"lat": 49.52812
+		},
+		{
+			"name": "Bazgerka",
+			"cls": "hamlet",
+			"lon": 18.71257,
+			"lat": 49.49721
+		},
+		{
+			"name": "Zápověď",
+			"cls": "hamlet",
+			"lon": 18.76727,
+			"lat": 49.50784
+		},
+		{
+			"name": "U Mojov",
+			"cls": "hamlet",
+			"lon": 18.86257,
+			"lat": 49.49872
+		},
+		{
+			"name": "Janoty",
+			"cls": "hamlet",
+			"lon": 19.09567,
+			"lat": 49.50192
+		},
+		{
+			"name": "Dzicza",
+			"cls": "hamlet",
+			"lon": 19.16028,
+			"lat": 49.50278
+		},
+		{
+			"name": "Markov",
+			"cls": "hamlet",
+			"lon": 18.81139,
+			"lat": 49.4934
+		},
+		{
+			"name": "Żabiorek",
+			"cls": "hamlet",
+			"lon": 18.97139,
+			"lat": 49.90417
+		},
+		{
+			"name": "Pniewie",
+			"cls": "hamlet",
+			"lon": 18.715,
+			"lat": 49.89361
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 18.69667,
+			"lat": 49.86667
+		},
+		{
+			"name": "Czerwonka",
+			"cls": "hamlet",
+			"lon": 19.14155,
+			"lat": 49.87657
+		},
+		{
+			"name": "Dębina",
+			"cls": "hamlet",
+			"lon": 18.73695,
+			"lat": 49.86056
+		},
+		{
+			"name": "Podbór",
+			"cls": "hamlet",
+			"lon": 18.78571,
+			"lat": 49.85388
+		},
+		{
+			"name": "Stawy",
+			"cls": "hamlet",
+			"lon": 18.97995,
+			"lat": 49.85226
+		},
+		{
+			"name": "Dębina",
+			"cls": "hamlet",
+			"lon": 18.98577,
+			"lat": 49.85786
+		},
+		{
+			"name": "Baściki",
+			"cls": "hamlet",
+			"lon": 19.17579,
+			"lat": 49.85371
+		},
+		{
+			"name": "Wiedeń",
+			"cls": "hamlet",
+			"lon": 19.24241,
+			"lat": 49.85296
+		},
+		{
+			"name": "Uchylany",
+			"cls": "hamlet",
+			"lon": 18.82717,
+			"lat": 49.85067
+		},
+		{
+			"name": "Kopiec",
+			"cls": "hamlet",
+			"lon": 18.9975,
+			"lat": 49.84859
+		},
+		{
+			"name": "Bartki",
+			"cls": "hamlet",
+			"lon": 19.18222,
+			"lat": 49.83945
+		},
+		{
+			"name": "Dolina",
+			"cls": "hamlet",
+			"lon": 18.71946,
+			"lat": 49.82772
+		},
+		{
+			"name": "Buczyna",
+			"cls": "hamlet",
+			"lon": 18.78236,
+			"lat": 49.83392
+		},
+		{
+			"name": "Wołek",
+			"cls": "hamlet",
+			"lon": 19.2075,
+			"lat": 49.83667
+		},
+		{
+			"name": "Fabiowo",
+			"cls": "hamlet",
+			"lon": 19.25086,
+			"lat": 49.82981
+		},
+		{
+			"name": "Dział",
+			"cls": "hamlet",
+			"lon": 19.31817,
+			"lat": 49.83313
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.72417,
+			"lat": 49.78611
+		},
+		{
+			"name": "Pilski",
+			"cls": "hamlet",
+			"lon": 18.79701,
+			"lat": 49.78559
+		},
+		{
+			"name": "Jaworze Średnie",
+			"cls": "hamlet",
+			"lon": 18.96222,
+			"lat": 49.79222
+		},
+		{
+			"name": "Wolfy",
+			"cls": "hamlet",
+			"lon": 19.17,
+			"lat": 49.78667
+		},
+		{
+			"name": "Puńca",
+			"cls": "hamlet",
+			"lon": 18.71333,
+			"lat": 49.76889
+		},
+		{
+			"name": "Łuny",
+			"cls": "hamlet",
+			"lon": 18.73722,
+			"lat": 49.76972
+		},
+		{
+			"name": "Sobina",
+			"cls": "hamlet",
+			"lon": 19.20276,
+			"lat": 49.76672
+		},
+		{
+			"name": "Żydów",
+			"cls": "hamlet",
+			"lon": 18.73139,
+			"lat": 49.75028
+		},
+		{
+			"name": "Zamek",
+			"cls": "hamlet",
+			"lon": 18.71858,
+			"lat": 49.71564
+		},
+		{
+			"name": "Góry",
+			"cls": "hamlet",
+			"lon": 18.72806,
+			"lat": 49.72139
+		},
+		{
+			"name": "Bukowa",
+			"cls": "hamlet",
+			"lon": 18.94194,
+			"lat": 49.71611
+		},
+		{
+			"name": "Siuki",
+			"cls": "hamlet",
+			"lon": 19.26861,
+			"lat": 49.71278
+		},
+		{
+			"name": "Leśnica (przysiółek Brennej)",
+			"cls": "hamlet",
+			"lon": 18.90139,
+			"lat": 49.70833
+		},
+		{
+			"name": "Jurkula",
+			"cls": "hamlet",
+			"lon": 18.9716,
+			"lat": 49.71023
+		},
+		{
+			"name": "Uwale",
+			"cls": "hamlet",
+			"lon": 19.255,
+			"lat": 49.70139
+		},
+		{
+			"name": "Łaski",
+			"cls": "hamlet",
+			"lon": 19.30111,
+			"lat": 49.70166
+		},
+		{
+			"name": "Pod Tułem",
+			"cls": "hamlet",
+			"lon": 18.74209,
+			"lat": 49.69188
+		},
+		{
+			"name": "Podlas",
+			"cls": "hamlet",
+			"lon": 19.07194,
+			"lat": 49.685
+		},
+		{
+			"name": "Dział",
+			"cls": "hamlet",
+			"lon": 19.11361,
+			"lat": 49.68556
+		},
+		{
+			"name": "Sobki",
+			"cls": "hamlet",
+			"lon": 19.295,
+			"lat": 49.67528
+		},
+		{
+			"name": "Kubloszka",
+			"cls": "hamlet",
+			"lon": 18.90972,
+			"lat": 49.66278
+		},
+		{
+			"name": "Kąty",
+			"cls": "hamlet",
+			"lon": 19.10722,
+			"lat": 49.66083
+		},
+		{
+			"name": "Koźlacy",
+			"cls": "hamlet",
+			"lon": 19.21696,
+			"lat": 49.64278
+		},
+		{
+			"name": "Żakowie",
+			"cls": "hamlet",
+			"lon": 19.25442,
+			"lat": 49.63843
+		},
+		{
+			"name": "Stawy",
+			"cls": "hamlet",
+			"lon": 19.13,
+			"lat": 49.60833
+		},
+		{
+			"name": "Zubrula",
+			"cls": "hamlet",
+			"lon": 19.25083,
+			"lat": 49.59722
+		},
+		{
+			"name": "Polanka",
+			"cls": "hamlet",
+			"lon": 18.86582,
+			"lat": 49.58312
+		},
+		{
+			"name": "Stecówka",
+			"cls": "hamlet",
+			"lon": 18.94197,
+			"lat": 49.58637
+		},
+		{
+			"name": "Abramów",
+			"cls": "hamlet",
+			"lon": 19.18028,
+			"lat": 49.57806
+		},
+		{
+			"name": "Kučery",
+			"cls": "hamlet",
+			"lon": 18.81778,
+			"lat": 49.55514
+		},
+		{
+			"name": "Duraje",
+			"cls": "hamlet",
+			"lon": 19.01874,
+			"lat": 49.56454
+		},
+		{
+			"name": "Skałka",
+			"cls": "hamlet",
+			"lon": 19.1875,
+			"lat": 49.56111
+		},
+		{
+			"name": "Walęgówka",
+			"cls": "hamlet",
+			"lon": 19.28094,
+			"lat": 49.56284
+		},
+		{
+			"name": "Jasie",
+			"cls": "hamlet",
+			"lon": 18.89233,
+			"lat": 49.54587
+		},
+		{
+			"name": "Zagać",
+			"cls": "hamlet",
+			"lon": 18.945,
+			"lat": 49.53972
+		},
+		{
+			"name": "Bączki",
+			"cls": "hamlet",
+			"lon": 19.00917,
+			"lat": 49.54861
+		},
+		{
+			"name": "Biłki",
+			"cls": "hamlet",
+			"lon": 18.86896,
+			"lat": 49.53718
+		},
+		{
+			"name": "Labajka",
+			"cls": "hamlet",
+			"lon": 18.78816,
+			"lat": 49.52204
+		},
+		{
+			"name": "Jama",
+			"cls": "hamlet",
+			"lon": 19.00055,
+			"lat": 49.51555
+		},
+		{
+			"name": "Madeje",
+			"cls": "hamlet",
+			"lon": 19.07154,
+			"lat": 49.51517
+		},
+		{
+			"name": "Czerna",
+			"cls": "hamlet",
+			"lon": 19.04084,
+			"lat": 49.51
+		},
+		{
+			"name": "Liszki",
+			"cls": "hamlet",
+			"lon": 19.11278,
+			"lat": 49.50778
+		},
+		{
+			"name": "Okrągłe",
+			"cls": "hamlet",
+			"lon": 19.19556,
+			"lat": 49.495
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 18.68041,
+			"lat": 49.89657
+		},
+		{
+			"name": "Czarnolesie",
+			"cls": "hamlet",
+			"lon": 18.90667,
+			"lat": 49.90363
+		},
+		{
+			"name": "Mościska",
+			"cls": "hamlet",
+			"lon": 18.94523,
+			"lat": 49.90632
+		},
+		{
+			"name": "Zaolzie",
+			"cls": "hamlet",
+			"lon": 19.13241,
+			"lat": 49.90658
+		},
+		{
+			"name": "Czuchów",
+			"cls": "hamlet",
+			"lon": 18.77771,
+			"lat": 49.89033
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 19.06056,
+			"lat": 49.88139
+		},
+		{
+			"name": "Rotacja",
+			"cls": "hamlet",
+			"lon": 18.80903,
+			"lat": 49.86924
+		},
+		{
+			"name": "Krzywa",
+			"cls": "hamlet",
+			"lon": 18.98083,
+			"lat": 49.87028
+		},
+		{
+			"name": "Niklówka",
+			"cls": "hamlet",
+			"lon": 19.09806,
+			"lat": 49.87111
+		},
+		{
+			"name": "Kobiernice Dolne",
+			"cls": "hamlet",
+			"lon": 19.20296,
+			"lat": 49.86815
+		},
+		{
+			"name": "Kopanina",
+			"cls": "hamlet",
+			"lon": 18.71278,
+			"lat": 49.86167
+		},
+		{
+			"name": "Mała Kępa",
+			"cls": "hamlet",
+			"lon": 19.15281,
+			"lat": 49.86404
+		},
+		{
+			"name": "Chybiny",
+			"cls": "hamlet",
+			"lon": 19.26415,
+			"lat": 49.86315
+		},
+		{
+			"name": "Na Łomy",
+			"cls": "hamlet",
+			"lon": 18.80695,
+			"lat": 49.83126
+		},
+		{
+			"name": "Podgaj",
+			"cls": "hamlet",
+			"lon": 18.90111,
+			"lat": 49.83083
+		},
+		{
+			"name": "Wygrabowice",
+			"cls": "hamlet",
+			"lon": 18.93174,
+			"lat": 49.82613
+		},
+		{
+			"name": "Wróblowice",
+			"cls": "hamlet",
+			"lon": 19.12709,
+			"lat": 49.82408
+		},
+		{
+			"name": "Morcinki",
+			"cls": "hamlet",
+			"lon": 19.18139,
+			"lat": 49.83583
+		},
+		{
+			"name": "Kosary",
+			"cls": "hamlet",
+			"lon": 19.20222,
+			"lat": 49.83444
+		},
+		{
+			"name": "Mirów",
+			"cls": "hamlet",
+			"lon": 18.75111,
+			"lat": 49.79583
+		},
+		{
+			"name": "Zalas",
+			"cls": "hamlet",
+			"lon": 18.83611,
+			"lat": 49.80778
+		},
+		{
+			"name": "Jaworze Dolne",
+			"cls": "hamlet",
+			"lon": 18.94194,
+			"lat": 49.80528
+		},
+		{
+			"name": "Sójka",
+			"cls": "hamlet",
+			"lon": 18.82472,
+			"lat": 49.78167
+		},
+		{
+			"name": "Pasieki",
+			"cls": "hamlet",
+			"lon": 18.69555,
+			"lat": 49.78083
+		},
+		{
+			"name": "Korolówka",
+			"cls": "hamlet",
+			"lon": 19.3176,
+			"lat": 49.77839
+		},
+		{
+			"name": "Osiny",
+			"cls": "hamlet",
+			"lon": 18.7748,
+			"lat": 49.7628
+		},
+		{
+			"name": "Stawki",
+			"cls": "hamlet",
+			"lon": 18.85194,
+			"lat": 49.765
+		},
+		{
+			"name": "Barujec",
+			"cls": "hamlet",
+			"lon": 18.88222,
+			"lat": 49.75917
+		},
+		{
+			"name": "Kaplica",
+			"cls": "hamlet",
+			"lon": 19.06802,
+			"lat": 49.76328
+		},
+		{
+			"name": "Furtaki",
+			"cls": "hamlet",
+			"lon": 19.20514,
+			"lat": 49.76391
+		},
+		{
+			"name": "Zarębek",
+			"cls": "hamlet",
+			"lon": 19.25837,
+			"lat": 49.76076
+		},
+		{
+			"name": "Ciernie",
+			"cls": "hamlet",
+			"lon": 18.70305,
+			"lat": 49.74389
+		},
+		{
+			"name": "Łopaty",
+			"cls": "hamlet",
+			"lon": 18.73972,
+			"lat": 49.74222
+		},
+		{
+			"name": "Bobki",
+			"cls": "hamlet",
+			"lon": 19.12395,
+			"lat": 49.74349
+		},
+		{
+			"name": "Bloki",
+			"cls": "hamlet",
+			"lon": 18.76111,
+			"lat": 49.7248
+		},
+		{
+			"name": "Równia",
+			"cls": "hamlet",
+			"lon": 18.7743,
+			"lat": 49.72529
+		},
+		{
+			"name": "Miodowa",
+			"cls": "hamlet",
+			"lon": 18.88291,
+			"lat": 49.73703
+		},
+		{
+			"name": "Węgierski",
+			"cls": "hamlet",
+			"lon": 18.97031,
+			"lat": 49.7088
+		},
+		{
+			"name": "Dział",
+			"cls": "hamlet",
+			"lon": 19.09528,
+			"lat": 49.70639
+		},
+		{
+			"name": "Tłoczki",
+			"cls": "hamlet",
+			"lon": 18.92055,
+			"lat": 49.68667
+		},
+		{
+			"name": "Koniory",
+			"cls": "hamlet",
+			"lon": 19.11789,
+			"lat": 49.68411
+		},
+		{
+			"name": "Na Żarnówce",
+			"cls": "hamlet",
+			"lon": 19.17919,
+			"lat": 49.69451
+		},
+		{
+			"name": "Nowa Łąka",
+			"cls": "hamlet",
+			"lon": 18.905,
+			"lat": 49.66528
+		},
+		{
+			"name": "Jaski",
+			"cls": "hamlet",
+			"lon": 19.08027,
+			"lat": 49.66705
+		},
+		{
+			"name": "Pokusy",
+			"cls": "hamlet",
+			"lon": 19.23276,
+			"lat": 49.66393
+		},
+		{
+			"name": "Borek",
+			"cls": "hamlet",
+			"lon": 19.09556,
+			"lat": 49.64778
+		},
+		{
+			"name": "Jurasi",
+			"cls": "hamlet",
+			"lon": 19.25465,
+			"lat": 49.65305
+		},
+		{
+			"name": "Duraje",
+			"cls": "hamlet",
+			"lon": 19.17445,
+			"lat": 49.60861
+		},
+		{
+			"name": "Olecki",
+			"cls": "hamlet",
+			"lon": 18.88528,
+			"lat": 49.59306
+		},
+		{
+			"name": "Gołuszki",
+			"cls": "hamlet",
+			"lon": 19.09694,
+			"lat": 49.59222
+		},
+		{
+			"name": "Krzywa",
+			"cls": "hamlet",
+			"lon": 19.06944,
+			"lat": 49.56917
+		},
+		{
+			"name": "Mrozkówki",
+			"cls": "hamlet",
+			"lon": 19.29345,
+			"lat": 49.57595
+		},
+		{
+			"name": "Szelągi",
+			"cls": "hamlet",
+			"lon": 19.13139,
+			"lat": 49.55667
+		},
+		{
+			"name": "Szańce",
+			"cls": "hamlet",
+			"lon": 18.94642,
+			"lat": 49.55238
+		},
+		{
+			"name": "Jakusy",
+			"cls": "hamlet",
+			"lon": 18.99364,
+			"lat": 49.54108
+		},
+		{
+			"name": "Kamienna",
+			"cls": "hamlet",
+			"lon": 19.19445,
+			"lat": 49.55111
+		},
+		{
+			"name": "Ščipionka",
+			"cls": "hamlet",
+			"lon": 18.7919,
+			"lat": 49.53189
+		},
+		{
+			"name": "Zokřas",
+			"cls": "hamlet",
+			"lon": 18.82099,
+			"lat": 49.53287
+		},
+		{
+			"name": "Dílek",
+			"cls": "hamlet",
+			"lon": 18.8416,
+			"lat": 49.53452
+		},
+		{
+			"name": "Leszki",
+			"cls": "hamlet",
+			"lon": 19.10028,
+			"lat": 49.53639
+		},
+		{
+			"name": "Kikula",
+			"cls": "hamlet",
+			"lon": 18.88083,
+			"lat": 49.51861
+		},
+		{
+			"name": "Zadek",
+			"cls": "hamlet",
+			"lon": 18.97666,
+			"lat": 49.52242
+		},
+		{
+			"name": "Poľana",
+			"cls": "hamlet",
+			"lon": 18.90999,
+			"lat": 49.49735
+		},
+		{
+			"name": "Butorzy",
+			"cls": "hamlet",
+			"lon": 19.11445,
+			"lat": 49.50972
+		},
+		{
+			"name": "Oblaski",
+			"cls": "hamlet",
+			"lon": 18.79573,
+			"lat": 49.90451
+		},
+		{
+			"name": "Granice",
+			"cls": "hamlet",
+			"lon": 19.08794,
+			"lat": 49.90488
+		},
+		{
+			"name": "Nowa Wieś za Sołą",
+			"cls": "hamlet",
+			"lon": 19.18909,
+			"lat": 49.90637
+		},
+		{
+			"name": "Latonka",
+			"cls": "hamlet",
+			"lon": 19.28921,
+			"lat": 49.90356
+		},
+		{
+			"name": "Podlasek",
+			"cls": "hamlet",
+			"lon": 18.93648,
+			"lat": 49.88632
+		},
+		{
+			"name": "Pasieki",
+			"cls": "hamlet",
+			"lon": 19.08796,
+			"lat": 49.89398
+		},
+		{
+			"name": "Stara Droga",
+			"cls": "hamlet",
+			"lon": 19.2791,
+			"lat": 49.88183
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 19.31929,
+			"lat": 49.89081
+		},
+		{
+			"name": "Zakęcie",
+			"cls": "hamlet",
+			"lon": 18.84889,
+			"lat": 49.87111
+		},
+		{
+			"name": "Grabówka",
+			"cls": "hamlet",
+			"lon": 18.87917,
+			"lat": 49.8625
+		},
+		{
+			"name": "Folwark",
+			"cls": "hamlet",
+			"lon": 19.24053,
+			"lat": 49.86412
+		},
+		{
+			"name": "Kolonia",
+			"cls": "hamlet",
+			"lon": 18.75084,
+			"lat": 49.84194
+		},
+		{
+			"name": "Dolce",
+			"cls": "hamlet",
+			"lon": 18.85961,
+			"lat": 49.84508
+		},
+		{
+			"name": "Górna Wieś",
+			"cls": "hamlet",
+			"lon": 19.15127,
+			"lat": 49.83363
+		},
+		{
+			"name": "Kulowo",
+			"cls": "hamlet",
+			"lon": 19.23407,
+			"lat": 49.82397
+		},
+		{
+			"name": "Kępa",
+			"cls": "hamlet",
+			"lon": 18.854,
+			"lat": 49.82345
+		},
+		{
+			"name": "Potok",
+			"cls": "hamlet",
+			"lon": 19.31444,
+			"lat": 49.81167
+		},
+		{
+			"name": "Łaski",
+			"cls": "hamlet",
+			"lon": 19.20306,
+			"lat": 49.79806
+		},
+		{
+			"name": "Rysiówka",
+			"cls": "hamlet",
+			"lon": 19.3175,
+			"lat": 49.80889
+		},
+		{
+			"name": "Bucze",
+			"cls": "hamlet",
+			"lon": 18.85444,
+			"lat": 49.78139
+		},
+		{
+			"name": "Zątki",
+			"cls": "hamlet",
+			"lon": 19.19259,
+			"lat": 49.79012
+		},
+		{
+			"name": "Malakówka",
+			"cls": "hamlet",
+			"lon": 19.29482,
+			"lat": 49.79484
+		},
+		{
+			"name": "Piaski",
+			"cls": "hamlet",
+			"lon": 18.7325,
+			"lat": 49.77167
+		},
+		{
+			"name": "Leśnice",
+			"cls": "hamlet",
+			"lon": 18.79222,
+			"lat": 49.78083
+		},
+		{
+			"name": "Miczów",
+			"cls": "hamlet",
+			"lon": 18.83195,
+			"lat": 49.77972
+		},
+		{
+			"name": "Śliwka",
+			"cls": "hamlet",
+			"lon": 18.91,
+			"lat": 49.77694
+		},
+		{
+			"name": "Łączka",
+			"cls": "hamlet",
+			"lon": 18.84833,
+			"lat": 49.7625
+		},
+		{
+			"name": "Hankusi",
+			"cls": "hamlet",
+			"lon": 19.21016,
+			"lat": 49.75472
+		},
+		{
+			"name": "Do Jamy",
+			"cls": "hamlet",
+			"lon": 19.05333,
+			"lat": 49.74
+		},
+		{
+			"name": "Gancarze",
+			"cls": "hamlet",
+			"lon": 19.20694,
+			"lat": 49.74028
+		},
+		{
+			"name": "Dolina",
+			"cls": "hamlet",
+			"lon": 19.29899,
+			"lat": 49.74515
+		},
+		{
+			"name": "Stawka",
+			"cls": "hamlet",
+			"lon": 18.96195,
+			"lat": 49.73139
+		},
+		{
+			"name": "Skład",
+			"cls": "hamlet",
+			"lon": 19.08622,
+			"lat": 49.73073
+		},
+		{
+			"name": "Fijaki",
+			"cls": "hamlet",
+			"lon": 19.17193,
+			"lat": 49.72479
+		},
+		{
+			"name": "Pasieki",
+			"cls": "hamlet",
+			"lon": 18.77805,
+			"lat": 49.72056
+		},
+		{
+			"name": "Do Dudki",
+			"cls": "hamlet",
+			"lon": 18.89611,
+			"lat": 49.72299
+		},
+		{
+			"name": "Wieś",
+			"cls": "hamlet",
+			"lon": 19.10139,
+			"lat": 49.71445
+		},
+		{
+			"name": "Bożki",
+			"cls": "hamlet",
+			"lon": 19.14629,
+			"lat": 49.72369
+		},
+		{
+			"name": "Majkowice",
+			"cls": "hamlet",
+			"lon": 18.68306,
+			"lat": 49.70722
+		},
+		{
+			"name": "Puścina",
+			"cls": "hamlet",
+			"lon": 19.13555,
+			"lat": 49.69037
+		},
+		{
+			"name": "Anioły",
+			"cls": "hamlet",
+			"lon": 19.31088,
+			"lat": 49.68123
+		},
+		{
+			"name": "Zadki",
+			"cls": "hamlet",
+			"lon": 19.27083,
+			"lat": 49.66167
+		},
+		{
+			"name": "Zdziebło",
+			"cls": "hamlet",
+			"lon": 19.21202,
+			"lat": 49.63706
+		},
+		{
+			"name": "Tycówka",
+			"cls": "hamlet",
+			"lon": 19.08917,
+			"lat": 49.60361
+		},
+		{
+			"name": "Figury",
+			"cls": "hamlet",
+			"lon": 19.16938,
+			"lat": 49.60707
+		},
+		{
+			"name": "Skitówki",
+			"cls": "hamlet",
+			"lon": 19.25404,
+			"lat": 49.59795
+		},
+		{
+			"name": "Kamieniec",
+			"cls": "hamlet",
+			"lon": 19.30055,
+			"lat": 49.60305
+		},
+		{
+			"name": "U Stawu",
+			"cls": "hamlet",
+			"lon": 18.87123,
+			"lat": 49.59359
+		},
+		{
+			"name": "Pilorka",
+			"cls": "hamlet",
+			"lon": 18.91444,
+			"lat": 49.59389
+		},
+		{
+			"name": "Stefki",
+			"cls": "hamlet",
+			"lon": 19.15028,
+			"lat": 49.59194
+		},
+		{
+			"name": "Złatna",
+			"cls": "hamlet",
+			"lon": 19.06148,
+			"lat": 49.58157
+		},
+		{
+			"name": "Ficońka",
+			"cls": "hamlet",
+			"lon": 19.18945,
+			"lat": 49.58194
+		},
+		{
+			"name": "Kuliki",
+			"cls": "hamlet",
+			"lon": 18.97667,
+			"lat": 49.55389
+		},
+		{
+			"name": "Zagroń",
+			"cls": "hamlet",
+			"lon": 18.99111,
+			"lat": 49.56667
+		},
+		{
+			"name": "Kałuża",
+			"cls": "hamlet",
+			"lon": 19.0903,
+			"lat": 49.5629
+		},
+		{
+			"name": "Budówka",
+			"cls": "hamlet",
+			"lon": 19.18953,
+			"lat": 49.55685
+		},
+		{
+			"name": "Studeničné",
+			"cls": "hamlet",
+			"lon": 18.78082,
+			"lat": 49.52655
+		},
+		{
+			"name": "Kubalonka",
+			"cls": "hamlet",
+			"lon": 18.78916,
+			"lat": 49.52687
+		},
+		{
+			"name": "Zabawa",
+			"cls": "hamlet",
+			"lon": 19.08555,
+			"lat": 49.53195
+		},
+		{
+			"name": "Koniów",
+			"cls": "hamlet",
+			"lon": 19.11845,
+			"lat": 49.53813
+		},
+		{
+			"name": "Szeroki",
+			"cls": "hamlet",
+			"lon": 18.90361,
+			"lat": 49.51917
+		},
+		{
+			"name": "Polana",
+			"cls": "hamlet",
+			"lon": 19.02945,
+			"lat": 49.50278
+		},
+		{
+			"name": "Herdula",
+			"cls": "hamlet",
+			"lon": 19.15833,
+			"lat": 49.50278
+		},
+		{
+			"name": "U Greši",
+			"cls": "hamlet",
+			"lon": 18.92736,
+			"lat": 49.49401
+		},
+		{
+			"name": "Pasieki",
+			"cls": "hamlet",
+			"lon": 18.75,
+			"lat": 49.89611
+		},
+		{
+			"name": "Magówka",
+			"cls": "hamlet",
+			"lon": 19.07991,
+			"lat": 49.90105
+		},
+		{
+			"name": "Olszyny",
+			"cls": "hamlet",
+			"lon": 19.27722,
+			"lat": 49.8975
+		},
+		{
+			"name": "Kanada (województwo małopolskie)",
+			"cls": "hamlet",
+			"lon": 19.29436,
+			"lat": 49.90048
+		},
+		{
+			"name": "Mały Landek",
+			"cls": "hamlet",
+			"lon": 18.87086,
+			"lat": 49.88219
+		},
+		{
+			"name": "Wielki Landek",
+			"cls": "hamlet",
+			"lon": 18.87687,
+			"lat": 49.88124
+		},
+		{
+			"name": "Nowy Świat",
+			"cls": "hamlet",
+			"lon": 18.91417,
+			"lat": 49.89305
+		},
+		{
+			"name": "Nowy Świat",
+			"cls": "hamlet",
+			"lon": 18.71101,
+			"lat": 49.87841
+		},
+		{
+			"name": "Na Wale",
+			"cls": "hamlet",
+			"lon": 18.75133,
+			"lat": 49.86591
+		},
+		{
+			"name": "Oblaski",
+			"cls": "hamlet",
+			"lon": 18.77405,
+			"lat": 49.86555
+		},
+		{
+			"name": "Lipnik",
+			"cls": "hamlet",
+			"lon": 18.995,
+			"lat": 49.86556
+		},
+		{
+			"name": "Dolna Wieś",
+			"cls": "hamlet",
+			"lon": 19.12183,
+			"lat": 49.86083
+		},
+		{
+			"name": "Krzemionki",
+			"cls": "hamlet",
+			"lon": 19.11774,
+			"lat": 49.84263
+		},
+		{
+			"name": "Sośni",
+			"cls": "hamlet",
+			"lon": 18.86094,
+			"lat": 49.82399
+		},
+		{
+			"name": "Chodniki",
+			"cls": "hamlet",
+			"lon": 18.69444,
+			"lat": 49.81
+		},
+		{
+			"name": "Dziadek",
+			"cls": "hamlet",
+			"lon": 18.70333,
+			"lat": 49.81972
+		},
+		{
+			"name": "Dolski",
+			"cls": "hamlet",
+			"lon": 18.72333,
+			"lat": 49.8175
+		},
+		{
+			"name": "Zgoda",
+			"cls": "hamlet",
+			"lon": 18.72861,
+			"lat": 49.80694
+		},
+		{
+			"name": "Haraty",
+			"cls": "hamlet",
+			"lon": 19.17389,
+			"lat": 49.80278
+		},
+		{
+			"name": "Balonówka",
+			"cls": "hamlet",
+			"lon": 19.30463,
+			"lat": 49.80564
+		},
+		{
+			"name": "Prądki",
+			"cls": "hamlet",
+			"lon": 18.75333,
+			"lat": 49.78028
+		},
+		{
+			"name": "Granice",
+			"cls": "hamlet",
+			"lon": 19.06022,
+			"lat": 49.741
+		},
+		{
+			"name": "Szatany",
+			"cls": "hamlet",
+			"lon": 19.19583,
+			"lat": 49.745
+		},
+		{
+			"name": "Koniec",
+			"cls": "hamlet",
+			"lon": 19.3095,
+			"lat": 49.74425
+		},
+		{
+			"name": "Na Kępę",
+			"cls": "hamlet",
+			"lon": 18.905,
+			"lat": 49.73472
+		},
+		{
+			"name": "Janiców",
+			"cls": "hamlet",
+			"lon": 19.06348,
+			"lat": 49.72485
+		},
+		{
+			"name": "Do Jamy",
+			"cls": "hamlet",
+			"lon": 18.94972,
+			"lat": 49.71194
+		},
+		{
+			"name": "Bloki",
+			"cls": "hamlet",
+			"lon": 19.13851,
+			"lat": 49.71631
+		},
+		{
+			"name": "Brzony",
+			"cls": "hamlet",
+			"lon": 19.31055,
+			"lat": 49.71278
+		},
+		{
+			"name": "Zarąbki",
+			"cls": "hamlet",
+			"lon": 18.90103,
+			"lat": 49.70542
+		},
+		{
+			"name": "Cygany",
+			"cls": "hamlet",
+			"lon": 19.07713,
+			"lat": 49.70093
+		},
+		{
+			"name": "Piątki",
+			"cls": "hamlet",
+			"lon": 19.26915,
+			"lat": 49.69709
+		},
+		{
+			"name": "Gamary",
+			"cls": "hamlet",
+			"lon": 19.09833,
+			"lat": 49.68333
+		},
+		{
+			"name": "Puściny",
+			"cls": "hamlet",
+			"lon": 19.12528,
+			"lat": 49.68861
+		},
+		{
+			"name": "Głębie",
+			"cls": "hamlet",
+			"lon": 19.27312,
+			"lat": 49.68758
+		},
+		{
+			"name": "Pod Groń",
+			"cls": "hamlet",
+			"lon": 18.92889,
+			"lat": 49.68139
+		},
+		{
+			"name": "Kuźnik",
+			"cls": "hamlet",
+			"lon": 19.28452,
+			"lat": 49.68053
+		},
+		{
+			"name": "Herbik",
+			"cls": "hamlet",
+			"lon": 19.09306,
+			"lat": 49.65528
+		},
+		{
+			"name": "Błotne",
+			"cls": "hamlet",
+			"lon": 19.12306,
+			"lat": 49.66083
+		},
+		{
+			"name": "Kurysie",
+			"cls": "hamlet",
+			"lon": 19.14909,
+			"lat": 49.64254
+		},
+		{
+			"name": "Żurga",
+			"cls": "hamlet",
+			"lon": 19.12062,
+			"lat": 49.62687
+		},
+		{
+			"name": "Oczkowscy",
+			"cls": "hamlet",
+			"lon": 19.21277,
+			"lat": 49.63732
+		},
+		{
+			"name": "Babicki",
+			"cls": "hamlet",
+			"lon": 19.10583,
+			"lat": 49.61222
+		},
+		{
+			"name": "Nowa Beczka",
+			"cls": "hamlet",
+			"lon": 18.90556,
+			"lat": 49.60389
+		},
+		{
+			"name": "U Gawła",
+			"cls": "hamlet",
+			"lon": 19.07474,
+			"lat": 49.59622
+		},
+		{
+			"name": "Ficonka",
+			"cls": "hamlet",
+			"lon": 19.17917,
+			"lat": 49.58639
+		},
+		{
+			"name": "Mały Cisiec",
+			"cls": "hamlet",
+			"lon": 19.09545,
+			"lat": 49.57755
+		},
+		{
+			"name": "Ryszkówki",
+			"cls": "hamlet",
+			"lon": 19.29588,
+			"lat": 49.57708
+		},
+		{
+			"name": "Beskid",
+			"cls": "hamlet",
+			"lon": 18.91778,
+			"lat": 49.55472
+		},
+		{
+			"name": "Wołowa",
+			"cls": "hamlet",
+			"lon": 18.94722,
+			"lat": 49.55479
+		},
+		{
+			"name": "Pustki",
+			"cls": "hamlet",
+			"lon": 18.93028,
+			"lat": 49.5475
+		},
+		{
+			"name": "Krutaki",
+			"cls": "hamlet",
+			"lon": 19.02833,
+			"lat": 49.54444
+		},
+		{
+			"name": "Obrót",
+			"cls": "hamlet",
+			"lon": 18.99987,
+			"lat": 49.52757
+		},
+		{
+			"name": "Dębina",
+			"cls": "hamlet",
+			"lon": 18.88195,
+			"lat": 49.52083
+		},
+		{
+			"name": "Cerla",
+			"cls": "hamlet",
+			"lon": 18.99583,
+			"lat": 49.51611
+		},
+		{
+			"name": "Dziaski",
+			"cls": "hamlet",
+			"lon": 19.12917,
+			"lat": 49.51944
+		},
+		{
+			"name": "Basiówka",
+			"cls": "hamlet",
+			"lon": 19.14222,
+			"lat": 49.5125
+		},
+		{
+			"name": "Gruszkowa",
+			"cls": "hamlet",
+			"lon": 19.16189,
+			"lat": 49.51851
+		},
+		{
+			"name": "Polgroň",
+			"cls": "hamlet",
+			"lon": 18.78922,
+			"lat": 49.51025
+		},
+		{
+			"name": "U Kozov",
+			"cls": "hamlet",
+			"lon": 18.83133,
+			"lat": 49.50164
+		},
+		{
+			"name": "Polanka",
+			"cls": "hamlet",
+			"lon": 19.16639,
+			"lat": 49.50972
+		},
+		{
+			"name": "U Čaňa",
+			"cls": "hamlet",
+			"lon": 18.90249,
+			"lat": 49.4955
+		},
+		{
+			"name": "Gomułka",
+			"cls": "hamlet",
+			"lon": 18.97278,
+			"lat": 49.49444
+		},
+		{
+			"name": "Kępa Dolna",
+			"cls": "hamlet",
+			"lon": 19.12259,
+			"lat": 49.90325
+		},
+		{
+			"name": "Osiedle",
+			"cls": "hamlet",
+			"lon": 18.82202,
+			"lat": 49.8904
+		},
+		{
+			"name": "Pruchna Dolna",
+			"cls": "hamlet",
+			"lon": 18.71528,
+			"lat": 49.8675
+		},
+		{
+			"name": "Bulowice Dolne",
+			"cls": "hamlet",
+			"lon": 19.27977,
+			"lat": 49.87669
+		},
+		{
+			"name": "Bulowice Górne",
+			"cls": "hamlet",
+			"lon": 19.30222,
+			"lat": 49.87083
+		},
+		{
+			"name": "Bujaków Dolny",
+			"cls": "hamlet",
+			"lon": 19.19646,
+			"lat": 49.85386
+		},
+		{
+			"name": "Morga Druga",
+			"cls": "hamlet",
+			"lon": 19.29598,
+			"lat": 49.86161
+		},
+		{
+			"name": "Dzioły",
+			"cls": "hamlet",
+			"lon": 18.88189,
+			"lat": 49.8449
+		},
+		{
+			"name": "Granica",
+			"cls": "hamlet",
+			"lon": 19.29163,
+			"lat": 49.84608
+		},
+		{
+			"name": "Bulówki",
+			"cls": "hamlet",
+			"lon": 19.30722,
+			"lat": 49.84083
+		},
+		{
+			"name": "Polana",
+			"cls": "hamlet",
+			"lon": 19.30833,
+			"lat": 49.83111
+		},
+		{
+			"name": "Dębina",
+			"cls": "hamlet",
+			"lon": 18.73611,
+			"lat": 49.81583
+		},
+		{
+			"name": "Budowa",
+			"cls": "hamlet",
+			"lon": 18.88914,
+			"lat": 49.80935
+		},
+		{
+			"name": "Czyrna",
+			"cls": "hamlet",
+			"lon": 18.9175,
+			"lat": 49.79806
+		},
+		{
+			"name": "Farzyna Wschodnia",
+			"cls": "hamlet",
+			"lon": 18.94377,
+			"lat": 49.80956
+		},
+		{
+			"name": "Borsuki",
+			"cls": "hamlet",
+			"lon": 19.23677,
+			"lat": 49.80395
+		},
+		{
+			"name": "Chomlówka",
+			"cls": "hamlet",
+			"lon": 19.31556,
+			"lat": 49.80171
+		},
+		{
+			"name": "Adamki",
+			"cls": "hamlet",
+			"lon": 19.19799,
+			"lat": 49.78802
+		},
+		{
+			"name": "Węgrocz",
+			"cls": "hamlet",
+			"lon": 18.7825,
+			"lat": 49.75417
+		},
+		{
+			"name": "Kalwaria",
+			"cls": "hamlet",
+			"lon": 19.10639,
+			"lat": 49.76139
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 18.70296,
+			"lat": 49.73804
+		},
+		{
+			"name": "Gluzów",
+			"cls": "hamlet",
+			"lon": 19.07304,
+			"lat": 49.727
+		},
+		{
+			"name": "Grapa",
+			"cls": "hamlet",
+			"lon": 19.13505,
+			"lat": 49.72456
+		},
+		{
+			"name": "Kasperki",
+			"cls": "hamlet",
+			"lon": 19.24793,
+			"lat": 49.73663
+		},
+		{
+			"name": "Wędoły",
+			"cls": "hamlet",
+			"lon": 18.73744,
+			"lat": 49.713
+		},
+		{
+			"name": "Do Kłody",
+			"cls": "hamlet",
+			"lon": 18.7808,
+			"lat": 49.71094
+		},
+		{
+			"name": "Na Łazie",
+			"cls": "hamlet",
+			"lon": 18.76667,
+			"lat": 49.70417
+		},
+		{
+			"name": "Witkowska",
+			"cls": "hamlet",
+			"lon": 18.96767,
+			"lat": 49.70455
+		},
+		{
+			"name": "Podkota",
+			"cls": "hamlet",
+			"lon": 19.17649,
+			"lat": 49.70678
+		},
+		{
+			"name": "Bieńki",
+			"cls": "hamlet",
+			"lon": 19.27286,
+			"lat": 49.6994
+		},
+		{
+			"name": "Nowociny",
+			"cls": "hamlet",
+			"lon": 18.90438,
+			"lat": 49.69605
+		},
+		{
+			"name": "Bieguny",
+			"cls": "hamlet",
+			"lon": 19.28167,
+			"lat": 49.66972
+		},
+		{
+			"name": "Suchowianka",
+			"cls": "hamlet",
+			"lon": 18.91722,
+			"lat": 49.66167
+		},
+		{
+			"name": "Mików",
+			"cls": "hamlet",
+			"lon": 19.09528,
+			"lat": 49.65167
+		},
+		{
+			"name": "Bylcowie",
+			"cls": "hamlet",
+			"lon": 19.1769,
+			"lat": 49.64029
+		},
+		{
+			"name": "Czwarcizna",
+			"cls": "hamlet",
+			"lon": 19.22242,
+			"lat": 49.62918
+		},
+		{
+			"name": "Solany",
+			"cls": "hamlet",
+			"lon": 19.15416,
+			"lat": 49.61778
+		},
+		{
+			"name": "Pietraszonka",
+			"cls": "hamlet",
+			"lon": 18.97012,
+			"lat": 49.58332
+		},
+		{
+			"name": "Bieguny",
+			"cls": "hamlet",
+			"lon": 19.15972,
+			"lat": 49.59083
+		},
+		{
+			"name": "Koluszka",
+			"cls": "hamlet",
+			"lon": 19.18306,
+			"lat": 49.58333
+		},
+		{
+			"name": "Czerchla",
+			"cls": "hamlet",
+			"lon": 18.84677,
+			"lat": 49.57547
+		},
+		{
+			"name": "Zarębki",
+			"cls": "hamlet",
+			"lon": 19.04917,
+			"lat": 49.57292
+		},
+		{
+			"name": "Kiepki",
+			"cls": "hamlet",
+			"lon": 18.88917,
+			"lat": 49.56167
+		},
+		{
+			"name": "Słowiki",
+			"cls": "hamlet",
+			"lon": 19.00985,
+			"lat": 49.56272
+		},
+		{
+			"name": "Klimki",
+			"cls": "hamlet",
+			"lon": 18.88417,
+			"lat": 49.54444
+		},
+		{
+			"name": "Krzusówka",
+			"cls": "hamlet",
+			"lon": 19.20056,
+			"lat": 49.54861
+		},
+		{
+			"name": "Łabaje",
+			"cls": "hamlet",
+			"lon": 18.86833,
+			"lat": 49.53327
+		},
+		{
+			"name": "Lasek",
+			"cls": "hamlet",
+			"lon": 18.99278,
+			"lat": 49.53056
+		},
+		{
+			"name": "Dołek",
+			"cls": "hamlet",
+			"lon": 18.99639,
+			"lat": 49.51944
+		},
+		{
+			"name": "Kiczora",
+			"cls": "hamlet",
+			"lon": 19.04845,
+			"lat": 49.51243
+		},
+		{
+			"name": "Raztočky",
+			"cls": "hamlet",
+			"lon": 18.78456,
+			"lat": 49.49986
+		},
+		{
+			"name": "Długosy",
+			"cls": "hamlet",
+			"lon": 19.0525,
+			"lat": 49.50778
+		},
+		{
+			"name": "Chodniczne",
+			"cls": "hamlet",
+			"lon": 18.7864,
+			"lat": 49.89675
+		},
+		{
+			"name": "Biała Droga",
+			"cls": "hamlet",
+			"lon": 19.31833,
+			"lat": 49.88694
+		},
+		{
+			"name": "Dziedzina",
+			"cls": "hamlet",
+			"lon": 18.75528,
+			"lat": 49.875
+		},
+		{
+			"name": "Siedloki",
+			"cls": "hamlet",
+			"lon": 18.91684,
+			"lat": 49.87129
+		},
+		{
+			"name": "Żabie Miasto",
+			"cls": "hamlet",
+			"lon": 19.12417,
+			"lat": 49.87972
+		},
+		{
+			"name": "Harszówki Górne",
+			"cls": "hamlet",
+			"lon": 19.15944,
+			"lat": 49.87333
+		},
+		{
+			"name": "Przeźnia",
+			"cls": "hamlet",
+			"lon": 18.85135,
+			"lat": 49.85737
+		},
+		{
+			"name": "Buczyna",
+			"cls": "hamlet",
+			"lon": 18.99528,
+			"lat": 49.85833
+		},
+		{
+			"name": "Budziany",
+			"cls": "hamlet",
+			"lon": 19.25111,
+			"lat": 49.85833
+		},
+		{
+			"name": "Za Lasem",
+			"cls": "hamlet",
+			"lon": 18.70444,
+			"lat": 49.84222
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 18.80445,
+			"lat": 49.84528
+		},
+		{
+			"name": "Laryszówka",
+			"cls": "hamlet",
+			"lon": 18.89805,
+			"lat": 49.84135
+		},
+		{
+			"name": "Pod Gojem",
+			"cls": "hamlet",
+			"lon": 18.82168,
+			"lat": 49.83033
+		},
+		{
+			"name": "Za Lasem",
+			"cls": "hamlet",
+			"lon": 18.7843,
+			"lat": 49.8151
+		},
+		{
+			"name": "Jankowice",
+			"cls": "hamlet",
+			"lon": 18.77222,
+			"lat": 49.7975
+		},
+		{
+			"name": "Mundus",
+			"cls": "hamlet",
+			"lon": 18.90856,
+			"lat": 49.80318
+		},
+		{
+			"name": "Spalona",
+			"cls": "hamlet",
+			"lon": 18.92286,
+			"lat": 49.80297
+		},
+		{
+			"name": "Zagóra",
+			"cls": "hamlet",
+			"lon": 18.87972,
+			"lat": 49.78417
+		},
+		{
+			"name": "Brodek",
+			"cls": "hamlet",
+			"lon": 19.19583,
+			"lat": 49.78417
+		},
+		{
+			"name": "Milerzyska",
+			"cls": "hamlet",
+			"lon": 19.29928,
+			"lat": 49.79158
+		},
+		{
+			"name": "Jasionki",
+			"cls": "hamlet",
+			"lon": 18.90749,
+			"lat": 49.77236
+		},
+		{
+			"name": "Olszyna",
+			"cls": "hamlet",
+			"lon": 18.70805,
+			"lat": 49.7625
+		},
+		{
+			"name": "Zbijowa",
+			"cls": "hamlet",
+			"lon": 18.78139,
+			"lat": 49.75611
+		},
+		{
+			"name": "Warszawa",
+			"cls": "hamlet",
+			"lon": 18.86073,
+			"lat": 49.75184
+		},
+		{
+			"name": "Nadmeszna",
+			"cls": "hamlet",
+			"lon": 19.03611,
+			"lat": 49.74112
+		},
+		{
+			"name": "Żurkowa",
+			"cls": "hamlet",
+			"lon": 19.18602,
+			"lat": 49.75055
+		},
+		{
+			"name": "Rachwale",
+			"cls": "hamlet",
+			"lon": 19.21167,
+			"lat": 49.74333
+		},
+		{
+			"name": "Rafale",
+			"cls": "hamlet",
+			"lon": 19.30833,
+			"lat": 49.745
+		},
+		{
+			"name": "Nowe Łąki",
+			"cls": "hamlet",
+			"lon": 18.97278,
+			"lat": 49.73111
+		},
+		{
+			"name": "Migdałów",
+			"cls": "hamlet",
+			"lon": 19.05775,
+			"lat": 49.72466
+		},
+		{
+			"name": "Kowale",
+			"cls": "hamlet",
+			"lon": 19.08528,
+			"lat": 49.72639
+		},
+		{
+			"name": "Bigosy",
+			"cls": "hamlet",
+			"lon": 19.10753,
+			"lat": 49.72794
+		},
+		{
+			"name": "Mrowce",
+			"cls": "hamlet",
+			"lon": 19.30694,
+			"lat": 49.72861
+		},
+		{
+			"name": "Pazuchy",
+			"cls": "hamlet",
+			"lon": 18.75056,
+			"lat": 49.71861
+		},
+		{
+			"name": "Hołcyna (przysiółek Brennej)",
+			"cls": "hamlet",
+			"lon": 18.9275,
+			"lat": 49.71083
+		},
+		{
+			"name": "Zadolne",
+			"cls": "hamlet",
+			"lon": 19.13639,
+			"lat": 49.68667
+		},
+		{
+			"name": "Parciki",
+			"cls": "hamlet",
+			"lon": 19.31742,
+			"lat": 49.684
+		},
+		{
+			"name": "Czajowie",
+			"cls": "hamlet",
+			"lon": 19.17856,
+			"lat": 49.64567
+		},
+		{
+			"name": "Cuchedla",
+			"cls": "hamlet",
+			"lon": 19.1075,
+			"lat": 49.63833
+		},
+		{
+			"name": "Figurzy",
+			"cls": "hamlet",
+			"lon": 19.16772,
+			"lat": 49.62619
+		},
+		{
+			"name": "Do Morysa",
+			"cls": "hamlet",
+			"lon": 19.28847,
+			"lat": 49.62669
+		},
+		{
+			"name": "Kociołek",
+			"cls": "hamlet",
+			"lon": 19.18892,
+			"lat": 49.61961
+		},
+		{
+			"name": "Do Kabata",
+			"cls": "hamlet",
+			"lon": 19.27941,
+			"lat": 49.61816
+		},
+		{
+			"name": "Złotnica",
+			"cls": "hamlet",
+			"lon": 19.06028,
+			"lat": 49.60033
+		},
+		{
+			"name": "Do Sobasa",
+			"cls": "hamlet",
+			"lon": 19.25921,
+			"lat": 49.60203
+		},
+		{
+			"name": "Średniówka",
+			"cls": "hamlet",
+			"lon": 19.30264,
+			"lat": 49.59824
+		},
+		{
+			"name": "Czostkowa",
+			"cls": "hamlet",
+			"lon": 18.84291,
+			"lat": 49.58331
+		},
+		{
+			"name": "Pietroszonka",
+			"cls": "hamlet",
+			"lon": 18.96523,
+			"lat": 49.58241
+		},
+		{
+			"name": "Bziniok",
+			"cls": "hamlet",
+			"lon": 19.06167,
+			"lat": 49.59639
+		},
+		{
+			"name": "Fabisie",
+			"cls": "hamlet",
+			"lon": 19.17139,
+			"lat": 49.59167
+		},
+		{
+			"name": "Łączyna",
+			"cls": "hamlet",
+			"lon": 18.94078,
+			"lat": 49.57356
+		},
+		{
+			"name": "Berkówki",
+			"cls": "hamlet",
+			"lon": 18.995,
+			"lat": 49.57695
+		},
+		{
+			"name": "Witasówka",
+			"cls": "hamlet",
+			"lon": 19.2975,
+			"lat": 49.57333
+		},
+		{
+			"name": "Walaśne",
+			"cls": "hamlet",
+			"lon": 18.98694,
+			"lat": 49.56
+		},
+		{
+			"name": "Młynica",
+			"cls": "hamlet",
+			"lon": 19.09052,
+			"lat": 49.56512
+		},
+		{
+			"name": "Łajcoki",
+			"cls": "hamlet",
+			"lon": 19.12889,
+			"lat": 49.55055
+		},
+		{
+			"name": "Pichuci",
+			"cls": "hamlet",
+			"lon": 19.12278,
+			"lat": 49.51278
+		},
+		{
+			"name": "Stecovka",
+			"cls": "hamlet",
+			"lon": 18.77518,
+			"lat": 49.50993
+		},
+		{
+			"name": "Żabiniec",
+			"cls": "hamlet",
+			"lon": 18.83569,
+			"lat": 49.88834
+		},
+		{
+			"name": "Stara Droga Dolna",
+			"cls": "hamlet",
+			"lon": 19.26301,
+			"lat": 49.88318
+		},
+		{
+			"name": "Zawiście",
+			"cls": "hamlet",
+			"lon": 18.9625,
+			"lat": 49.87056
+		},
+		{
+			"name": "Mały Czaniec",
+			"cls": "hamlet",
+			"lon": 19.25556,
+			"lat": 49.86639
+		},
+		{
+			"name": "Gościniec Górny",
+			"cls": "hamlet",
+			"lon": 19.30476,
+			"lat": 49.86953
+		},
+		{
+			"name": "Bierniska",
+			"cls": "hamlet",
+			"lon": 18.77083,
+			"lat": 49.85833
+		},
+		{
+			"name": "Osiedle",
+			"cls": "hamlet",
+			"lon": 19.00335,
+			"lat": 49.85807
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 18.68784,
+			"lat": 49.85056
+		},
+		{
+			"name": "Górnioki",
+			"cls": "hamlet",
+			"lon": 18.84207,
+			"lat": 49.85007
+		},
+		{
+			"name": "Kęciki",
+			"cls": "hamlet",
+			"lon": 18.87827,
+			"lat": 49.83669
+		},
+		{
+			"name": "Na Kępie",
+			"cls": "hamlet",
+			"lon": 18.72417,
+			"lat": 49.82278
+		},
+		{
+			"name": "Zapłocie",
+			"cls": "hamlet",
+			"lon": 18.77845,
+			"lat": 49.82184
+		},
+		{
+			"name": "Brzozi",
+			"cls": "hamlet",
+			"lon": 18.85259,
+			"lat": 49.81813
+		},
+		{
+			"name": "U Jazu",
+			"cls": "hamlet",
+			"lon": 19.21308,
+			"lat": 49.81611
+		},
+		{
+			"name": "Pustki",
+			"cls": "hamlet",
+			"lon": 18.85967,
+			"lat": 49.80493
+		},
+		{
+			"name": "Podlas",
+			"cls": "hamlet",
+			"lon": 19.16722,
+			"lat": 49.80528
+		},
+		{
+			"name": "Polska",
+			"cls": "hamlet",
+			"lon": 19.22529,
+			"lat": 49.79939
+		},
+		{
+			"name": "Tornowa",
+			"cls": "hamlet",
+			"lon": 18.74556,
+			"lat": 49.78722
+		},
+		{
+			"name": "Bajerki",
+			"cls": "hamlet",
+			"lon": 18.81532,
+			"lat": 49.78579
+		},
+		{
+			"name": "Pelchrim",
+			"cls": "hamlet",
+			"lon": 18.93987,
+			"lat": 49.79137
+		},
+		{
+			"name": "Jędrusie",
+			"cls": "hamlet",
+			"lon": 19.15305,
+			"lat": 49.78722
+		},
+		{
+			"name": "Kubice",
+			"cls": "hamlet",
+			"lon": 19.16549,
+			"lat": 49.78695
+		},
+		{
+			"name": "Podlesie",
+			"cls": "hamlet",
+			"lon": 18.79667,
+			"lat": 49.77722
+		},
+		{
+			"name": "Centrum",
+			"cls": "hamlet",
+			"lon": 18.85158,
+			"lat": 49.77192
+		},
+		{
+			"name": "Solnisko",
+			"cls": "hamlet",
+			"lon": 19.31444,
+			"lat": 49.765
+		},
+		{
+			"name": "Potoczki",
+			"cls": "hamlet",
+			"lon": 18.69889,
+			"lat": 49.74333
+		},
+		{
+			"name": "Wydzirów",
+			"cls": "hamlet",
+			"lon": 18.89056,
+			"lat": 49.74972
+		},
+		{
+			"name": "Bieguny",
+			"cls": "hamlet",
+			"lon": 19.30483,
+			"lat": 49.74564
+		},
+		{
+			"name": "Pościenny",
+			"cls": "hamlet",
+			"lon": 18.96917,
+			"lat": 49.72528
+		},
+		{
+			"name": "Tarnawów",
+			"cls": "hamlet",
+			"lon": 19.06851,
+			"lat": 49.72908
+		},
+		{
+			"name": "Wajdy",
+			"cls": "hamlet",
+			"lon": 19.13626,
+			"lat": 49.7358
+		},
+		{
+			"name": "Jakubce",
+			"cls": "hamlet",
+			"lon": 19.17758,
+			"lat": 49.72594
+		},
+		{
+			"name": "Brzezinka",
+			"cls": "hamlet",
+			"lon": 19.16972,
+			"lat": 49.69722
+		},
+		{
+			"name": "Na Polanę",
+			"cls": "hamlet",
+			"lon": 18.91889,
+			"lat": 49.68444
+		},
+		{
+			"name": "Banasie",
+			"cls": "hamlet",
+			"lon": 19.08254,
+			"lat": 49.69046
+		},
+		{
+			"name": "Pustki",
+			"cls": "hamlet",
+			"lon": 19.08089,
+			"lat": 49.67547
+		},
+		{
+			"name": "Drobisy",
+			"cls": "hamlet",
+			"lon": 19.28611,
+			"lat": 49.67528
+		},
+		{
+			"name": "Sośliny",
+			"cls": "hamlet",
+			"lon": 19.11861,
+			"lat": 49.66417
+		},
+		{
+			"name": "Pielowie",
+			"cls": "hamlet",
+			"lon": 19.23179,
+			"lat": 49.66068
+		},
+		{
+			"name": "Do Bobra",
+			"cls": "hamlet",
+			"lon": 19.18211,
+			"lat": 49.64784
+		},
+		{
+			"name": "Do Mołdyrza",
+			"cls": "hamlet",
+			"lon": 19.21789,
+			"lat": 49.64828
+		},
+		{
+			"name": "Firlejka",
+			"cls": "hamlet",
+			"lon": 19.10722,
+			"lat": 49.63222
+		},
+		{
+			"name": "Do Łyśnia",
+			"cls": "hamlet",
+			"lon": 19.26994,
+			"lat": 49.60877
+		},
+		{
+			"name": "Kawulonka",
+			"cls": "hamlet",
+			"lon": 18.91278,
+			"lat": 49.58611
+		},
+		{
+			"name": "Leszczyna",
+			"cls": "hamlet",
+			"lon": 18.9252,
+			"lat": 49.58732
+		},
+		{
+			"name": "Fajkówka",
+			"cls": "hamlet",
+			"lon": 19.03778,
+			"lat": 49.59306
+		},
+		{
+			"name": "Stanicówka",
+			"cls": "hamlet",
+			"lon": 19.25361,
+			"lat": 49.58833
+		},
+		{
+			"name": "Bednarze",
+			"cls": "hamlet",
+			"lon": 19.17306,
+			"lat": 49.56972
+		},
+		{
+			"name": "Kubale",
+			"cls": "hamlet",
+			"lon": 18.9,
+			"lat": 49.56235
+		},
+		{
+			"name": "Cisowe",
+			"cls": "hamlet",
+			"lon": 18.95306,
+			"lat": 49.56722
+		},
+		{
+			"name": "Juraszka",
+			"cls": "hamlet",
+			"lon": 19.14389,
+			"lat": 49.55417
+		},
+		{
+			"name": "Stańki",
+			"cls": "hamlet",
+			"lon": 18.87667,
+			"lat": 49.54444
+		},
+		{
+			"name": "Gronik",
+			"cls": "hamlet",
+			"lon": 18.94053,
+			"lat": 49.54701
+		},
+		{
+			"name": "Pozory",
+			"cls": "hamlet",
+			"lon": 18.99139,
+			"lat": 49.55306
+		},
+		{
+			"name": "Polanka",
+			"cls": "hamlet",
+			"lon": 19.08667,
+			"lat": 49.52639
+		},
+		{
+			"name": "Zając",
+			"cls": "hamlet",
+			"lon": 18.98029,
+			"lat": 49.51569
+		},
+		{
+			"name": "U Božka",
+			"cls": "hamlet",
+			"lon": 18.83582,
+			"lat": 49.50239
+		}
+	]
 }

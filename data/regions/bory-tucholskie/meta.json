@@ -60,6 +60,10 @@
 		{
 			"name": "OpenStreetMap",
 			"license": "ODbL, © współtwórcy OpenStreetMap"
+		},
+		{
+			"name": "OpenFreeMap (schemat OpenMapTiles)",
+			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
 		}
 	],
 	"baked": "2026-10-17T09:09:53.697Z",
@@ -76,5 +80,3367 @@
 			"crossings": 255,
 			"platforms": 46
 		}
-	}
+	},
+	"labels": [
+		{
+			"name": "Czersk",
+			"cls": "town",
+			"lon": 17.97562,
+			"lat": 53.7962
+		},
+		{
+			"name": "Chojnice",
+			"cls": "town",
+			"lon": 17.5615,
+			"lat": 53.69529
+		},
+		{
+			"name": "Człuchów",
+			"cls": "town",
+			"lon": 17.35883,
+			"lat": 53.66515
+		},
+		{
+			"name": "Tuchola",
+			"cls": "town",
+			"lon": 17.85904,
+			"lat": 53.58809
+		},
+		{
+			"name": "Kamień Krajeński",
+			"cls": "town",
+			"lon": 17.51992,
+			"lat": 53.53332
+		},
+		{
+			"name": "Sępólno Krajeńskie",
+			"cls": "town",
+			"lon": 17.53484,
+			"lat": 53.45474
+		},
+		{
+			"name": "Żychce",
+			"cls": "village",
+			"lon": 17.35866,
+			"lat": 53.84515
+		},
+		{
+			"name": "Zielona Huta",
+			"cls": "village",
+			"lon": 17.40612,
+			"lat": 53.84086
+		},
+		{
+			"name": "Chłopowy",
+			"cls": "village",
+			"lon": 17.81672,
+			"lat": 53.84241
+		},
+		{
+			"name": "Czarniż",
+			"cls": "village",
+			"lon": 17.76476,
+			"lat": 53.83767
+		},
+		{
+			"name": "Konarzyny",
+			"cls": "village",
+			"lon": 17.37818,
+			"lat": 53.82343
+		},
+		{
+			"name": "Małe Swornegacie",
+			"cls": "village",
+			"lon": 17.50272,
+			"lat": 53.81843
+		},
+		{
+			"name": "Męcikał",
+			"cls": "village",
+			"lon": 17.66641,
+			"lat": 53.81976
+		},
+		{
+			"name": "Kwieki",
+			"cls": "village",
+			"lon": 17.8627,
+			"lat": 53.81434
+		},
+		{
+			"name": "Malachin",
+			"cls": "village",
+			"lon": 17.95552,
+			"lat": 53.81637
+		},
+		{
+			"name": "Sąpolno",
+			"cls": "village",
+			"lon": 17.33419,
+			"lat": 53.80678
+		},
+		{
+			"name": "Kopernica",
+			"cls": "village",
+			"lon": 17.47796,
+			"lat": 53.78769
+		},
+		{
+			"name": "Bachorze",
+			"cls": "village",
+			"lon": 17.52015,
+			"lat": 53.79052
+		},
+		{
+			"name": "Okręglik",
+			"cls": "village",
+			"lon": 17.72494,
+			"lat": 53.79474
+		},
+		{
+			"name": "Krzyż",
+			"cls": "village",
+			"lon": 17.87131,
+			"lat": 53.79666
+		},
+		{
+			"name": "Nieżurawa",
+			"cls": "village",
+			"lon": 17.93364,
+			"lat": 53.79296
+		},
+		{
+			"name": "Płaszczyca",
+			"cls": "village",
+			"lon": 17.32617,
+			"lat": 53.77893
+		},
+		{
+			"name": "Józefowo",
+			"cls": "village",
+			"lon": 17.58915,
+			"lat": 53.78473
+		},
+		{
+			"name": "Wądoły",
+			"cls": "village",
+			"lon": 17.76025,
+			"lat": 53.77717
+		},
+		{
+			"name": "Funka",
+			"cls": "village",
+			"lon": 17.52804,
+			"lat": 53.77467
+		},
+		{
+			"name": "Gutowiec",
+			"cls": "village",
+			"lon": 17.85621,
+			"lat": 53.77108
+		},
+		{
+			"name": "Łukowo",
+			"cls": "village",
+			"lon": 17.93007,
+			"lat": 53.76314
+		},
+		{
+			"name": "Polnica",
+			"cls": "village",
+			"lon": 17.40076,
+			"lat": 53.7529
+		},
+		{
+			"name": "Rytel",
+			"cls": "village",
+			"lon": 17.77617,
+			"lat": 53.75317
+		},
+		{
+			"name": "Czarnoszyce",
+			"cls": "village",
+			"lon": 17.44638,
+			"lat": 53.74525
+		},
+		{
+			"name": "Charzykowy",
+			"cls": "village",
+			"lon": 17.51131,
+			"lat": 53.73576
+		},
+		{
+			"name": "Kruszka",
+			"cls": "village",
+			"lon": 17.67275,
+			"lat": 53.7376
+		},
+		{
+			"name": "Łosiny",
+			"cls": "village",
+			"lon": 17.93236,
+			"lat": 53.74103
+		},
+		{
+			"name": "Nowiny",
+			"cls": "village",
+			"lon": 17.32317,
+			"lat": 53.73447
+		},
+		{
+			"name": "Chojniczki",
+			"cls": "village",
+			"lon": 17.54546,
+			"lat": 53.73186
+		},
+		{
+			"name": "Krojanty",
+			"cls": "village",
+			"lon": 17.63197,
+			"lat": 53.72663
+		},
+		{
+			"name": "Fojutowo",
+			"cls": "village",
+			"lon": 17.9019,
+			"lat": 53.72552
+		},
+		{
+			"name": "Kiełpin",
+			"cls": "village",
+			"lon": 17.39643,
+			"lat": 53.71082
+		},
+		{
+			"name": "Legbąd",
+			"cls": "village",
+			"lon": 17.94073,
+			"lat": 53.71108
+		},
+		{
+			"name": "Zagórki",
+			"cls": "village",
+			"lon": 17.45194,
+			"lat": 53.7058
+		},
+		{
+			"name": "Nieżywięć",
+			"cls": "village",
+			"lon": 17.49641,
+			"lat": 53.69804
+		},
+		{
+			"name": "Nowa Cerkiew",
+			"cls": "village",
+			"lon": 17.68546,
+			"lat": 53.70006
+		},
+		{
+			"name": "Lotyń",
+			"cls": "village",
+			"lon": 17.73464,
+			"lat": 53.70079
+		},
+		{
+			"name": "Zapędowo",
+			"cls": "village",
+			"lon": 17.84482,
+			"lat": 53.70453
+		},
+		{
+			"name": "Klocek",
+			"cls": "village",
+			"lon": 17.94119,
+			"lat": 53.69237
+		},
+		{
+			"name": "Kołdowo",
+			"cls": "village",
+			"lon": 17.33418,
+			"lat": 53.68302
+		},
+		{
+			"name": "Rychnowy",
+			"cls": "village",
+			"lon": 17.42895,
+			"lat": 53.68339
+		},
+		{
+			"name": "Pawłowo",
+			"cls": "village",
+			"lon": 17.63936,
+			"lat": 53.68234
+		},
+		{
+			"name": "Wysoka",
+			"cls": "village",
+			"lon": 17.74751,
+			"lat": 53.671
+		},
+		{
+			"name": "Biała",
+			"cls": "village",
+			"lon": 17.97509,
+			"lat": 53.67937
+		},
+		{
+			"name": "Brzeźno",
+			"cls": "village",
+			"lon": 17.48075,
+			"lat": 53.66886
+		},
+		{
+			"name": "Racławki",
+			"cls": "village",
+			"lon": 17.67143,
+			"lat": 53.66939
+		},
+		{
+			"name": "Raciąż",
+			"cls": "village",
+			"lon": 17.7894,
+			"lat": 53.66546
+		},
+		{
+			"name": "Woziwoda",
+			"cls": "village",
+			"lon": 17.9083,
+			"lat": 53.66929
+		},
+		{
+			"name": "Ględowo",
+			"cls": "village",
+			"lon": 17.4031,
+			"lat": 53.65765
+		},
+		{
+			"name": "Angowice",
+			"cls": "village",
+			"lon": 17.56186,
+			"lat": 53.65568
+		},
+		{
+			"name": "Lichnowy",
+			"cls": "village",
+			"lon": 17.60466,
+			"lat": 53.64958
+		},
+		{
+			"name": "Dąbrówka",
+			"cls": "village",
+			"lon": 17.87325,
+			"lat": 53.65372
+		},
+		{
+			"name": "Bielska Struga",
+			"cls": "village",
+			"lon": 17.9717,
+			"lat": 53.65714
+		},
+		{
+			"name": "Dębnica",
+			"cls": "village",
+			"lon": 17.35981,
+			"lat": 53.63491
+		},
+		{
+			"name": "Moszczenica",
+			"cls": "village",
+			"lon": 17.49712,
+			"lat": 53.64197
+		},
+		{
+			"name": "Ostrowite",
+			"cls": "village",
+			"lon": 17.67132,
+			"lat": 53.63266
+		},
+		{
+			"name": "Nowy Dwór",
+			"cls": "village",
+			"lon": 17.55049,
+			"lat": 53.6274
+		},
+		{
+			"name": "Nowe Ostrowite",
+			"cls": "village",
+			"lon": 17.62304,
+			"lat": 53.62637
+		},
+		{
+			"name": "Stegny",
+			"cls": "village",
+			"lon": 17.89566,
+			"lat": 53.62495
+		},
+		{
+			"name": "Łosiny",
+			"cls": "village",
+			"lon": 17.97888,
+			"lat": 53.62064
+		},
+		{
+			"name": "Wierzchowo",
+			"cls": "village",
+			"lon": 17.42222,
+			"lat": 53.6062
+		},
+		{
+			"name": "Ciechocin",
+			"cls": "village",
+			"lon": 17.70087,
+			"lat": 53.61317
+		},
+		{
+			"name": "Żalno",
+			"cls": "village",
+			"lon": 17.76803,
+			"lat": 53.61477
+		},
+		{
+			"name": "Mosiny",
+			"cls": "village",
+			"lon": 17.33728,
+			"lat": 53.5956
+		},
+		{
+			"name": "Zamarte",
+			"cls": "village",
+			"lon": 17.48255,
+			"lat": 53.60054
+		},
+		{
+			"name": "Ogorzeliny",
+			"cls": "village",
+			"lon": 17.55581,
+			"lat": 53.60195
+		},
+		{
+			"name": "Sławęcin",
+			"cls": "village",
+			"lon": 17.61502,
+			"lat": 53.60213
+		},
+		{
+			"name": "Trzcionek",
+			"cls": "village",
+			"lon": 17.89699,
+			"lat": 53.60087
+		},
+		{
+			"name": "Bukowo",
+			"cls": "village",
+			"lon": 17.38269,
+			"lat": 53.58993
+		},
+		{
+			"name": "Obrowo",
+			"cls": "village",
+			"lon": 17.68295,
+			"lat": 53.58751
+		},
+		{
+			"name": "Niwy",
+			"cls": "village",
+			"lon": 17.43011,
+			"lat": 53.57788
+		},
+		{
+			"name": "Obkas",
+			"cls": "village",
+			"lon": 17.55157,
+			"lat": 53.57106
+		},
+		{
+			"name": "Dąbrówka",
+			"cls": "village",
+			"lon": 17.62041,
+			"lat": 53.57738
+		},
+		{
+			"name": "Orzełek",
+			"cls": "village",
+			"lon": 17.49024,
+			"lat": 53.55499
+		},
+		{
+			"name": "Kęsowo",
+			"cls": "village",
+			"lon": 17.71461,
+			"lat": 53.5579
+		},
+		{
+			"name": "Mały Mędromierz",
+			"cls": "village",
+			"lon": 17.81124,
+			"lat": 53.56586
+		},
+		{
+			"name": "Rudzki Most",
+			"cls": "village",
+			"lon": 17.89906,
+			"lat": 53.56567
+		},
+		{
+			"name": "Stare Gronowo",
+			"cls": "village",
+			"lon": 17.38333,
+			"lat": 53.53989
+		},
+		{
+			"name": "Witkowo",
+			"cls": "village",
+			"lon": 17.42667,
+			"lat": 53.52967
+		},
+		{
+			"name": "Duża Cerkwica",
+			"cls": "village",
+			"lon": 17.56408,
+			"lat": 53.53187
+		},
+		{
+			"name": "Drożdzienica",
+			"cls": "village",
+			"lon": 17.64253,
+			"lat": 53.54001
+		},
+		{
+			"name": "Wieszczyce",
+			"cls": "village",
+			"lon": 17.74148,
+			"lat": 53.53887
+		},
+		{
+			"name": "Łyskowo",
+			"cls": "village",
+			"lon": 17.84735,
+			"lat": 53.52927
+		},
+		{
+			"name": "Płazowo",
+			"cls": "village",
+			"lon": 17.94403,
+			"lat": 53.53355
+		},
+		{
+			"name": "Wełpin",
+			"cls": "village",
+			"lon": 17.9985,
+			"lat": 53.53028
+		},
+		{
+			"name": "Buka",
+			"cls": "village",
+			"lon": 17.35076,
+			"lat": 53.51338
+		},
+		{
+			"name": "Dąbrowa",
+			"cls": "village",
+			"lon": 17.42754,
+			"lat": 53.50406
+		},
+		{
+			"name": "Mała Cerkwica",
+			"cls": "village",
+			"lon": 17.57958,
+			"lat": 53.51413
+		},
+		{
+			"name": "Pamiętowo",
+			"cls": "village",
+			"lon": 17.67016,
+			"lat": 53.51321
+		},
+		{
+			"name": "Przyrowa",
+			"cls": "village",
+			"lon": 17.76876,
+			"lat": 53.51269
+		},
+		{
+			"name": "Piła",
+			"cls": "village",
+			"lon": 17.88253,
+			"lat": 53.51135
+		},
+		{
+			"name": "Bysław",
+			"cls": "village",
+			"lon": 17.99686,
+			"lat": 53.50622
+		},
+		{
+			"name": "Płocicz",
+			"cls": "village",
+			"lon": 17.50577,
+			"lat": 53.50028
+		},
+		{
+			"name": "Gostycyn",
+			"cls": "village",
+			"lon": 17.80951,
+			"lat": 53.4889
+		},
+		{
+			"name": "Trzciany",
+			"cls": "village",
+			"lon": 17.58157,
+			"lat": 53.48227
+		},
+		{
+			"name": "Włościbórz",
+			"cls": "village",
+			"lon": 17.63257,
+			"lat": 53.47703
+		},
+		{
+			"name": "Wałdowo",
+			"cls": "village",
+			"lon": 17.68728,
+			"lat": 53.47539
+		},
+		{
+			"name": "Wielka Klonia",
+			"cls": "village",
+			"lon": 17.74643,
+			"lat": 53.48034
+		},
+		{
+			"name": "Minikowo",
+			"cls": "village",
+			"lon": 17.93655,
+			"lat": 53.48419
+		},
+		{
+			"name": "Lutówko",
+			"cls": "village",
+			"lon": 17.44215,
+			"lat": 53.47291
+		},
+		{
+			"name": "Zamrzenica",
+			"cls": "village",
+			"lon": 17.89643,
+			"lat": 53.47308
+		},
+		{
+			"name": "Czyżkowo",
+			"cls": "village",
+			"lon": 17.33265,
+			"lat": 53.45878
+		},
+		{
+			"name": "Wiśniewka",
+			"cls": "village",
+			"lon": 17.4856,
+			"lat": 53.44883
+		},
+		{
+			"name": "Komierowo",
+			"cls": "village",
+			"lon": 17.65142,
+			"lat": 53.45176
+		},
+		{
+			"name": "Bagienica",
+			"cls": "village",
+			"lon": 17.78307,
+			"lat": 53.45138
+		},
+		{
+			"name": "Pruszcz",
+			"cls": "village",
+			"lon": 17.82941,
+			"lat": 53.44904
+		},
+		{
+			"name": "Klonowo",
+			"cls": "village",
+			"lon": 17.96939,
+			"lat": 53.45119
+		},
+		{
+			"name": "Lutowo",
+			"cls": "village",
+			"lon": 17.43723,
+			"lat": 53.44767
+		},
+		{
+			"name": "Niechorz",
+			"cls": "village",
+			"lon": 17.60336,
+			"lat": 53.43784
+		},
+		{
+			"name": "Wałdówko",
+			"cls": "village",
+			"lon": 17.69528,
+			"lat": 53.44827
+		},
+		{
+			"name": "Mała Klonia",
+			"cls": "village",
+			"lon": 17.75026,
+			"lat": 53.44449
+		},
+		{
+			"name": "Kokoszka",
+			"cls": "village",
+			"lon": 17.4906,
+			"lat": 53.84078
+		},
+		{
+			"name": "Czernica",
+			"cls": "village",
+			"lon": 17.6428,
+			"lat": 53.84223
+		},
+		{
+			"name": "Bielawy",
+			"cls": "village",
+			"lon": 17.85772,
+			"lat": 53.82943
+		},
+		{
+			"name": "Mokre",
+			"cls": "village",
+			"lon": 17.9489,
+			"lat": 53.83929
+		},
+		{
+			"name": "Konarzynki",
+			"cls": "village",
+			"lon": 17.39307,
+			"lat": 53.82041
+		},
+		{
+			"name": "Olszyny",
+			"cls": "village",
+			"lon": 17.78802,
+			"lat": 53.81733
+		},
+		{
+			"name": "Łubna",
+			"cls": "village",
+			"lon": 17.99039,
+			"lat": 53.81706
+		},
+		{
+			"name": "Ciecholewy",
+			"cls": "village",
+			"lon": 17.40764,
+			"lat": 53.81108
+		},
+		{
+			"name": "Turowiec",
+			"cls": "village",
+			"lon": 17.66408,
+			"lat": 53.80275
+		},
+		{
+			"name": "Giełdon",
+			"cls": "village",
+			"lon": 17.72352,
+			"lat": 53.81095
+		},
+		{
+			"name": "Sienica",
+			"cls": "village",
+			"lon": 17.90067,
+			"lat": 53.81047
+		},
+		{
+			"name": "Babilon",
+			"cls": "village",
+			"lon": 17.43231,
+			"lat": 53.79184
+		},
+		{
+			"name": "Kłodnia",
+			"cls": "village",
+			"lon": 17.85769,
+			"lat": 53.79218
+		},
+		{
+			"name": "Duża Klonia",
+			"cls": "village",
+			"lon": 17.70247,
+			"lat": 53.77961
+		},
+		{
+			"name": "Złotowo",
+			"cls": "village",
+			"lon": 17.99288,
+			"lat": 53.78304
+		},
+		{
+			"name": "Kurkowo",
+			"cls": "village",
+			"lon": 17.85974,
+			"lat": 53.76366
+		},
+		{
+			"name": "Zbeniny",
+			"cls": "village",
+			"lon": 17.61998,
+			"lat": 53.75017
+		},
+		{
+			"name": "Dąbki",
+			"cls": "village",
+			"lon": 17.99146,
+			"lat": 53.75016
+		},
+		{
+			"name": "Wandzin",
+			"cls": "village",
+			"lon": 17.32926,
+			"lat": 53.74778
+		},
+		{
+			"name": "Sokole",
+			"cls": "village",
+			"lon": 17.37226,
+			"lat": 53.73855
+		},
+		{
+			"name": "Jarcewo",
+			"cls": "village",
+			"lon": 17.56375,
+			"lat": 53.73983
+		},
+		{
+			"name": "Powałki",
+			"cls": "village",
+			"lon": 17.62146,
+			"lat": 53.74074
+		},
+		{
+			"name": "Kiełpinek",
+			"cls": "village",
+			"lon": 17.36577,
+			"lat": 53.71945
+		},
+		{
+			"name": "Klawkowo",
+			"cls": "village",
+			"lon": 17.60273,
+			"lat": 53.71178
+		},
+		{
+			"name": "Barłogi",
+			"cls": "village",
+			"lon": 17.97805,
+			"lat": 53.71417
+		},
+		{
+			"name": "Sternowo",
+			"cls": "village",
+			"lon": 17.71144,
+			"lat": 53.6987
+		},
+		{
+			"name": "Lutom",
+			"cls": "village",
+			"lon": 17.8272,
+			"lat": 53.70617
+		},
+		{
+			"name": "Nowosiółki",
+			"cls": "village",
+			"lon": 17.30965,
+			"lat": 53.68967
+		},
+		{
+			"name": "Topole",
+			"cls": "village",
+			"lon": 17.51874,
+			"lat": 53.69277
+		},
+		{
+			"name": "Pawłówko",
+			"cls": "village",
+			"lon": 17.61439,
+			"lat": 53.69081
+		},
+		{
+			"name": "Nieżychowice",
+			"cls": "village",
+			"lon": 17.5289,
+			"lat": 53.67131
+		},
+		{
+			"name": "Objezierze",
+			"cls": "village",
+			"lon": 17.73533,
+			"lat": 53.67366
+		},
+		{
+			"name": "Grochowo",
+			"cls": "village",
+			"lon": 17.74067,
+			"lat": 53.6478
+		},
+		{
+			"name": "Stobno",
+			"cls": "village",
+			"lon": 17.81206,
+			"lat": 53.64701
+		},
+		{
+			"name": "Tajwan",
+			"cls": "village",
+			"lon": 17.83039,
+			"lat": 53.65055
+		},
+		{
+			"name": "Jęczniki Wielkie",
+			"cls": "village",
+			"lon": 17.43543,
+			"lat": 53.63311
+		},
+		{
+			"name": "Lubierzyn",
+			"cls": "village",
+			"lon": 17.78923,
+			"lat": 53.64435
+		},
+		{
+			"name": "Piastoszyn",
+			"cls": "village",
+			"lon": 17.73577,
+			"lat": 53.62831
+		},
+		{
+			"name": "Białowieża",
+			"cls": "village",
+			"lon": 17.82848,
+			"lat": 53.62749
+		},
+		{
+			"name": "Kiełpin",
+			"cls": "village",
+			"lon": 17.88066,
+			"lat": 53.62362
+		},
+		{
+			"name": "Jerzmionki",
+			"cls": "village",
+			"lon": 17.51072,
+			"lat": 53.60477
+		},
+		{
+			"name": "Melanowo",
+			"cls": "village",
+			"lon": 17.53834,
+			"lat": 53.60457
+		},
+		{
+			"name": "Bladowo",
+			"cls": "village",
+			"lon": 17.82073,
+			"lat": 53.59637
+		},
+		{
+			"name": "Zamarte",
+			"cls": "village",
+			"lon": 17.98629,
+			"lat": 53.59517
+		},
+		{
+			"name": "Nowa Wieś",
+			"cls": "village",
+			"lon": 17.48931,
+			"lat": 53.57708
+		},
+		{
+			"name": "Słupy",
+			"cls": "village",
+			"lon": 17.77644,
+			"lat": 53.57783
+		},
+		{
+			"name": "Nowa Tuchola",
+			"cls": "village",
+			"lon": 17.84367,
+			"lat": 53.57719
+		},
+		{
+			"name": "Cekcynek",
+			"cls": "village",
+			"lon": 17.98178,
+			"lat": 53.57203
+		},
+		{
+			"name": "Służewo",
+			"cls": "village",
+			"lon": 17.32724,
+			"lat": 53.56496
+		},
+		{
+			"name": "Nowe Gronowo",
+			"cls": "village",
+			"lon": 17.34694,
+			"lat": 53.56521
+		},
+		{
+			"name": "Jeleńcz",
+			"cls": "village",
+			"lon": 17.74428,
+			"lat": 53.55945
+		},
+		{
+			"name": "Przymuszewo",
+			"cls": "village",
+			"lon": 17.6594,
+			"lat": 53.55307
+		},
+		{
+			"name": "Krajenki",
+			"cls": "village",
+			"lon": 17.68094,
+			"lat": 53.54711
+		},
+		{
+			"name": "Brzuchowo",
+			"cls": "village",
+			"lon": 17.77622,
+			"lat": 53.55024
+		},
+		{
+			"name": "Radzim",
+			"cls": "village",
+			"lon": 17.60103,
+			"lat": 53.53311
+		},
+		{
+			"name": "Drozdowo",
+			"cls": "village",
+			"lon": 17.31999,
+			"lat": 53.52479
+		},
+		{
+			"name": "Zalesie",
+			"cls": "village",
+			"lon": 17.64375,
+			"lat": 53.51284
+		},
+		{
+			"name": "Adamkowo",
+			"cls": "village",
+			"lon": 17.69917,
+			"lat": 53.51374
+		},
+		{
+			"name": "Batorowo",
+			"cls": "village",
+			"lon": 17.32596,
+			"lat": 53.49295
+		},
+		{
+			"name": "Białobłocie",
+			"cls": "village",
+			"lon": 17.36299,
+			"lat": 53.49076
+		},
+		{
+			"name": "Skarpa",
+			"cls": "village",
+			"lon": 17.62613,
+			"lat": 53.49827
+		},
+		{
+			"name": "Bysławek",
+			"cls": "village",
+			"lon": 17.96848,
+			"lat": 53.49103
+		},
+		{
+			"name": "Kamienica",
+			"cls": "village",
+			"lon": 17.81017,
+			"lat": 53.47891
+		},
+		{
+			"name": "Dziechowo",
+			"cls": "village",
+			"lon": 17.49536,
+			"lat": 53.46618
+		},
+		{
+			"name": "Sikorz",
+			"cls": "village",
+			"lon": 17.55087,
+			"lat": 53.4623
+		},
+		{
+			"name": "Wilkowo",
+			"cls": "village",
+			"lon": 17.71513,
+			"lat": 53.46525
+		},
+		{
+			"name": "Przepałkowo",
+			"cls": "village",
+			"lon": 17.6631,
+			"lat": 53.44325
+		},
+		{
+			"name": "Wiśniewa",
+			"cls": "village",
+			"lon": 17.46607,
+			"lat": 53.43514
+		},
+		{
+			"name": "Chociński Młyn",
+			"cls": "village",
+			"lon": 17.44608,
+			"lat": 53.83176
+		},
+		{
+			"name": "Borne",
+			"cls": "village",
+			"lon": 17.42366,
+			"lat": 53.81792
+		},
+		{
+			"name": "Cegielnia",
+			"cls": "village",
+			"lon": 17.93578,
+			"lat": 53.82631
+		},
+		{
+			"name": "Stary Młyn",
+			"cls": "village",
+			"lon": 17.51516,
+			"lat": 53.75705
+		},
+		{
+			"name": "Pomoc",
+			"cls": "village",
+			"lon": 17.47504,
+			"lat": 53.74396
+		},
+		{
+			"name": "Czartołomie",
+			"cls": "village",
+			"lon": 17.57457,
+			"lat": 53.73556
+		},
+		{
+			"name": "Lasek",
+			"cls": "village",
+			"lon": 17.93779,
+			"lat": 53.7334
+		},
+		{
+			"name": "Jeziorki",
+			"cls": "village",
+			"lon": 17.69369,
+			"lat": 53.72224
+		},
+		{
+			"name": "Żukowo",
+			"cls": "village",
+			"lon": 17.81154,
+			"lat": 53.72028
+		},
+		{
+			"name": "Lipienice",
+			"cls": "village",
+			"lon": 17.6182,
+			"lat": 53.69785
+		},
+		{
+			"name": "Brody",
+			"cls": "village",
+			"lon": 17.94056,
+			"lat": 53.70611
+		},
+		{
+			"name": "Dąbki",
+			"cls": "village",
+			"lon": 17.33274,
+			"lat": 53.69349
+		},
+		{
+			"name": "Piaskowo",
+			"cls": "village",
+			"lon": 17.35076,
+			"lat": 53.68675
+		},
+		{
+			"name": "Krzyżanki",
+			"cls": "village",
+			"lon": 17.42536,
+			"lat": 53.6917
+		},
+		{
+			"name": "Nadolna Karczma",
+			"cls": "village",
+			"lon": 17.83398,
+			"lat": 53.69122
+		},
+		{
+			"name": "Klocek-Wybudowanie",
+			"cls": "village",
+			"lon": 17.91958,
+			"lat": 53.69131
+		},
+		{
+			"name": "Chojnaty",
+			"cls": "village",
+			"lon": 17.58727,
+			"lat": 53.67692
+		},
+		{
+			"name": "Granowo",
+			"cls": "village",
+			"lon": 17.64818,
+			"lat": 53.66007
+		},
+		{
+			"name": "Gockowice",
+			"cls": "village",
+			"lon": 17.72874,
+			"lat": 53.66187
+		},
+		{
+			"name": "Pod Komorzą",
+			"cls": "village",
+			"lon": 17.82176,
+			"lat": 53.6457
+		},
+		{
+			"name": "Kowalskie Błota",
+			"cls": "village",
+			"lon": 17.98166,
+			"lat": 53.63229
+		},
+		{
+			"name": "Mąkowo",
+			"cls": "village",
+			"lon": 17.40654,
+			"lat": 53.6212
+		},
+		{
+			"name": "Doręgowice",
+			"cls": "village",
+			"lon": 17.49001,
+			"lat": 53.6268
+		},
+		{
+			"name": "Nowe Żalno",
+			"cls": "village",
+			"lon": 17.79198,
+			"lat": 53.62375
+		},
+		{
+			"name": "Płonica",
+			"cls": "village",
+			"lon": 17.36342,
+			"lat": 53.61135
+		},
+		{
+			"name": "Kamionka",
+			"cls": "village",
+			"lon": 17.48656,
+			"lat": 53.60571
+		},
+		{
+			"name": "Jesionowo",
+			"cls": "village",
+			"lon": 17.84402,
+			"lat": 53.6124
+		},
+		{
+			"name": "Wymysłowo",
+			"cls": "village",
+			"lon": 17.91036,
+			"lat": 53.60766
+		},
+		{
+			"name": "Bonin",
+			"cls": "village",
+			"lon": 17.37055,
+			"lat": 53.601
+		},
+		{
+			"name": "Mirogniew",
+			"cls": "village",
+			"lon": 17.39104,
+			"lat": 53.58326
+		},
+		{
+			"name": "Siciny",
+			"cls": "village",
+			"lon": 17.72854,
+			"lat": 53.57056
+		},
+		{
+			"name": "Wysoka Wieś",
+			"cls": "village",
+			"lon": 17.84937,
+			"lat": 53.55995
+		},
+		{
+			"name": "Knieja",
+			"cls": "village",
+			"lon": 17.98184,
+			"lat": 53.56322
+		},
+		{
+			"name": "Huby",
+			"cls": "village",
+			"lon": 17.83186,
+			"lat": 53.55299
+		},
+		{
+			"name": "Kruszka",
+			"cls": "village",
+			"lon": 17.99007,
+			"lat": 53.5504
+		},
+		{
+			"name": "Wielki Mędromierz",
+			"cls": "village",
+			"lon": 17.79974,
+			"lat": 53.53769
+		},
+		{
+			"name": "Bralewnica",
+			"cls": "village",
+			"lon": 17.74957,
+			"lat": 53.51629
+		},
+		{
+			"name": "Szumiąca",
+			"cls": "village",
+			"lon": 17.95303,
+			"lat": 53.51807
+		},
+		{
+			"name": "Teolog",
+			"cls": "village",
+			"lon": 17.98268,
+			"lat": 53.51648
+		},
+		{
+			"name": "Karczewo",
+			"cls": "village",
+			"lon": 17.77245,
+			"lat": 53.49295
+		},
+		{
+			"name": "Radońsk",
+			"cls": "village",
+			"lon": 17.41667,
+			"lat": 53.43333
+		},
+		{
+			"name": "Miroszewo",
+			"cls": "village",
+			"lon": 17.31407,
+			"lat": 53.84322
+		},
+		{
+			"name": "Klosnowo",
+			"cls": "village",
+			"lon": 17.59773,
+			"lat": 53.75837
+		},
+		{
+			"name": "Wolność",
+			"cls": "village",
+			"lon": 17.48075,
+			"lat": 53.73812
+		},
+		{
+			"name": "Kłodawa",
+			"cls": "village",
+			"lon": 17.63662,
+			"lat": 53.74602
+		},
+		{
+			"name": "Niwki",
+			"cls": "village",
+			"lon": 17.93357,
+			"lat": 53.72316
+		},
+		{
+			"name": "Jakubowo",
+			"cls": "village",
+			"lon": 17.70408,
+			"lat": 53.71757
+		},
+		{
+			"name": "Brda",
+			"cls": "village",
+			"lon": 17.82839,
+			"lat": 53.69845
+		},
+		{
+			"name": "Silno",
+			"cls": "village",
+			"lon": 17.70764,
+			"lat": 53.64701
+		},
+		{
+			"name": "Mała Komorza",
+			"cls": "village",
+			"lon": 17.86247,
+			"lat": 53.64662
+		},
+		{
+			"name": "Wielka Komorza",
+			"cls": "village",
+			"lon": 17.88493,
+			"lat": 53.64789
+		},
+		{
+			"name": "Skarszewo",
+			"cls": "village",
+			"lon": 17.39191,
+			"lat": 53.63331
+		},
+		{
+			"name": "Pod Lasem",
+			"cls": "village",
+			"lon": 17.9013,
+			"lat": 53.63464
+		},
+		{
+			"name": "Wierzchowo-Dworzec",
+			"cls": "village",
+			"lon": 17.45089,
+			"lat": 53.61753
+		},
+		{
+			"name": "Bladowo-Wybudowanie",
+			"cls": "village",
+			"lon": 17.81202,
+			"lat": 53.61138
+		},
+		{
+			"name": "Na Polach",
+			"cls": "village",
+			"lon": 17.87432,
+			"lat": 53.60408
+		},
+		{
+			"name": "Jakubowo",
+			"cls": "village",
+			"lon": 17.49315,
+			"lat": 53.58617
+		},
+		{
+			"name": "Nowy Sumin",
+			"cls": "village",
+			"lon": 17.98634,
+			"lat": 53.58903
+		},
+		{
+			"name": "Tuchółka",
+			"cls": "village",
+			"lon": 17.74836,
+			"lat": 53.57401
+		},
+		{
+			"name": "Szosa Bydgoska",
+			"cls": "village",
+			"lon": 17.86203,
+			"lat": 53.56491
+		},
+		{
+			"name": "Ludwichowo",
+			"cls": "village",
+			"lon": 17.66191,
+			"lat": 53.53745
+		},
+		{
+			"name": "Teklanowo",
+			"cls": "village",
+			"lon": 17.66923,
+			"lat": 53.48986
+		},
+		{
+			"name": "Piaseczno",
+			"cls": "village",
+			"lon": 17.52414,
+			"lat": 53.46609
+		},
+		{
+			"name": "Olszewka",
+			"cls": "village",
+			"lon": 17.69074,
+			"lat": 53.43479
+		},
+		{
+			"name": "Nowa Wieś",
+			"cls": "village",
+			"lon": 17.30361,
+			"lat": 53.84675
+		},
+		{
+			"name": "Nowa Juńcza",
+			"cls": "village",
+			"lon": 17.99283,
+			"lat": 53.84047
+		},
+		{
+			"name": "Nicponie",
+			"cls": "village",
+			"lon": 17.7446,
+			"lat": 53.68615
+		},
+		{
+			"name": "Mrowiniec",
+			"cls": "village",
+			"lon": 17.76644,
+			"lat": 53.68662
+		},
+		{
+			"name": "Nadolnik",
+			"cls": "village",
+			"lon": 17.83074,
+			"lat": 53.68629
+		},
+		{
+			"name": "Sieroczyn",
+			"cls": "village",
+			"lon": 17.31291,
+			"lat": 53.67182
+		},
+		{
+			"name": "Jęczniki Małe",
+			"cls": "village",
+			"lon": 17.42388,
+			"lat": 53.63545
+		},
+		{
+			"name": "Wiśniówka",
+			"cls": "village",
+			"lon": 17.86874,
+			"lat": 53.6232
+		},
+		{
+			"name": "Koszary",
+			"cls": "village",
+			"lon": 17.98795,
+			"lat": 53.82573
+		},
+		{
+			"name": "Koślinka",
+			"cls": "village",
+			"lon": 17.97116,
+			"lat": 53.72521
+		},
+		{
+			"name": "Nowy Młyn",
+			"cls": "village",
+			"lon": 17.8563,
+			"lat": 53.69285
+		},
+		{
+			"name": "Szosa Sępoleńska",
+			"cls": "village",
+			"lon": 17.82889,
+			"lat": 53.5775
+		},
+		{
+			"name": "Kiełpin-Wymysłowo",
+			"cls": "village",
+			"lon": 17.89932,
+			"lat": 53.61635
+		},
+		{
+			"name": "Rówki",
+			"cls": "village",
+			"lon": 17.97453,
+			"lat": 53.83663
+		},
+		{
+			"name": "Czosnowo",
+			"cls": "hamlet",
+			"lon": 17.3663,
+			"lat": 53.79979
+		},
+		{
+			"name": "Wędowo",
+			"cls": "hamlet",
+			"lon": 17.65979,
+			"lat": 53.78387
+		},
+		{
+			"name": "Młynki",
+			"cls": "hamlet",
+			"lon": 17.71515,
+			"lat": 53.74035
+		},
+		{
+			"name": "Suszek",
+			"cls": "hamlet",
+			"lon": 17.75957,
+			"lat": 53.72353
+		},
+		{
+			"name": "Jemielno",
+			"cls": "hamlet",
+			"lon": 17.33359,
+			"lat": 53.78395
+		},
+		{
+			"name": "Gostudz",
+			"cls": "hamlet",
+			"lon": 17.40153,
+			"lat": 53.764
+		},
+		{
+			"name": "Konigort",
+			"cls": "hamlet",
+			"lon": 17.73839,
+			"lat": 53.76389
+		},
+		{
+			"name": "Jasnowo",
+			"cls": "hamlet",
+			"lon": 17.67417,
+			"lat": 53.75397
+		},
+		{
+			"name": "Kaliska",
+			"cls": "hamlet",
+			"lon": 17.80377,
+			"lat": 53.75108
+		},
+		{
+			"name": "Czarze",
+			"cls": "hamlet",
+			"lon": 17.43361,
+			"lat": 53.74832
+		},
+		{
+			"name": "Uboga",
+			"cls": "hamlet",
+			"lon": 17.81841,
+			"lat": 53.73533
+		},
+		{
+			"name": "Murzynowo",
+			"cls": "hamlet",
+			"lon": 17.32492,
+			"lat": 53.70999
+		},
+		{
+			"name": "Pod Pawłowo",
+			"cls": "hamlet",
+			"lon": 17.64495,
+			"lat": 53.70688
+		},
+		{
+			"name": "Gozdnica",
+			"cls": "hamlet",
+			"lon": 17.30487,
+			"lat": 53.65141
+		},
+		{
+			"name": "Kiełpiński Most",
+			"cls": "hamlet",
+			"lon": 17.94567,
+			"lat": 53.63703
+		},
+		{
+			"name": "Migi",
+			"cls": "hamlet",
+			"lon": 17.33428,
+			"lat": 53.58122
+		},
+		{
+			"name": "Niwy Leśne",
+			"cls": "hamlet",
+			"lon": 17.43728,
+			"lat": 53.56785
+		},
+		{
+			"name": "Witkowski Młyn",
+			"cls": "hamlet",
+			"lon": 17.44063,
+			"lat": 53.54165
+		},
+		{
+			"name": "Wybudowanie pod Obkas",
+			"cls": "hamlet",
+			"lon": 17.55909,
+			"lat": 53.55199
+		},
+		{
+			"name": "Nowe Kęsowo",
+			"cls": "hamlet",
+			"lon": 17.70846,
+			"lat": 53.53229
+		},
+		{
+			"name": "Dziapy",
+			"cls": "hamlet",
+			"lon": 17.91656,
+			"lat": 53.5307
+		},
+		{
+			"name": "Gaj",
+			"cls": "hamlet",
+			"lon": 17.40389,
+			"lat": 53.50739
+		},
+		{
+			"name": "Na Zalesie",
+			"cls": "hamlet",
+			"lon": 17.5883,
+			"lat": 53.51044
+		},
+		{
+			"name": "Gostycyn-Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.80099,
+			"lat": 53.50808
+		},
+		{
+			"name": "Pod Lutówko",
+			"cls": "hamlet",
+			"lon": 17.46772,
+			"lat": 53.48939
+		},
+		{
+			"name": "Pod Tor",
+			"cls": "hamlet",
+			"lon": 17.53135,
+			"lat": 53.49837
+		},
+		{
+			"name": "Pod Płocicz",
+			"cls": "hamlet",
+			"lon": 17.54332,
+			"lat": 53.4997
+		},
+		{
+			"name": "Czyżkówko",
+			"cls": "hamlet",
+			"lon": 17.34306,
+			"lat": 53.47194
+		},
+		{
+			"name": "Lutówko-Leśnictwo",
+			"cls": "hamlet",
+			"lon": 17.44403,
+			"lat": 53.4745
+		},
+		{
+			"name": "Ameryka",
+			"cls": "hamlet",
+			"lon": 17.97873,
+			"lat": 53.46685
+		},
+		{
+			"name": "Włościbórek",
+			"cls": "hamlet",
+			"lon": 17.61184,
+			"lat": 53.459
+		},
+		{
+			"name": "Pieńkowo",
+			"cls": "hamlet",
+			"lon": 17.8628,
+			"lat": 53.4555
+		},
+		{
+			"name": "Kacze Doły",
+			"cls": "hamlet",
+			"lon": 17.39889,
+			"lat": 53.43778
+		},
+		{
+			"name": "Byki",
+			"cls": "hamlet",
+			"lon": 17.97166,
+			"lat": 53.43722
+		},
+		{
+			"name": "Owink",
+			"cls": "hamlet",
+			"lon": 17.53134,
+			"lat": 53.84321
+		},
+		{
+			"name": "Wączos",
+			"cls": "hamlet",
+			"lon": 17.45625,
+			"lat": 53.83768
+		},
+		{
+			"name": "Klucza",
+			"cls": "hamlet",
+			"lon": 17.47595,
+			"lat": 53.83451
+		},
+		{
+			"name": "Korne",
+			"cls": "hamlet",
+			"lon": 17.36811,
+			"lat": 53.81977
+		},
+		{
+			"name": "Pokrzywno",
+			"cls": "hamlet",
+			"lon": 17.68833,
+			"lat": 53.81528
+		},
+		{
+			"name": "Kłodawka",
+			"cls": "hamlet",
+			"lon": 17.64156,
+			"lat": 53.76233
+		},
+		{
+			"name": "Skrzypówki",
+			"cls": "hamlet",
+			"lon": 17.94173,
+			"lat": 53.77073
+		},
+		{
+			"name": "Twarożnica",
+			"cls": "hamlet",
+			"lon": 17.94921,
+			"lat": 53.75431
+		},
+		{
+			"name": "Grzybowo",
+			"cls": "hamlet",
+			"lon": 17.41317,
+			"lat": 53.74525
+		},
+		{
+			"name": "Zielątkowo",
+			"cls": "hamlet",
+			"lon": 17.41449,
+			"lat": 53.72229
+		},
+		{
+			"name": "Karolewo",
+			"cls": "hamlet",
+			"lon": 17.53459,
+			"lat": 53.71109
+		},
+		{
+			"name": "Czerska Struga",
+			"cls": "hamlet",
+			"lon": 17.90126,
+			"lat": 53.72195
+		},
+		{
+			"name": "Krery",
+			"cls": "hamlet",
+			"lon": 17.42752,
+			"lat": 53.70725
+		},
+		{
+			"name": "Pawłowo-Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.64503,
+			"lat": 53.70273
+		},
+		{
+			"name": "Nieżychowice-Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.50895,
+			"lat": 53.66211
+		},
+		{
+			"name": "Raciąż-Piaski",
+			"cls": "hamlet",
+			"lon": 17.79417,
+			"lat": 53.66805
+		},
+		{
+			"name": "Lichnowy Pierwsze",
+			"cls": "hamlet",
+			"lon": 17.62091,
+			"lat": 53.65552
+		},
+		{
+			"name": "Lichnowy Drugie",
+			"cls": "hamlet",
+			"lon": 17.58446,
+			"lat": 53.63931
+		},
+		{
+			"name": "Przytok (Dębnica)",
+			"cls": "hamlet",
+			"lon": 17.34128,
+			"lat": 53.62313
+		},
+		{
+			"name": "Cołdanki",
+			"cls": "hamlet",
+			"lon": 17.52784,
+			"lat": 53.62881
+		},
+		{
+			"name": "Pod Silno",
+			"cls": "hamlet",
+			"lon": 17.68773,
+			"lat": 53.62849
+		},
+		{
+			"name": "Lisia Góra",
+			"cls": "hamlet",
+			"lon": 17.58689,
+			"lat": 53.61323
+		},
+		{
+			"name": "Siódemka",
+			"cls": "hamlet",
+			"lon": 17.30729,
+			"lat": 53.59474
+		},
+		{
+			"name": "Łężek",
+			"cls": "hamlet",
+			"lon": 17.44277,
+			"lat": 53.60371
+		},
+		{
+			"name": "Pod Ciechocin",
+			"cls": "hamlet",
+			"lon": 17.64531,
+			"lat": 53.60318
+		},
+		{
+			"name": "Nad Bladówkiem",
+			"cls": "hamlet",
+			"lon": 17.79984,
+			"lat": 53.5962
+		},
+		{
+			"name": "Pod Obrowo",
+			"cls": "hamlet",
+			"lon": 17.64638,
+			"lat": 53.58971
+		},
+		{
+			"name": "Na Łąkach",
+			"cls": "hamlet",
+			"lon": 17.64388,
+			"lat": 53.57901
+		},
+		{
+			"name": "Obkas-Młyn",
+			"cls": "hamlet",
+			"lon": 17.51666,
+			"lat": 53.55667
+		},
+		{
+			"name": "Pipów",
+			"cls": "hamlet",
+			"lon": 17.63341,
+			"lat": 53.56631
+		},
+		{
+			"name": "Baranówka",
+			"cls": "hamlet",
+			"lon": 17.46775,
+			"lat": 53.52636
+		},
+		{
+			"name": "Pod Ościbórz",
+			"cls": "hamlet",
+			"lon": 17.59488,
+			"lat": 53.47871
+		},
+		{
+			"name": "Olędry",
+			"cls": "hamlet",
+			"lon": 17.93332,
+			"lat": 53.48013
+		},
+		{
+			"name": "Lisi Kąt",
+			"cls": "hamlet",
+			"lon": 17.99224,
+			"lat": 53.47318
+		},
+		{
+			"name": "Wybudowania Sikorskie",
+			"cls": "hamlet",
+			"lon": 17.5673,
+			"lat": 53.45704
+		},
+		{
+			"name": "Komierówko",
+			"cls": "hamlet",
+			"lon": 17.6091,
+			"lat": 53.44945
+		},
+		{
+			"name": "Czyżkowski Młyn",
+			"cls": "hamlet",
+			"lon": 17.33,
+			"lat": 53.43805
+		},
+		{
+			"name": "Kacze Raje",
+			"cls": "hamlet",
+			"lon": 17.39567,
+			"lat": 53.44356
+		},
+		{
+			"name": "Szewcowe",
+			"cls": "hamlet",
+			"lon": 17.80986,
+			"lat": 53.44232
+		},
+		{
+			"name": "Stary Młyn",
+			"cls": "hamlet",
+			"lon": 17.85171,
+			"lat": 53.44352
+		},
+		{
+			"name": "Krowy",
+			"cls": "hamlet",
+			"lon": 17.96139,
+			"lat": 53.44
+		},
+		{
+			"name": "Warszawa",
+			"cls": "hamlet",
+			"lon": 17.72722,
+			"lat": 53.84586
+		},
+		{
+			"name": "Pionki",
+			"cls": "hamlet",
+			"lon": 17.90101,
+			"lat": 53.84181
+		},
+		{
+			"name": "Męcikał-Struga",
+			"cls": "hamlet",
+			"lon": 17.66641,
+			"lat": 53.82939
+		},
+		{
+			"name": "Styporc",
+			"cls": "hamlet",
+			"lon": 17.48691,
+			"lat": 53.81838
+		},
+		{
+			"name": "Cis",
+			"cls": "hamlet",
+			"lon": 17.95152,
+			"lat": 53.80922
+		},
+		{
+			"name": "Gutowiec-Wybudowania",
+			"cls": "hamlet",
+			"lon": 17.85288,
+			"lat": 53.78893
+		},
+		{
+			"name": "Stodółki",
+			"cls": "hamlet",
+			"lon": 17.87027,
+			"lat": 53.79162
+		},
+		{
+			"name": "Mała Klonia",
+			"cls": "hamlet",
+			"lon": 17.70322,
+			"lat": 53.77632
+		},
+		{
+			"name": "Zapora",
+			"cls": "hamlet",
+			"lon": 17.71906,
+			"lat": 53.77627
+		},
+		{
+			"name": "Małe Wędoły",
+			"cls": "hamlet",
+			"lon": 17.7541,
+			"lat": 53.77635
+		},
+		{
+			"name": "Modrzejewo",
+			"cls": "hamlet",
+			"lon": 17.75341,
+			"lat": 53.76304
+		},
+		{
+			"name": "Rytel-Tartak",
+			"cls": "hamlet",
+			"lon": 17.72711,
+			"lat": 53.7499
+		},
+		{
+			"name": "Rytel-Zarzecze",
+			"cls": "hamlet",
+			"lon": 17.75953,
+			"lat": 53.74975
+		},
+		{
+			"name": "Karolewo",
+			"cls": "hamlet",
+			"lon": 17.80734,
+			"lat": 53.74314
+		},
+		{
+			"name": "Zacisze",
+			"cls": "hamlet",
+			"lon": 17.49667,
+			"lat": 53.73176
+		},
+		{
+			"name": "Jabłonka",
+			"cls": "hamlet",
+			"lon": 17.65528,
+			"lat": 53.73222
+		},
+		{
+			"name": "Władysławek",
+			"cls": "hamlet",
+			"lon": 17.51797,
+			"lat": 53.69904
+		},
+		{
+			"name": "Za Jeziorem",
+			"cls": "hamlet",
+			"lon": 17.93888,
+			"lat": 53.68754
+		},
+		{
+			"name": "Stare Nieżychowice",
+			"cls": "hamlet",
+			"lon": 17.53019,
+			"lat": 53.67117
+		},
+		{
+			"name": "Za Koleją",
+			"cls": "hamlet",
+			"lon": 17.63368,
+			"lat": 53.67335
+		},
+		{
+			"name": "Burdychowo",
+			"cls": "hamlet",
+			"lon": 17.69305,
+			"lat": 53.6609
+		},
+		{
+			"name": "Jęczniki Wielkie Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.43006,
+			"lat": 53.649
+		},
+		{
+			"name": "Pod Lasem",
+			"cls": "hamlet",
+			"lon": 17.5465,
+			"lat": 53.62416
+		},
+		{
+			"name": "Nad Szosą",
+			"cls": "hamlet",
+			"lon": 17.56595,
+			"lat": 53.61379
+		},
+		{
+			"name": "Pod Ostrowite",
+			"cls": "hamlet",
+			"lon": 17.64027,
+			"lat": 53.60984
+		},
+		{
+			"name": "Ciechocin Drugi",
+			"cls": "hamlet",
+			"lon": 17.68207,
+			"lat": 53.61568
+		},
+		{
+			"name": "Okiersk",
+			"cls": "hamlet",
+			"lon": 17.99382,
+			"lat": 53.61708
+		},
+		{
+			"name": "Ciechocin Pierwszy",
+			"cls": "hamlet",
+			"lon": 17.69084,
+			"lat": 53.60392
+		},
+		{
+			"name": "Melanówek",
+			"cls": "hamlet",
+			"lon": 17.54798,
+			"lat": 53.58717
+		},
+		{
+			"name": "Wybudowanie pod Kęsowo",
+			"cls": "hamlet",
+			"lon": 17.69841,
+			"lat": 53.58076
+		},
+		{
+			"name": "Bukowo Człuchowskie",
+			"cls": "hamlet",
+			"lon": 17.37379,
+			"lat": 53.57561
+		},
+		{
+			"name": "Gronowski Młyn",
+			"cls": "hamlet",
+			"lon": 17.41681,
+			"lat": 53.55593
+		},
+		{
+			"name": "Stare Kęsowo",
+			"cls": "hamlet",
+			"lon": 17.70944,
+			"lat": 53.56117
+		},
+		{
+			"name": "Szosa Chojnicka",
+			"cls": "hamlet",
+			"lon": 17.51696,
+			"lat": 53.54101
+		},
+		{
+			"name": "Przyrówka",
+			"cls": "hamlet",
+			"lon": 17.76278,
+			"lat": 53.51611
+		},
+		{
+			"name": "Wybudowania-Gronówko",
+			"cls": "hamlet",
+			"lon": 17.38574,
+			"lat": 53.51099
+		},
+		{
+			"name": "Pod Cerkwicę",
+			"cls": "hamlet",
+			"lon": 17.52523,
+			"lat": 53.506
+		},
+		{
+			"name": "Toboła",
+			"cls": "hamlet",
+			"lon": 17.70528,
+			"lat": 53.50528
+		},
+		{
+			"name": "Anapole",
+			"cls": "hamlet",
+			"lon": 17.71515,
+			"lat": 53.50805
+		},
+		{
+			"name": "Bociany",
+			"cls": "hamlet",
+			"lon": 17.97868,
+			"lat": 53.49155
+		},
+		{
+			"name": "Dąbrowa Bucka",
+			"cls": "hamlet",
+			"lon": 17.30611,
+			"lat": 53.45306
+		},
+		{
+			"name": "Buchta",
+			"cls": "hamlet",
+			"lon": 17.87962,
+			"lat": 53.84366
+		},
+		{
+			"name": "Męcikał-Dworzec",
+			"cls": "hamlet",
+			"lon": 17.67215,
+			"lat": 53.83194
+		},
+		{
+			"name": "Klonia-Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.68569,
+			"lat": 53.78768
+		},
+		{
+			"name": "Kłodawa (osada leśna)",
+			"cls": "hamlet",
+			"lon": 17.63925,
+			"lat": 53.76378
+		},
+		{
+			"name": "Jeziorno",
+			"cls": "hamlet",
+			"lon": 17.41812,
+			"lat": 53.76028
+		},
+		{
+			"name": "Rabusiewo",
+			"cls": "hamlet",
+			"lon": 17.65139,
+			"lat": 53.75279
+		},
+		{
+			"name": "Rytel-Dworzec",
+			"cls": "hamlet",
+			"lon": 17.73136,
+			"lat": 53.74903
+		},
+		{
+			"name": "Wybudowania Łosińskie",
+			"cls": "hamlet",
+			"lon": 17.92409,
+			"lat": 53.74931
+		},
+		{
+			"name": "Czarnoszki",
+			"cls": "hamlet",
+			"lon": 17.44302,
+			"lat": 53.72348
+		},
+		{
+			"name": "Krojanty Wybudowania",
+			"cls": "hamlet",
+			"lon": 17.61976,
+			"lat": 53.73438
+		},
+		{
+			"name": "Pod Kolej",
+			"cls": "hamlet",
+			"lon": 17.65582,
+			"lat": 53.73093
+		},
+		{
+			"name": "Ostrów",
+			"cls": "hamlet",
+			"lon": 17.98222,
+			"lat": 53.71722
+		},
+		{
+			"name": "Pawłówko Drugie",
+			"cls": "hamlet",
+			"lon": 17.61366,
+			"lat": 53.68208
+		},
+		{
+			"name": "Pod Tuchole",
+			"cls": "hamlet",
+			"lon": 17.6547,
+			"lat": 53.67788
+		},
+		{
+			"name": "Borki",
+			"cls": "hamlet",
+			"lon": 17.82473,
+			"lat": 53.6648
+		},
+		{
+			"name": "Wybudowania Ostrowickie",
+			"cls": "hamlet",
+			"lon": 17.64963,
+			"lat": 53.63807
+		},
+		{
+			"name": "Pod Dworzec",
+			"cls": "hamlet",
+			"lon": 17.69898,
+			"lat": 53.64429
+		},
+		{
+			"name": "Wielkie Kowalskie Błota",
+			"cls": "hamlet",
+			"lon": 17.98318,
+			"lat": 53.63369
+		},
+		{
+			"name": "Dębnica-Wybudowania",
+			"cls": "hamlet",
+			"lon": 17.38003,
+			"lat": 53.62086
+		},
+		{
+			"name": "Stara Wieś",
+			"cls": "hamlet",
+			"lon": 17.76195,
+			"lat": 53.62633
+		},
+		{
+			"name": "Małe Kowalskie Błota",
+			"cls": "hamlet",
+			"lon": 17.98636,
+			"lat": 53.62708
+		},
+		{
+			"name": "Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.42306,
+			"lat": 53.59583
+		},
+		{
+			"name": "Pod Sławęcin",
+			"cls": "hamlet",
+			"lon": 17.59437,
+			"lat": 53.60064
+		},
+		{
+			"name": "Pod Dąbrówkę",
+			"cls": "hamlet",
+			"lon": 17.57413,
+			"lat": 53.58076
+		},
+		{
+			"name": "Wybudowanie pod Sławęcin",
+			"cls": "hamlet",
+			"lon": 17.66274,
+			"lat": 53.58765
+		},
+		{
+			"name": "Osady Zamerckie",
+			"cls": "hamlet",
+			"lon": 17.5068,
+			"lat": 53.57658
+		},
+		{
+			"name": "Rabuzie",
+			"cls": "hamlet",
+			"lon": 17.73278,
+			"lat": 53.56106
+		},
+		{
+			"name": "Poręba",
+			"cls": "hamlet",
+			"lon": 17.33329,
+			"lat": 53.5405
+		},
+		{
+			"name": "Wybudowanie Jelenckie",
+			"cls": "hamlet",
+			"lon": 17.7442,
+			"lat": 53.5492
+		},
+		{
+			"name": "Pod Zarębę",
+			"cls": "hamlet",
+			"lon": 17.64233,
+			"lat": 53.53401
+		},
+		{
+			"name": "Nowe Dziuki",
+			"cls": "hamlet",
+			"lon": 17.95235,
+			"lat": 53.5319
+		},
+		{
+			"name": "Pod Lasem",
+			"cls": "hamlet",
+			"lon": 17.42364,
+			"lat": 53.51568
+		},
+		{
+			"name": "Wybudowanie pod Dąbrowę",
+			"cls": "hamlet",
+			"lon": 17.45436,
+			"lat": 53.50746
+		},
+		{
+			"name": "Rabuśkowo",
+			"cls": "hamlet",
+			"lon": 17.95919,
+			"lat": 53.49687
+		},
+		{
+			"name": "Filipowo",
+			"cls": "hamlet",
+			"lon": 17.49183,
+			"lat": 53.47958
+		},
+		{
+			"name": "Lutowo-Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.45667,
+			"lat": 53.45139
+		},
+		{
+			"name": "Drugi Rząd",
+			"cls": "hamlet",
+			"lon": 17.70783,
+			"lat": 53.44585
+		},
+		{
+			"name": "Wybudowanie pod Kosobudy",
+			"cls": "hamlet",
+			"lon": 17.94728,
+			"lat": 53.80308
+		},
+		{
+			"name": "Polniczka",
+			"cls": "hamlet",
+			"lon": 17.38338,
+			"lat": 53.75829
+		},
+		{
+			"name": "Lipce",
+			"cls": "hamlet",
+			"lon": 17.93696,
+			"lat": 53.73313
+		},
+		{
+			"name": "Koślinka",
+			"cls": "hamlet",
+			"lon": 17.8375,
+			"lat": 53.71667
+		},
+		{
+			"name": "Nowa Cerkiew-Wybudowanie",
+			"cls": "hamlet",
+			"lon": 17.66528,
+			"lat": 53.70278
+		},
+		{
+			"name": "Białe Błoto",
+			"cls": "hamlet",
+			"lon": 17.76121,
+			"lat": 53.69564
+		},
+		{
+			"name": "Stobno-Borki",
+			"cls": "hamlet",
+			"lon": 17.82099,
+			"lat": 53.6577
+		},
+		{
+			"name": "Nad Strugą",
+			"cls": "hamlet",
+			"lon": 17.70037,
+			"lat": 53.64843
+		},
+		{
+			"name": "Wybudowanie pod Raciąż",
+			"cls": "hamlet",
+			"lon": 17.74868,
+			"lat": 53.63204
+		},
+		{
+			"name": "Wybudowanie pod Żalno",
+			"cls": "hamlet",
+			"lon": 17.76238,
+			"lat": 53.63555
+		},
+		{
+			"name": "Jęczniki Muzolf",
+			"cls": "hamlet",
+			"lon": 17.43242,
+			"lat": 53.62052
+		},
+		{
+			"name": "Niwskie Osady",
+			"cls": "hamlet",
+			"lon": 17.45896,
+			"lat": 53.58949
+		},
+		{
+			"name": "Myśligoszcz-Wybudowania",
+			"cls": "hamlet",
+			"lon": 17.31738,
+			"lat": 53.54379
+		},
+		{
+			"name": "Wybudowanie pod Cerkwicę",
+			"cls": "hamlet",
+			"lon": 17.61481,
+			"lat": 53.55045
+		},
+		{
+			"name": "Stare Dziuki",
+			"cls": "hamlet",
+			"lon": 17.9575,
+			"lat": 53.53194
+		},
+		{
+			"name": "Wybudowania pod Witkowo",
+			"cls": "hamlet",
+			"lon": 17.43866,
+			"lat": 53.51671
+		},
+		{
+			"name": "Nowe Pamiętowo",
+			"cls": "hamlet",
+			"lon": 17.69637,
+			"lat": 53.52666
+		},
+		{
+			"name": "Wybudowanie pod Szumiącą",
+			"cls": "hamlet",
+			"lon": 17.95923,
+			"lat": 53.51932
+		},
+		{
+			"name": "Wybudowanie Pamiętowskie",
+			"cls": "hamlet",
+			"lon": 17.68262,
+			"lat": 53.51027
+		},
+		{
+			"name": "Pod Trzciany",
+			"cls": "hamlet",
+			"lon": 17.58283,
+			"lat": 53.49759
+		},
+		{
+			"name": "Bocianowo",
+			"cls": "hamlet",
+			"lon": 17.51057,
+			"lat": 53.48375
+		},
+		{
+			"name": "Pioterki",
+			"cls": "hamlet",
+			"lon": 17.97045,
+			"lat": 53.46848
+		},
+		{
+			"name": "Na Przepałkowo",
+			"cls": "hamlet",
+			"lon": 17.62643,
+			"lat": 53.43719
+		},
+		{
+			"name": "Szotowa Góra",
+			"cls": "hamlet",
+			"lon": 17.71056,
+			"lat": 53.84139
+		},
+		{
+			"name": "Rytel-Nadleśnictwo",
+			"cls": "hamlet",
+			"lon": 17.74032,
+			"lat": 53.74888
+		},
+		{
+			"name": "Nad Kanałem",
+			"cls": "hamlet",
+			"lon": 17.91727,
+			"lat": 53.72541
+		},
+		{
+			"name": "Zbrzyca",
+			"cls": "hamlet",
+			"lon": 17.31834,
+			"lat": 53.68647
+		},
+		{
+			"name": "Pod Gockowice",
+			"cls": "hamlet",
+			"lon": 17.71506,
+			"lat": 53.64786
+		},
+		{
+			"name": "Wybudowania",
+			"cls": "hamlet",
+			"lon": 17.85861,
+			"lat": 53.60583
+		},
+		{
+			"name": "Wybudowanie pod Siciny",
+			"cls": "hamlet",
+			"lon": 17.7348,
+			"lat": 53.56228
+		},
+		{
+			"name": "Pod Dąbrówkę",
+			"cls": "hamlet",
+			"lon": 17.6265,
+			"lat": 53.5515
+		},
+		{
+			"name": "Pod Pamiętowo",
+			"cls": "hamlet",
+			"lon": 17.65646,
+			"lat": 53.52834
+		},
+		{
+			"name": "Pod Małą Cerkwicą",
+			"cls": "hamlet",
+			"lon": 17.59643,
+			"lat": 53.49846
+		},
+		{
+			"name": "Pod Skarpę",
+			"cls": "hamlet",
+			"lon": 17.60443,
+			"lat": 53.49196
+		},
+		{
+			"name": "Nowa Gdynia",
+			"cls": "hamlet",
+			"lon": 17.93179,
+			"lat": 53.48562
+		},
+		{
+			"name": "Wypychowo",
+			"cls": "hamlet",
+			"lon": 17.9657,
+			"lat": 53.45865
+		},
+		{
+			"name": "Pod Dołsa",
+			"cls": "hamlet",
+			"lon": 17.99864,
+			"lat": 53.45802
+		},
+		{
+			"name": "Ciosek",
+			"cls": "hamlet",
+			"lon": 17.72778,
+			"lat": 53.43528
+		},
+		{
+			"name": "Badzianko",
+			"cls": "hamlet",
+			"lon": 17.96889,
+			"lat": 53.8225
+		},
+		{
+			"name": "Szlachetna Nowa Cerkiew",
+			"cls": "hamlet",
+			"lon": 17.68049,
+			"lat": 53.7158
+		},
+		{
+			"name": "Wybudowanie Granowskie",
+			"cls": "hamlet",
+			"lon": 17.67189,
+			"lat": 53.65143
+		},
+		{
+			"name": "Wybudowanie pod Tucholę",
+			"cls": "hamlet",
+			"lon": 17.76685,
+			"lat": 53.56497
+		},
+		{
+			"name": "Wybudowania pod Minikowo",
+			"cls": "hamlet",
+			"lon": 17.95744,
+			"lat": 53.49335
+		},
+		{
+			"name": "Wybudowanie pod Bysławek",
+			"cls": "hamlet",
+			"lon": 17.98188,
+			"lat": 53.49739
+		},
+		{
+			"name": "Lisie Jamy",
+			"cls": "hamlet",
+			"lon": 17.96298,
+			"lat": 53.44927
+		},
+		{
+			"name": "Nowe Osady",
+			"cls": "hamlet",
+			"lon": 17.98361,
+			"lat": 53.44778
+		},
+		{
+			"name": "Wybudowania Krojanckie",
+			"cls": "hamlet",
+			"lon": 17.63837,
+			"lat": 53.72007
+		},
+		{
+			"name": "Wybudowania Bysławkowskie",
+			"cls": "hamlet",
+			"lon": 17.97366,
+			"lat": 53.49385
+		},
+		{
+			"name": "Gapie Góry",
+			"cls": "hamlet",
+			"lon": 17.95194,
+			"lat": 53.47692
+		},
+		{
+			"name": "Szyszkówka",
+			"cls": "hamlet",
+			"lon": 17.95952,
+			"lat": 53.45474
+		},
+		{
+			"name": "Stare Osady",
+			"cls": "hamlet",
+			"lon": 17.99611,
+			"lat": 53.45028
+		},
+		{
+			"name": "Piszczek",
+			"cls": "neighbourhood",
+			"lon": 17.89292,
+			"lat": 53.56073
+		},
+		{
+			"name": "Nogawica",
+			"cls": "neighbourhood",
+			"lon": 17.88988,
+			"lat": 53.48073
+		},
+		{
+			"name": "Rychnowy Przylesie",
+			"cls": "neighbourhood",
+			"lon": 17.38961,
+			"lat": 53.68022
+		},
+		{
+			"name": "Osiedle Wazów",
+			"cls": "neighbourhood",
+			"lon": 17.35508,
+			"lat": 53.66632
+		},
+		{
+			"name": "Nad Brdą",
+			"cls": "neighbourhood",
+			"lon": 17.91333,
+			"lat": 53.58944
+		},
+		{
+			"name": "Zielone Wzgórza",
+			"cls": "neighbourhood",
+			"lon": 17.49518,
+			"lat": 53.71753
+		},
+		{
+			"name": "Igły",
+			"cls": "neighbourhood",
+			"lon": 17.57777,
+			"lat": 53.71678
+		},
+		{
+			"name": "Osiedle Młodych",
+			"cls": "neighbourhood",
+			"lon": 17.37222,
+			"lat": 53.67555
+		},
+		{
+			"name": "Międzylesie",
+			"cls": "neighbourhood",
+			"lon": 17.89156,
+			"lat": 53.57576
+		},
+		{
+			"name": "Tobółka",
+			"cls": "neighbourhood",
+			"lon": 17.53876,
+			"lat": 53.5261
+		},
+		{
+			"name": "Dolina",
+			"cls": "neighbourhood",
+			"lon": 17.56771,
+			"lat": 53.71781
+		},
+		{
+			"name": "Osiedle Piastowskie",
+			"cls": "neighbourhood",
+			"lon": 17.35478,
+			"lat": 53.6648
+		},
+		{
+			"name": "Plaskosz",
+			"cls": "neighbourhood",
+			"lon": 17.90515,
+			"lat": 53.59698
+		},
+		{
+			"name": "Osiedle Jana Pawła II",
+			"cls": "neighbourhood",
+			"lon": 17.52122,
+			"lat": 53.44765
+		},
+		{
+			"name": "Pod Łukowo",
+			"cls": "neighbourhood",
+			"lon": 17.95853,
+			"lat": 53.78422
+		},
+		{
+			"name": "Pod Tucholę",
+			"cls": "neighbourhood",
+			"lon": 17.97379,
+			"lat": 53.76998
+		},
+		{
+			"name": "Grunowo",
+			"cls": "neighbourhood",
+			"lon": 17.58303,
+			"lat": 53.68696
+		},
+		{
+			"name": "Osiedle Wincentego Witosa",
+			"cls": "neighbourhood",
+			"lon": 17.34972,
+			"lat": 53.65806
+		},
+		{
+			"name": "Osiedle Koślinka (Tuchola)",
+			"cls": "neighbourhood",
+			"lon": 17.84784,
+			"lat": 53.59619
+		},
+		{
+			"name": "Osiedle Bergera",
+			"cls": "neighbourhood",
+			"lon": 17.535,
+			"lat": 53.46306
+		},
+		{
+			"name": "Podlesie",
+			"cls": "neighbourhood",
+			"lon": 17.55544,
+			"lat": 53.70592
+		},
+		{
+			"name": "Osiedle Generała Sikorskiego",
+			"cls": "neighbourhood",
+			"lon": 17.34653,
+			"lat": 53.66223
+		},
+		{
+			"name": "Miejski Rów",
+			"cls": "neighbourhood",
+			"lon": 17.88611,
+			"lat": 53.59278
+		},
+		{
+			"name": "Stare Miasto",
+			"cls": "neighbourhood",
+			"lon": 17.8591,
+			"lat": 53.58807
+		},
+		{
+			"name": "Osiedle Leśne",
+			"cls": "neighbourhood",
+			"lon": 17.52805,
+			"lat": 53.46333
+		},
+		{
+			"name": "Osiedle Słowackiego",
+			"cls": "neighbourhood",
+			"lon": 17.53863,
+			"lat": 53.45369
+		},
+		{
+			"name": "Zamieście",
+			"cls": "neighbourhood",
+			"lon": 17.53507,
+			"lat": 53.70798
+		},
+		{
+			"name": "Pod Łubnę",
+			"cls": "neighbourhood",
+			"lon": 17.98419,
+			"lat": 53.80978
+		},
+		{
+			"name": "Osiedle Leśne",
+			"cls": "neighbourhood",
+			"lon": 17.53908,
+			"lat": 53.71337
+		},
+		{
+			"name": "Małe Osady",
+			"cls": "neighbourhood",
+			"lon": 17.58984,
+			"lat": 53.69943
+		},
+		{
+			"name": "Osiedle Kopernika",
+			"cls": "neighbourhood",
+			"lon": 17.85072,
+			"lat": 53.58603
+		},
+		{
+			"name": "Osiedle Przemysłowe",
+			"cls": "neighbourhood",
+			"lon": 17.88997,
+			"lat": 53.58616
+		},
+		{
+			"name": "Osiedle Leśne",
+			"cls": "neighbourhood",
+			"lon": 17.8692,
+			"lat": 53.57444
+		},
+		{
+			"name": "Osiedle Hallera",
+			"cls": "neighbourhood",
+			"lon": 17.56905,
+			"lat": 53.70125
+		},
+		{
+			"name": "Osiedle Mickiewicza",
+			"cls": "neighbourhood",
+			"lon": 17.85883,
+			"lat": 53.58013
+		},
+		{
+			"name": "Pod Malachin",
+			"cls": "neighbourhood",
+			"lon": 17.96092,
+			"lat": 53.80856
+		},
+		{
+			"name": "Osiedle Bytowskie",
+			"cls": "neighbourhood",
+			"lon": 17.54832,
+			"lat": 53.7
+		},
+		{
+			"name": "Osiedle Słoneczne",
+			"cls": "neighbourhood",
+			"lon": 17.55113,
+			"lat": 53.7062
+		},
+		{
+			"name": "Osiedle 700-lecia",
+			"cls": "neighbourhood",
+			"lon": 17.57682,
+			"lat": 53.6998
+		},
+		{
+			"name": "Osiedle Kaszubskie",
+			"cls": "neighbourhood",
+			"lon": 17.58798,
+			"lat": 53.70136
+		},
+		{
+			"name": "Osiedle \"Kolejarz\"",
+			"cls": "neighbourhood",
+			"lon": 17.54496,
+			"lat": 53.68969
+		},
+		{
+			"name": "Osiedle Piastowskie",
+			"cls": "neighbourhood",
+			"lon": 17.86999,
+			"lat": 53.58497
+		},
+		{
+			"name": "Osiedle Igielskie",
+			"cls": "neighbourhood",
+			"lon": 17.57217,
+			"lat": 53.70761
+		},
+		{
+			"name": "Osiedle Budowlanych",
+			"cls": "neighbourhood",
+			"lon": 17.57554,
+			"lat": 53.69501
+		},
+		{
+			"name": "Osiedle Czarna Droga",
+			"cls": "neighbourhood",
+			"lon": 17.86452,
+			"lat": 53.58041
+		},
+		{
+			"name": "Dębowa Góra",
+			"cls": "isolated_dwelling",
+			"lon": 17.60979,
+			"lat": 53.80076
+		},
+		{
+			"name": "Leontynowo",
+			"cls": "isolated_dwelling",
+			"lon": 17.85445,
+			"lat": 53.4825
+		},
+		{
+			"name": "Stara Rogoźnica",
+			"cls": "isolated_dwelling",
+			"lon": 17.42827,
+			"lat": 53.76743
+		},
+		{
+			"name": "Nowy Młyn",
+			"cls": "isolated_dwelling",
+			"lon": 17.93796,
+			"lat": 53.57469
+		},
+		{
+			"name": "Świt",
+			"cls": "isolated_dwelling",
+			"lon": 17.885,
+			"lat": 53.54
+		},
+		{
+			"name": "Strużka",
+			"cls": "isolated_dwelling",
+			"lon": 17.51417,
+			"lat": 53.80611
+		},
+		{
+			"name": "Płecno",
+			"cls": "isolated_dwelling",
+			"lon": 17.83404,
+			"lat": 53.79528
+		},
+		{
+			"name": "Zielonka",
+			"cls": "isolated_dwelling",
+			"lon": 17.93472,
+			"lat": 53.66111
+		},
+		{
+			"name": "Zamrza",
+			"cls": "isolated_dwelling",
+			"lon": 17.8967,
+			"lat": 53.46986
+		},
+		{
+			"name": "Leśnictwo Giełdon",
+			"cls": "isolated_dwelling",
+			"lon": 17.74296,
+			"lat": 53.83137
+		},
+		{
+			"name": "Zdrójki",
+			"cls": "isolated_dwelling",
+			"lon": 17.30651,
+			"lat": 53.80403
+		},
+		{
+			"name": "Ostrowy",
+			"cls": "isolated_dwelling",
+			"lon": 17.78019,
+			"lat": 53.78251
+		},
+		{
+			"name": "Jaty",
+			"cls": "isolated_dwelling",
+			"lon": 17.89416,
+			"lat": 53.74722
+		},
+		{
+			"name": "Spierewnik",
+			"cls": "isolated_dwelling",
+			"lon": 17.76671,
+			"lat": 53.71137
+		},
+		{
+			"name": "Gartki",
+			"cls": "isolated_dwelling",
+			"lon": 17.88268,
+			"lat": 53.70796
+		},
+		{
+			"name": "Barłogi",
+			"cls": "isolated_dwelling",
+			"lon": 17.99715,
+			"lat": 53.6984
+		},
+		{
+			"name": "Toboła",
+			"cls": "isolated_dwelling",
+			"lon": 17.90953,
+			"lat": 53.63244
+		},
+		{
+			"name": "Piła-Młyn",
+			"cls": "isolated_dwelling",
+			"lon": 17.88805,
+			"lat": 53.51444
+		},
+		{
+			"name": "Zaleśniak",
+			"cls": "isolated_dwelling",
+			"lon": 17.36,
+			"lat": 53.44889
+		},
+		{
+			"name": "Łukomie",
+			"cls": "isolated_dwelling",
+			"lon": 17.48399,
+			"lat": 53.75172
+		},
+		{
+			"name": "Jeziórko",
+			"cls": "isolated_dwelling",
+			"lon": 17.82583,
+			"lat": 53.75944
+		},
+		{
+			"name": "Śpierewnik",
+			"cls": "isolated_dwelling",
+			"lon": 17.7706,
+			"lat": 53.69864
+		},
+		{
+			"name": "Gołąbek",
+			"cls": "isolated_dwelling",
+			"lon": 17.95722,
+			"lat": 53.61389
+		},
+		{
+			"name": "Osady Jerzmionckie",
+			"cls": "isolated_dwelling",
+			"lon": 17.5063,
+			"lat": 53.59544
+		},
+		{
+			"name": "Sicinki",
+			"cls": "isolated_dwelling",
+			"lon": 17.71,
+			"lat": 53.59111
+		},
+		{
+			"name": "Dąbrówka (osada w gminie Brusy)",
+			"cls": "isolated_dwelling",
+			"lon": 17.67472,
+			"lat": 53.81056
+		},
+		{
+			"name": "Parowa",
+			"cls": "isolated_dwelling",
+			"lon": 17.67083,
+			"lat": 53.79694
+		},
+		{
+			"name": "Błota",
+			"cls": "isolated_dwelling",
+			"lon": 17.79576,
+			"lat": 53.76528
+		},
+		{
+			"name": "Kosowa Niwa",
+			"cls": "isolated_dwelling",
+			"lon": 17.79111,
+			"lat": 53.70667
+		},
+		{
+			"name": "Raciąski Młyn",
+			"cls": "isolated_dwelling",
+			"lon": 17.78167,
+			"lat": 53.675
+		},
+		{
+			"name": "Obkas",
+			"cls": "isolated_dwelling",
+			"lon": 17.50768,
+			"lat": 53.57014
+		},
+		{
+			"name": "Rudzki Młyn",
+			"cls": "isolated_dwelling",
+			"lon": 17.90472,
+			"lat": 53.555
+		},
+		{
+			"name": "Huta",
+			"cls": "isolated_dwelling",
+			"lon": 17.97636,
+			"lat": 53.55349
+		},
+		{
+			"name": "Lutówko-Młyn",
+			"cls": "isolated_dwelling",
+			"lon": 17.45889,
+			"lat": 53.45778
+		},
+		{
+			"name": "Spierwia",
+			"cls": "isolated_dwelling",
+			"lon": 17.6725,
+			"lat": 53.82611
+		},
+		{
+			"name": "Radonek",
+			"cls": "isolated_dwelling",
+			"lon": 17.95651,
+			"lat": 53.70349
+		},
+		{
+			"name": "Zielona Łąka",
+			"cls": "isolated_dwelling",
+			"lon": 17.95221,
+			"lat": 53.64182
+		},
+		{
+			"name": "Łachowo",
+			"cls": "isolated_dwelling",
+			"lon": 17.83251,
+			"lat": 53.56161
+		},
+		{
+			"name": "Wandowo",
+			"cls": "isolated_dwelling",
+			"lon": 17.94639,
+			"lat": 53.51667
+		},
+		{
+			"name": "Konigórtek",
+			"cls": "isolated_dwelling",
+			"lon": 17.73634,
+			"lat": 53.76144
+		},
+		{
+			"name": "Dziekcz",
+			"cls": "isolated_dwelling",
+			"lon": 17.86278,
+			"lat": 53.68389
+		},
+		{
+			"name": "Wysocki Młyn",
+			"cls": "isolated_dwelling",
+			"lon": 17.77136,
+			"lat": 53.67957
+		},
+		{
+			"name": "Żółwiniec",
+			"cls": "isolated_dwelling",
+			"lon": 17.84411,
+			"lat": 53.55278
+		},
+		{
+			"name": "Rakarnia",
+			"cls": "isolated_dwelling",
+			"lon": 17.82592,
+			"lat": 53.84602
+		},
+		{
+			"name": "Końskie Błota",
+			"cls": "isolated_dwelling",
+			"lon": 17.91139,
+			"lat": 53.71055
+		},
+		{
+			"name": "Lutomski Most",
+			"cls": "isolated_dwelling",
+			"lon": 17.84564,
+			"lat": 53.69602
+		},
+		{
+			"name": "Duże Wędoły",
+			"cls": "isolated_dwelling",
+			"lon": 17.76817,
+			"lat": 53.77458
+		},
+		{
+			"name": "Juńcza (województwo pomorskie)",
+			"cls": "isolated_dwelling",
+			"lon": 17.98834,
+			"lat": 53.82771
+		}
+	]
 }

@@ -187,6 +187,28 @@ export function rasterizePolygon(grid, n, size, rings, cls, pri = null) {
 	}
 }
 
+/** Kolejność ważności miejscowości (etykiety, opis położenia). */
+export const PLACE_ORDER = { city: 0, town: 1, village: 2, suburb: 3, quarter: 4, hamlet: 5, neighbourhood: 6, isolated_dwelling: 7 };
+
+/**
+ * Nazwy miejscowości regionu do opisu położenia i map: w obrębie regionu, bez powtórzeń (ta sama nazwa bliżej niż
+ * 2 km – raz), najważniejsze najpierw (miasta, miasteczka, wsie, dzielnice, przysiółki); najwyżej max.
+ */
+export function pickLabels(places, half, center, toLonLat, max = 900) {
+	const ok = places.filter((p) => PLACE_ORDER[p.cls] != null && Math.abs(p.x) < half && Math.abs(p.z) < half);
+	ok.sort((a, b) => PLACE_ORDER[a.cls] - PLACE_ORDER[b.cls] || a.rank - b.rank);
+	const out = [];
+	for (const p of ok) {
+		if (out.some((q) => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 2000)) continue;
+		out.push(p);
+		if (out.length >= max) break;
+	}
+	return out.map((p) => {
+		const ll = toLonLat(p.x, p.z, center);
+		return { name: p.name, cls: p.cls, lon: +ll.lon.toFixed(5), lat: +ll.lat.toFixed(5), x: p.x, z: p.z };
+	}).map(({ x, z, ...rest }) => rest);
+}
+
 /**
  * Miejsca startu z miejscowości regionu: miasta, potem miasteczka i wsie (wg rangi), nie bliżej krawędzi niż
  * margin; najwyżej max, nie bliżej siebie niż 3 km.
