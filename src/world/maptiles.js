@@ -7,6 +7,7 @@ import { PLACE_ORDER } from '../gen/convert.js';
 import { COVER_RES, GRID } from './chunkdata.js';
 
 export const TILE_PX = 192;
+const tileId = (ch) => `${ch.z ?? 14}/${ch.key}`;
 const MAX_TILES = 400;
 const REGION_M_PER_PX = 46000 / 4096; // grubości linii jak na mapie bazowej regionu 46 km
 
@@ -94,7 +95,7 @@ export class WorldMap {
 	add(ch) {
 		const before = new Set(this.labels);
 		if (addPlaces(this.labels, ch.osm.places ?? [])) this.onPlaces?.(this.labels.filter((l) => !before.has(l)));
-		if (!this.tiles.has(ch.key) && !this.queue.includes(ch)) this.queue.push(ch);
+		if (!this.tiles.has(tileId(ch)) && !this.queue.includes(ch)) this.queue.push(ch);
 	}
 
 	/** Co klatkę: płytki z kolejki (najbliższe samolotu najpierw), do ~3 ms. */
@@ -104,9 +105,9 @@ export class WorldMap {
 		this.queue.sort((a, b) => Math.hypot(b.frame.x0 - x, b.frame.z0 - z) - Math.hypot(a.frame.x0 - x, a.frame.z0 - z));
 		while (this.queue.length && performance.now() - t0 < 3) {
 			const ch = this.queue.pop();
-			if (this.tiles.has(ch.key)) continue;
+			if (this.tiles.has(tileId(ch))) continue;
 			const f = ch.frame;
-			this.tiles.set(ch.key, { frame: { x0: f.x0, z0: f.z0, w: f.w, h: f.h }, canvas: drawTile(ch) });
+			this.tiles.set(tileId(ch), { z: ch.z ?? 14, frame: { x0: f.x0, z0: f.z0, w: f.w, h: f.h }, canvas: drawTile(ch) });
 			if (this.tiles.size > MAX_TILES) this.tiles.delete(this.tiles.keys().next().value);
 		}
 		this.stats.tiles = this.tiles.size;
@@ -125,7 +126,9 @@ export class WorldMap {
 	 */
 	drawOn(ctx, x0, z0, pxPerM, r) {
 		ctx.imageSmoothingEnabled = true;
-		for (const t of this.tiles.values()) {
+		// najpierw dalekie (z11, samo pokrycie i rzeźba), na nich szczegółowe (z14)
+		const list = [...this.tiles.values()].sort((a, b) => a.z - b.z);
+		for (const t of list) {
 			const f = t.frame;
 			if (f.x0 > x0 + r || f.x0 + f.w < x0 - r || f.z0 > z0 + r || f.z0 + f.h < z0 - r) continue;
 			ctx.drawImage(t.canvas, (f.x0 - x0) * pxPerM - 0.5, (f.z0 - z0) * pxPerM - 0.5, f.w * pxPerM + 1, f.h * pxPerM + 1);

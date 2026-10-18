@@ -4,6 +4,7 @@
 import { decodeTile } from '../gen/mvt.js';
 import { tileToLocal, tilePointLonLat } from '../gen/tiles.js';
 import { convertTile, rasterizePolygon, COVER_PRIORITY, UNSET } from '../gen/convert.js';
+import { convertLotTile, LOT_LAYERS } from '../gen/lottiles.js';
 import { COVER } from '../gen/terrain.js';
 import { lonToTileX, latToTileY, terrariumHeight } from '../geo.js';
 
@@ -15,7 +16,7 @@ export const HEIGHT_Z = 12; // kafle Terrarium
 export const FAR_Z = 11;
 export const MASK_RES = 256; // maska dróg, torów i cieków (≈ 6 m) – drzewa 3D ich omijają
 export const LAYERS = ['transportation', 'building', 'waterway', 'water', 'landcover', 'landuse', 'poi', 'place'];
-const FAR_LAYERS = ['water', 'landcover', 'landuse'];
+const FAR_LAYERS = ['water', 'landcover', 'landuse', 'place'];
 
 /** Przeliczenia kafla: punkt (u, v) ∈ [0, 4096]² → metry układu świata (początek origin) i z powrotem. */
 export function chunkFrame(x, y, origin, Z = CHUNK_Z) {
@@ -148,5 +149,28 @@ export function shiftOsm(osm, dx, dz) {
 	for (const w of osm.waterways) sh(w[1]);
 	for (const p of osm.platforms) sh(p[0]);
 	for (const s of osm.stations) sh(s[1]);
+	for (const p of osm.power ?? []) sh(p[1]);
+	for (const r of osm.treeRows ?? []) sh(r[0]);
+	for (const c of osm.crossings ?? []) sh(c[1]);
 	for (const p of osm.places) { p.x -= dx; p.z -= dz; }
+}
+
+/**
+ * Kafel z własnych kafli gry (tools/bake-tiles.js): obiekty ze schematu „lot”, pokrycie z rastra WorldCover
+ * (coverRaw – COVER_RES², może być null) z wodą z OSM na wierzchu (dokładny brzeg).
+ */
+export function chunkObjectsLot(buf, coverRaw, x, y, origin, Z = CHUNK_Z) {
+	const r = convertLotTile(decodeTile(buf, LOT_LAYERS), Z, x, y, { center: origin });
+	const cover = coverRaw ? new Uint8Array(coverRaw) : new Uint8Array(COVER_RES * COVER_RES).fill(COVER.crop);
+	const F = chunkFrame(x, y, origin, Z);
+	for (const c of r.cover) {
+		const rings = c.rings.map((ring) => {
+			const o = new Array(ring.length);
+			for (let i = 0; i < ring.length; i += 2) { o[i] = (ring[i] - F.x0) / F.sx - 2048; o[i + 1] = (ring[i + 1] - F.z0) / F.sz - 2048; }
+			return o;
+		});
+		rasterizePolygon(cover, COVER_RES, 4096, rings, c.cls, COVER_PRIORITY);
+	}
+	const { cover: _, ...osm } = r;
+	return { osm, cover };
 }

@@ -7,7 +7,7 @@ import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
 
-export const VERSION = 'PROTOTYP 0.25'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.27'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -49,6 +49,19 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.27', title: 'Własne kafle', items: [
+		['Śląskie', 'w otwartym świecie nad województwem śląskim – własne kafle mapy: budynki z rodzajem i dachem, pokrycie terenu 10 m.'],
+		['Szczegóły', 'linie energetyczne ze słupami, szpalery i aleje drzew, przejazdy kolejowe – także w otwartym świecie.'],
+		['Płynność', 'budynki i drogi kafli liczone w tle – bez zacięć przy wlatywaniu nad miasto.'],
+		['Poprawka', 'nazwy miast w krajobrazie nie pojawiają się już na niebie (punkty za kamerą).'],
+	] },
+	{ v: '0.26', title: 'Lasy górskie', items: [
+		['Góry', 'lasy w górach bez prostokątnych oddziałów – nieregularne płaty buka i świerka, bez duktów.'],
+		['Doczytywanie', 'mapa doczytuje się z wyprzedzeniem przed samolotem – także przy szybkim locie.'],
+		['Pamięć', 'kafle mapy zajmują w przeglądarce najwyżej 1 GB – najdawniej używane są usuwane.'],
+		['Start', 'w otwartym świecie start z okolicznych miast (do 40 km) – bez przeładowania gry.'],
+		['Las', 'las z daleka tak samo ciemny jak drzewa z bliska – bez jasnego pierścienia wokół samolotu.'],
+	] },
 	{ v: '0.25', title: 'Otwarty świat bez granic', items: [
 		['Bez granic', 'otwarty świat nie kończy się po ~150 km – układ współrzędnych przesuwa się za samolotem niezauważalnie.'],
 		['Horyzont', 'daleki teren z rzeźbą do 50 km – góry i doliny na horyzoncie zamiast płaskiej równiny.'],

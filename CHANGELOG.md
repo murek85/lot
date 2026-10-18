@@ -3,6 +3,39 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.27 – własne kafle (pilot: województwo śląskie)
+
+- **Własne kafle otwartego świata**: `npm run bake:tiles -- slaskie` buduje z wyciągu OpenStreetMap (Geofabrik)
+  kafle wektorowe ze schematem gry (Planetiler, `tools/tiles/lot-schema.yml` – surowe znaczniki OSM) i rastry
+  pokrycia terenu z ESA WorldCover 10 m (z14 i z11) do `data/tiles/lot/`; gra używa ich w kaflach w całości wewnątrz
+  obszaru (granica z pliku .poly), poza nim – OpenFreeMap. Śląskie: 5210 kafli z14, 123 MB, ~2 minuty.
+- Z własnych kafli: **rodzaje budynków i dachy z OSM** (kościoły z wieżą, bloki, hale, gospodarcze), nawierzchnie
+  dróg, **linie energetyczne ze słupami i przewodami**, **szpalery drzew**, przejazdy kolejowe, pokrycie terenu
+  10 m zamiast wielokątów mapy (dokładniejsze brzegi lasów i zabudowy), woda z OSM na wierzchu.
+- Aleje i linie energetyczne (`createDetails`) także w otwartym świecie – na OpenFreeMap aleje wzdłuż części dróg
+  lokalnych, na własnych kaflach także szpalery i linie z danych.
+- **Obiekty kafli liczone w wątkach**: geometria budynków (`src/buildgeo.js`) i dróg (`src/gfx/ribbon.js`)
+  w wątku kafli, w wątku głównym tylko siatki z tablic – ~5 ms na kafel zamiast ~90 ms (bez zacięć nad miastem).
+- Poprawka: nazwy miejscowości w krajobrazie – punkty za kamerą (przy odwróconym buforze głębi trafiały w ekran
+  odbite, np. „Mysłowice” na niebie); podpisy z krzywizną Ziemi.
+
+## 0.26 – lasy górskie, wyprzedzające doczytywanie, pamięć kafli
+
+- **Lasy w górach**: powyżej ~350–650 m n.p.m. siatka oddziałów rozmyta w nieregularne płaty, bez duktów, mniej
+  zrębów i młodników, więcej buka na niższych stokach (do ~900 m), wyżej świerk – w terenie i w drzewach 3D
+  (te same drzewostany); także w regionie Beskid Śląski. Bory nizinne bez zmian.
+- **Doczytywanie z wyprzedzeniem**: kafle także wokół punktu 25 s lotu przed samolotem (do 3 km), te z przodu
+  w pierwszej kolejności – szybkie maszyny nie wlatują w niewczytany teren.
+- **Pamięć kafli** w przeglądarce ograniczona do 1 GB (najwyżej 30% przydziału): rejestr ostatniego użycia kafli,
+  przycinanie co 10 minut lotu w otwartym świecie – najdawniej używane kafle wylatują.
+- **Las z daleka**: korony z tekstury poza zasięgiem drzew 3D przyciemnione do ich jasności (pomiar średniej jasności
+  obrazu w obu strefach: 103 → 65 przy 60 w strefie drzew) – bez jasnego pierścienia wokół samolotu; też w regionach.
+- **Miejsca startu w otwartym świecie**: do 10 miast i miasteczek z mapy w promieniu 40 km (z kierunkiem
+  i odległością od startu) – start w innym mieście bez przeładowania; doczytywanie trzyma się nowego miejsca do
+  końca wczytywania. Daleki teren (z11) daje też nazwy miejscowości i płytki dużej mapy do 50 km.
+- Wydajność: daleki teren i podłoga rysowane po kaflach z14 (zasłonięte piksele odpadają na teście głębi) –
+  ~5 ms zamiast ~11 ms na klatkę.
+
 ## 0.25 – otwarty świat bez granic, daleki teren
 
 - **Przesuwanie początku układu**: otwarty świat liczony w rzucie Mercatora o stałej skali (z szerokości startu) –

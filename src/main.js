@@ -11,7 +11,7 @@ import { createRails } from './rails.js';
 import { createRivers } from './rivers.js';
 import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
-import { WORLD_ID, worldStart, worldRegion, createWorld, REBASE_AT, REBASE_STEP } from './world/world.js';
+import { WORLD_ID, worldStart, worldRegion, createWorld, trimTileCache, REBASE_AT, REBASE_STEP } from './world/world.js';
 import { WorldLights } from './world/lights.js';
 import { setTerrainUniforms, setCityLights, snowCover } from './gfx/ground.js';
 import { createCityLights } from './citylights.js';
@@ -120,6 +120,7 @@ async function start() {
 	}
 	// region z kafli wektorowych (wbudowany albo wygenerowany w grze) – inne źródła danych niż Bory Tucholskie
 	if (region.meta.generated) $('credits').textContent = 'Wysokości: AWS Terrain Tiles · Mapa: OpenFreeMap, © OpenMapTiles · Dane: © współtwórcy OpenStreetMap (ODbL)';
+	if (region.world) $('credits').textContent = 'Wysokości: AWS Terrain Tiles · Mapa: OpenFreeMap, © OpenMapTiles i własne kafle · Pokrycie: ESA WorldCover 2021 (CC BY 4.0) · Dane: © współtwórcy OpenStreetMap (ODbL)';
 	$('region-name').textContent = region.meta.name;
 	bootEyebrow(region.meta);
 
@@ -707,6 +708,18 @@ async function start() {
 			const ps = list.filter((p) => !placeNames.has(p.name));
 			positionPlaces.push(...ps);
 			labelPick.push(...ps.filter((p) => p.cls === 'city' || p.cls === 'town'));
+			// miejsca startu: miasta i miasteczka z mapy (do 40 km, najwyżej 10, nie bliżej siebie niż 4 km)
+			for (const p of ps) {
+				if (places.length >= 10 || (p.cls !== 'city' && p.cls !== 'town')) continue;
+				const d = Math.hypot(p.x - places[0].x, p.z - places[0].z);
+				if (d > 40000 || places.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 4000)) continue;
+				const ang = (Math.atan2(p.x - places[0].x, -(p.z - places[0].z)) + 2 * Math.PI) % (2 * Math.PI);
+				const dir = ['płn.', 'płn.-wsch.', 'wsch.', 'płd.-wsch.', 'płd.', 'płd.-zach.', 'zach.', 'płn.-zach.'][Math.round(ang / (Math.PI / 4)) % 8];
+				const place = { id: `w-${p.name}`, name: p.name, cls: p.cls, note: `${PLACE_KIND[p.cls]} · ${Math.round(d / 1000)} km na ${dir} od startu`, x: p.x, z: p.z };
+				places.push(place);
+				placeList.push(place);
+				placeNames.add(p.name);
+			}
 		};
 		world.map.onPlaces([...world.map.labels]); // kafle wczytane przed startem
 	}
@@ -717,8 +730,11 @@ async function start() {
 		for (const p of labelPick) {
 			const d = Math.hypot(p.x - cp.x, p.z - cp.z);
 			if (d < 800 || d > 15000) continue;
-			lv.set(p.x, groundAt(p.x, p.z) + 40, p.z).project(camera);
-			if (lv.z > 1 || Math.abs(lv.x) > 1 || Math.abs(lv.y) > 1) continue;
+			// tylko przed kamerą (przy odwróconym buforze głębi rzut punktów za kamerą też trafia w ekran – odbity)
+			lv.set(p.x, groundAt(p.x, p.z) + 40 - (d * d) / 12742000, p.z);
+			if (lv.clone().applyMatrix4(camera.matrixWorldInverse).z > -1) continue;
+			lv.project(camera);
+			if (Math.abs(lv.x) > 1 || Math.abs(lv.y) > 1) continue;
 			vis.push({ p, x: (lv.x + 1) / 2 * W, y: (1 - lv.y) / 2 * Hh, d });
 		}
 		vis.sort((a, b) => a.d - b.d);
@@ -781,6 +797,12 @@ async function start() {
 	// środek układu (otwarty świat przesuwa go razem z początkiem układu – region.meta.center)
 	let center = region.meta.center;
 	const worldFocus = { x: 0, z: 0 };
+	// otwarty świat: pamięć kafli przycinana minutę po starcie i co 10 minut (najdawniej używane kafle)
+	if (world) {
+		const trim = () => trimTileCache().catch((e) => console.warn('Pamięć kafli:', e));
+		setTimeout(trim, 60e3);
+		setInterval(trim, 600e3);
+	}
 	const shiftOrigin = (dx, dz) => {
 		const ms = world.rebase(dx, dz, { traffic, trains, people });
 		center = region.meta.center;

@@ -15,11 +15,14 @@ import { valueNoise, fbm } from '../gfx/noise.js';
 import { shadeGround } from '../terrain.js';
 import { GRID, COVER_RES } from './chunkdata.js';
 import { gridHeightAt } from './streamer.js';
-import { createBuildings } from '../buildings.js';
+import { buildingMeshes } from '../buildings.js';
+import { lonLatToLocal } from '../geo.js';
 import { makeRoadMaterial, densify, ribbon } from '../roads.js';
 import { createRivers } from '../rivers.js';
 import { createRails } from '../rails.js';
 import { createBridges } from '../bridges.js';
+import { createDetails } from '../details.js';
+import { COVER } from '../gen/terrain.js';
 
 const SLOTS = 256;
 
@@ -166,7 +169,7 @@ function farFloor(U, atmo, clouds, plane) {
 	m.fog = false;
 	const mesh = new Mesh(g, m);
 	mesh.frustumCulled = false;
-	mesh.renderOrder = -1;
+	mesh.renderOrder = 2; // po terenie – zasłonięte piksele odrzuca test głębi przed cieniowaniem
 	return { mesh, base };
 }
 
@@ -186,12 +189,15 @@ export class ChunkView {
 		this.terrainMat = terrainMaterial(this.coverTex, this.U, atmo, clouds, plane, worldShadow);
 		this.roadMat = makeRoadMaterial(null, atmo, clouds, plane, worldShadow);
 		this.buildingShared = null; // z pierwszego kafla z budynkami
-		this.shared = { rivers: null, rails: null, bridges: null }; // wspólne materiały – z pierwszego kafla, który ich użył
+		this.shared = { rivers: null, rails: null, bridges: null, details: {} }; // wspólne materiały – z pierwszego kafla, który ich użył
 		this.floor = farFloor(this.U, atmo, clouds, plane);
 		scene.add(this.floor.mesh);
 		this.group = new Group();
 		scene.add(this.group);
 		this.objectQueue = [];
+		this.inflight = 0; // zlecenia obiektów w wątkach
+		this.ready = []; // [kafel, dane] – do zbudowania siatek (po jednym na klatkę)
+		this.streamer = null; // ustawia createWorld
 		this.stats = { chunks: 0, objectChunks: 0, buildMs: 0 };
 	}
 
@@ -216,8 +222,12 @@ export class ChunkView {
 		this.stats.chunks--;
 	}
 
-	/** Obiekty kafla (drogi, budynki) – budowa w kolejce (jeden kafel na klatkę), zdejmowanie od razu. */
+	/**
+	 * Obiekty kafla (drogi, budynki, rzeki, tory, mosty, aleje, linie energetyczne): geometria budynków i dróg liczona
+	 * w wątku kafli, tu – siatki z tablic (po jednym kaflu na klatkę); zdejmowanie od razu.
+	 */
 	objects(ch, on) {
+		ch.wantObjs = on;
 		if (on) { if (!ch.objs && !this.objectQueue.includes(ch)) this.objectQueue.push(ch); return; }
 		const qi = this.objectQueue.indexOf(ch);
 		if (qi >= 0) this.objectQueue.splice(qi, 1);
@@ -227,35 +237,30 @@ export class ChunkView {
 		this.stats.objectChunks--;
 	}
 
-	buildObjects(ch) {
+	buildObjects(ch, d) {
 		const t0 = performance.now();
 		const list = [];
 		const hAt = (x, z) => gridHeightAt(ch, x, z);
-		// drogi: jedna siatka na kafel, kolejność rysowania od polnych do głównych (kolejność indeksów)
-		const roads = [...ch.osm.roads].sort((a, b) => b[0] - a[0]);
-		const g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], cls: [], count: 0 };
-		for (const [cls, w10, surface, bridge, , c] of roads) {
-			let pts = [];
-			for (let i = 0; i < c.length; i += 2) pts.push(c[i] / 10, c[i + 1] / 10);
-			if (pts.length < 4) continue;
-			pts = densify(pts);
-			const width = w10 / 10, n = pts.length / 2;
-			let hFn = (x, z) => hAt(x, z) + 0.25;
-			if (bridge) { const h0 = hAt(pts[0], pts[1]), h1 = hAt(pts[(n - 1) * 2], pts[(n - 1) * 2 + 1]); let i = 0; hFn = () => h0 + (h1 - h0) * (n > 1 ? i++ / (n - 1) : 0) + 0.6; }
-			const rb = ribbon(pts, width / 2, hFn, g.count);
-			g.pos.push(...rb.pos); g.side.push(...rb.side); g.dist.push(...rb.dist); g.idx.push(...rb.idx);
-			for (let i = 0; i < rb.side.length; i++) { g.width.push(width); g.surf.push(surface); g.cls.push(cls); }
-			g.count += rb.side.length;
+		// dane policzone przy innym początku układu (przesunięcie w trakcie) – przesunięcie tablic
+		const o = d.origin, cur = this.streamer.origin;
+		if (o.lon !== cur.lon || o.lat !== cur.lat) {
+			const p = lonLatToLocal(cur.lon, cur.lat, o);
+			const sh = (a) => { for (let i = 0; i < a.length; i += 3) { a[i] -= p.x; a[i + 2] -= p.z; } };
+			sh(d.roads.pos);
+			for (const t of d.buildings.tiles) sh(t.pos);
+			for (const b of d.buildings.beacons) { b[0] -= p.x; b[2] -= p.z; }
 		}
-		if (g.count) {
+		// drogi: jedna siatka na kafel (z wątku)
+		const r = d.roads;
+		if (r.count) {
 			const geo = new BufferGeometry();
-			geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
-			geo.setAttribute('aSide', new Float32BufferAttribute(g.side, 1));
-			geo.setAttribute('aDist', new Float32BufferAttribute(g.dist, 1));
-			geo.setAttribute('aWidth', new Float32BufferAttribute(g.width, 1));
-			geo.setAttribute('aSurf', new Float32BufferAttribute(g.surf, 1));
-			geo.setAttribute('aCls', new Float32BufferAttribute(g.cls, 1));
-			geo.setIndex(g.idx);
+			geo.setAttribute('position', new BufferAttribute(r.pos, 3));
+			geo.setAttribute('aSide', new BufferAttribute(r.side, 1));
+			geo.setAttribute('aDist', new BufferAttribute(r.dist, 1));
+			geo.setAttribute('aWidth', new BufferAttribute(r.width, 1));
+			geo.setAttribute('aSurf', new BufferAttribute(r.surf, 1));
+			geo.setAttribute('aCls', new BufferAttribute(r.cls, 1));
+			geo.setIndex(new BufferAttribute(r.idx, 1));
 			const m = new Mesh(geo, this.roadMat);
 			m.renderOrder = 10;
 			m.frustumCulled = false;
@@ -271,9 +276,17 @@ export class ChunkView {
 		const br = createBridges(ch.osm, reg, ter, ...A, this.shared.bridges);
 		if (br.material) this.shared.bridges ??= { material: br.material, shadowMaterial: br.shadowMaterial };
 		list.push(...rv.objects, ...rl.objects, ...br.objects, ...br.shadowCasters);
-		// budynki: moduł regionów (okna, dachy, kominy), wspólne materiały dla wszystkich kafli
-		if (ch.osm.buildings.length) {
-			const b = createBuildings(ch.osm, { size: 1e8 }, { meshHeightAt: hAt }, this.atmo, this.clouds, this.plane, this.worldShadow, this.buildingShared);
+		// aleje (szpalery z danych i drzewa wzdłuż części dróg lokalnych), linie energetyczne ze słupami
+		const R = COVER_RES, f = ch.frame;
+		const coverAt = (x, z) => {
+			const i = Math.floor(((x - f.x0) / f.w) * R), j = Math.floor(((z - f.z0) / f.h) * R);
+			return i < 0 || j < 0 || i >= R || j >= R ? -1 : ch.cover[j * R + i];
+		};
+		const det = createDetails(ch.osm, reg, ter, ...A, { coverAt, classes: COVER, shared: this.shared.details, seed: (ch.x * 7919 + ch.y) % 100000 });
+		list.push(...det.objects, ...det.shadowCasters);
+		// budynki: geometria z wątku, materiały wspólne dla wszystkich kafli
+		if (d.buildings.tiles.length) {
+			const b = buildingMeshes(d.buildings.tiles, d.buildings, this.atmo, this.clouds, this.plane, this.worldShadow, this.buildingShared);
 			if (!this.buildingShared) this.buildingShared = { material: b.material, shadowMaterial: b.shadowMaterial };
 			list.push(...b.objects, ...b.shadowCasters);
 		}
@@ -291,12 +304,26 @@ export class ChunkView {
 		const cx = camera.position.x, cz = camera.position.z;
 		if (this.buildingShared) this.buildingShared.material.userData.camXZ.value.set(cx, cz);
 		const sh = this.shared;
-		for (const m of [sh.rivers?.material, sh.rails?.material, sh.bridges?.material, sh.bridges?.shadowMaterial]) m?.userData.camXZ.value.set(cx, cz);
+		for (const m of [sh.rivers?.material, sh.rails?.material, sh.bridges?.material, sh.bridges?.shadowMaterial, ...Object.values(sh.details)]) m?.userData.camXZ?.value.set(cx, cz);
 		if (sh.rivers) sh.rivers.material.userData.time.value = performance.now() / 1000;
-		if (this.objectQueue.length) {
-			this.objectQueue.sort((a, b) => Math.hypot(a.frame.x0 + a.frame.w / 2 - center.x, a.frame.z0 + a.frame.h / 2 - center.z) - Math.hypot(b.frame.x0 + b.frame.w / 2 - center.x, b.frame.z0 + b.frame.h / 2 - center.z));
-			const ch = this.objectQueue.shift();
-			if (ch.terrain) this.buildObjects(ch);
+		// obiekty: zlecenia do wątków (najbliższe najpierw, do 3 naraz), siatki z gotowych – jeden kafel na klatkę
+		if (this.objectQueue.length && this.inflight < 3 && this.streamer) {
+			const dist = (c) => Math.hypot(c.frame.x0 + c.frame.w / 2 - center.x, c.frame.z0 + c.frame.h / 2 - center.z);
+			this.objectQueue.sort((a, b) => dist(a) - dist(b));
+			while (this.objectQueue.length && this.inflight < 3) {
+				const ch = this.objectQueue.shift();
+				if (!ch.terrain) continue;
+				this.inflight++;
+				this.streamer.requestObjects(ch).then((d) => {
+					this.inflight--;
+					if (d && ch.wantObjs && !ch.objs && ch.terrain) this.ready.push([ch, d]);
+					else if (!d && ch.wantObjs && ch.terrain && !ch.objs) this.objectQueue.push(ch); // błąd – jeszcze raz
+				});
+			}
+		}
+		if (this.ready.length) {
+			const [ch, d] = this.ready.shift();
+			if (ch.wantObjs && !ch.objs && ch.terrain) this.buildObjects(ch, d);
 		}
 	}
 
@@ -315,7 +342,14 @@ export class ChunkView {
 		};
 		for (const ch of chunks) {
 			move(ch.terrain?.geometry);
-			for (const o of ch.objs?.list ?? []) move(o.geometry);
+			for (const o of ch.objs?.list ?? []) {
+				// drzewa przydrożne: położenie w macierzach instancji (geometria to kształt drzewa)
+				if (o.isInstancedMesh) {
+					const a = o.instanceMatrix.array;
+					for (let i = 0; i < o.count; i++) { a[i * 16 + 12] -= dx; a[i * 16 + 14] -= dz; }
+					o.instanceMatrix.needsUpdate = true;
+				} else move(o.geometry);
+			}
 		}
 	}
 
@@ -384,7 +418,7 @@ export class FarView {
 		this.coverTex.needsUpdate = true;
 		ch.terrain = new Mesh(terrainGeometry(ch, layer, 60), this.material);
 		ch.terrain.frustumCulled = false;
-		ch.terrain.renderOrder = -1;
+		ch.terrain.renderOrder = 1; // po kaflach z14 – piksele pod nimi odpadają na teście głębi przed kosztownym cieniowaniem
 		this.group.add(ch.terrain);
 		this.stats.tiles++;
 	}

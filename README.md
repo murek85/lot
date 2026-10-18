@@ -422,6 +422,8 @@ Regiony działają jak dotąd.
 - Podmiana sieci ruchu rozłożona na klatki: samochody (po 300 na krok – reszta jedzie po starym grafie), pociągi,
   piesi; ~5 ms na klatkę.
 
+- **Lasy górskie** (`forestStand(xz, h)` w `src/gfx/stand.js`): z wysokością n.p.m. 350–650 m siatka oddziałów
+  rozmyta szumem w nieregularne płaty, bez duktów, mniej zrębów i młodników, buk na niższych stokach, świerk wyżej.
 - **Bez granic** (`src/geo.js`, `world.rebase`): środek otwartego świata ma pole `merc: { k }` – `lonLatToLocal`
   i `localToLonLat` liczą wtedy Web Mercator o skali k = cos(szerokości startu). Mercator jest jeden dla całej Ziemi,
   więc nowy początek układu to czyste przesunięcie (kafle policzone przed i po zgadzają się co do milimetra;
@@ -438,7 +440,28 @@ Regiony działają jak dotąd.
   numerów kafli adresowana w kółko – kafle w Mercatorze tworzą równą siatkę), a na styku szczeliny zasłaniają
   „fartuchy” kafli z14 (pas opuszczony o 40 m). Za 50 km – płaska podłoga.
 
-Jeszcze nie ma: szpalerów drzew i linii energetycznych (kafle ich nie mają).
+- **Miejsca startu**: miasta i miasteczka z mapy (warstwa „place” kafli z14 i z11) do 40 km od startu, najwyżej 10,
+  trafiają do planu lotu; `world.ready` trzyma punkt doczytywania przy nowym miejscu do końca wczytywania.
+- **Doczytywanie z wyprzedzeniem**: streamer dostaje prędkość samolotu (z ruchu punktu doczytywania) i trzyma kafle
+  także wokół punktu 25 s lotu do przodu (do 3 km); kafle z przodu w kolejce jakby o 40% bliżej.
+- **Pamięć kafli** (`src/gen/store.js`): magazyn `tileinfo` z czasem ostatniego użycia i rozmiarem kafla (zapis
+  najwyżej co 6 h na kafel), `trimTiles(max)` usuwa najdawniej używane do 90% limitu; otwarty świat przycina co
+  10 minut do 1 GB (najwyżej 30% przydziału przeglądarki).
+
+- **Własne kafle** (`npm run bake:tiles -- <obszar>`, `tools/bake-tiles.js`): w `tools/.cache/tiles-src/` muszą
+  być `planetiler.jar` (github.com/onthegomap/planetiler), `<obszar>-latest.osm.pbf` i `<obszar>.poly` (Geofabrik,
+  np. download.geofabrik.de/europe/poland/slaskie-latest.osm.pbf). Planetiler ze schematem `tools/tiles/lot-schema.yml`
+  zapisuje kafle `data/tiles/lot/{z}/{x}/{y}.pbf` (warstwy: roads, rails, platforms, buildings, waterways, water,
+  power, tree_rows, stations, crossings – z14; places – od z11) z surowymi znacznikami OSM; narzędzie dokłada
+  rastry pokrycia 128² z ESA WorldCover (zapytania Range do COG, `tools/lib/cog.js`) dla z14 i z11
+  (`cover/{z}/{x}/{y}.bin.gz`) i opis `tiles.json` z listą kafli z14 w całości wewnątrz wielokąta obszaru.
+  W grze (`src/world/chunkworker.js`): kafel z listy – własne dane (`convertLotTile` w `src/gen/lottiles.js`,
+  znaczniki → klasy tą samą logiką co narzędzia regionów: `src/gen/osmtags.js`), poza listą – OpenFreeMap.
+  Hosting kafli (wersja przeglądarkowa) – do ustalenia; teraz serwer gry podaje je z dysku.
+- **Obiekty w wątkach**: przy wejściu kafla w pierścień obiektów wątek kafli liczy geometrię budynków
+  (`buildBuildingTiles`, `src/buildgeo.js` – bez Three.js poza triangulacją z `three.core.js`) i dróg (`ribbon`,
+  `src/gfx/ribbon.js`) z zapamiętanych danych kafla i oddaje tablice bez kopiowania; wątek główny tworzy z nich
+  siatki (~5 ms na kafel); rzeki, tory, mosty, aleje i linie energetyczne – nadal w wątku głównym.
 
 ## Struktura
 

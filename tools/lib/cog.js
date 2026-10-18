@@ -50,5 +50,7 @@ export async function openCog(url) {
 		}
 		return cache.get(i);
 	};
+	/** Zwolnienie z pamięci kafelków powyżej wiersza ty (przetwarzanie z północy na południe). */
+	cog.dropAbove = (ty) => { for (const i of cache.keys()) if (Math.floor(i / cog.tilesAcross) < ty) cache.delete(i); };
 	return cog;
 }

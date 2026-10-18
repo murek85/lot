@@ -159,3 +159,76 @@ test('Otwarty świat: daleki teren – kafel z11 i jego kafle wysokości z11 (z 
 	const n = chunkFrame(fx * 8, fy * 8, MERC);
 	assert.ok(Math.abs(n.x0 - F.x0) < 1e-6 && Math.abs(n.w * 8 - F.w) < 1e-6);
 });
+
+import { tileEntries, pickEvictions } from '../src/gen/store.js';
+import { tilesAround as around } from '../src/world/streamer.js';
+
+test('Pamięć kafli: najdawniej używane wylatują do 90% limitu, kafle bez wpisu – pierwsze', () => {
+	const infos = new Map([['a', { t: 100, n: 400 }], ['b', { t: 300, n: 400 }], ['c', { t: 200, n: 400 }]]);
+	const e = tileEntries(['a', 'b', 'c', 'old'], infos);
+	assert.deepEqual(e.find((x) => x[0] === 'old'), ['old', 0, 30000]);
+	assert.deepEqual(pickEvictions(e, 1e6).remove, [], 'mieści się');
+	const r = pickEvictions(e, 1000);
+	assert.deepEqual(r.remove, ['old', 'a']); // 31 200 → 1200 → 800 B (≤ 900)
+	assert.ok(r.total <= 900);
+});
+
+test('Otwarty świat: kafle wokół punktu z przesunięciem środka kafla względem punktu', () => {
+	const t = around(0, 0, 3000, ORIGIN);
+	for (const c of t) assert.ok(Math.abs(Math.hypot(c.dx, c.dz) - c.d) < 1e-6);
+	// kafel na wschód ma dx > 0, na północ dz < 0
+	const e = t.find((c) => c.x === TX + 1 && c.y === TY), n = t.find((c) => c.x === TX && c.y === TY - 1);
+	assert.ok(e.dx > 0 && n.dz < 0);
+});
+
+import { buildBuildingTiles } from '../src/buildgeo.js';
+import { convertLotTile } from '../src/gen/lottiles.js';
+import { readPoly, inPoly } from '../tools/lib/poly.js';
+
+test('Budynki: geometria w tablicach (wątek kafli) – dom z dachem dwuspadowym, wysokość z terenu', () => {
+	const house = [0, 60, 1, 0, [0, 0, 120, 0, 120, 80, 0, 80, 0, 0]]; // 12 × 8 m, dach dwuspadowy
+	const r = buildBuildingTiles([house], () => 250);
+	assert.equal(r.count, 1);
+	assert.equal(r.tiles.length, 1);
+	const t = r.tiles[0];
+	assert.ok(t.pos.length > 0 && t.idx.length % 3 === 0);
+	let minY = Infinity, maxY = -Infinity;
+	for (let i = 1; i < t.pos.length; i += 3) { minY = Math.min(minY, t.pos[i]); maxY = Math.max(maxY, t.pos[i]); }
+	assert.ok(minY < 250 && maxY > 253, `ściany od ${minY} do ${maxY}`);
+});
+
+test('Własne kafle: znaczniki OSM → drogi z nawierzchnią i kierunkiem, budynki z rodzajem i dachem, linie, szpalery', () => {
+	const ext = 4096;
+	const L = (features) => ({ extent: ext, features });
+	const tile = { layers: {
+		roads: L([{ type: 2, geom: [[100, 100, 2000, 100]], props: { highway: 'residential', surface: 'sett', oneway: 'yes' } },
+			{ type: 2, geom: [[0, 50, 50, 50]], props: { highway: 'primary', tunnel: 'yes' } }]),
+		buildings: L([{ type: 3, geom: [[500, 500, 600, 500, 600, 600, 500, 600, 500, 500]], props: { building: 'church', 'roof:shape': 'gabled' } }]),
+		power: L([{ type: 2, geom: [[0, 1000, 4096, 1000]], props: { power: 'minor_line' } }]),
+		tree_rows: L([{ type: 2, geom: [[0, 2000, 300, 2000]], props: {} }]),
+		crossings: L([{ type: 1, geom: [[700, 700]], props: { 'crossing:barrier': 'full' } }, { type: 1, geom: [[-5, 700]], props: {} }]),
+		places: L([{ type: 1, geom: [[2000, 2000]], props: { place: 'town', name: 'Gliwice', population: '170000' } }]),
+	} };
+	const o = convertLotTile(tile, CHUNK_Z, TX, TY, { center: ORIGIN });
+	assert.equal(o.roads.length, 1, 'tunel pominięty');
+	const [cls, w10, surface, bridge, , , oneway] = o.roads[0];
+	assert.deepEqual([cls, surface, bridge, oneway], [4, 2, 0, 1]);
+	assert.ok(w10 > 0);
+	assert.equal(o.buildings[0][0], 6, 'kościół');
+	assert.equal(o.buildings[0][2], 1, 'dach dwuspadowy');
+	assert.equal(o.power[0][0], 1);
+	assert.equal(o.treeRows.length, 1);
+	assert.equal(o.crossings.length, 1, 'punkt spoza kafla pominięty');
+	assert.equal(o.crossings[0][0], 1);
+	assert.equal(o.places[0].name, 'Gliwice');
+	assert.ok(o.places[0].rank < 99);
+});
+
+test('Obszar własnych kafli: plik .poly i punkt w wielokącie (z otworem)', () => {
+	const rings = readPoly('obszar\n1\n 18 50\n 20 50\n 20 52\n 18 52\nEND\n!2\n 18.9 50.9\n 19.1 50.9\n 19.1 51.1\n 18.9 51.1\nEND\nEND\n');
+	assert.equal(rings.length, 2);
+	assert.ok(rings[1].hole);
+	assert.ok(inPoly(rings, 19.5, 51.5));
+	assert.ok(!inPoly(rings, 19, 51), 'otwór');
+	assert.ok(!inPoly(rings, 21, 51));
+});

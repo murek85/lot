@@ -3,3 +3,4 @@ dist/
 web/
 tools/.cache/
 data/regions/*/preview.png
+data/tiles/

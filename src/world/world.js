@@ -21,6 +21,15 @@ const KEY = 'lot-world';
 export const REBASE_STEP = 14080;
 /** Odległość samolotu od początku układu (m), przy której początek przesuwa się pod samolot. */
 export const REBASE_AT = 20000;
+/** Pamięć kafli w przeglądarce (bajty): najwyżej 1 GB i 30% przydziału; przycinana co 10 minut lotu. */
+export async function trimTileCache() {
+	const { trimTiles, usage } = await import('../gen/store.js');
+	const u = await usage();
+	const max = Math.min(1e9, (u?.quota || 4e9) * 0.3);
+	const r = await trimTiles(max);
+	if (r.removed) console.info(`Lot: pamięć kafli ${(r.before / 1e6).toFixed(0)} → ${(r.after / 1e6).toFixed(0)} MB (usunięto ${r.removed})`);
+	return r;
+}
 export const WORLD_ID = 'world';
 /** Bok obszaru lotu (m) – bez przesuwania początku układu (etap 2b) dokładność i odwzorowanie wystarczają na ±150 km. */
 export const WORLD_SIZE = 300000;
@@ -61,7 +70,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 	const farView = new FarView(scene, view.U, atmo, clouds, plane, mask);
 	const farStreamer = new WorldStreamer(region.meta.center, {
 		z: FAR_Z, radius: 50000, objectRadius: 0, workers: 2,
-		onLoad: (ch) => { farView.add(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
+		onLoad: (ch) => { farView.add(ch); map.add(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
 		onUnload: (ch) => farView.remove(ch),
 	});
 	const map = new WorldMap();
@@ -71,6 +80,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 		onUnload: (ch) => { view.remove(ch); mask.set(ch, false); lights?.chunkUnloaded(ch); },
 		onObjects: (ch, on) => view.objects(ch, on),
 	});
+	view.streamer = streamer; // obiekty kafli liczone w wątkach kafli
 	region.heightAt = (x, z) => streamer.heightAt(x, z);
 	const terrain = {
 		object: new Group(),
@@ -84,6 +94,8 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 	const forest = createForest(region, atmo, clouds, terrain, null, worldShadow, plane, { tex: win.tex, size: WINDOW_SIZE, base });
 	view.U.treesFar.value = forest.uniforms.far.value; // teren w zasięgu drzew 3D pokazuje dno lasu
 	// sieć ruchu (drogi, tory, chodniki) z kafli wokół samolotu – przebudowa w osobnym wątku co ~2 km lotu
+	let hold = null; // punkt doczytywania na czas wczytywania nowego miejsca
+	const vel = { vx: 0, vz: 0 }; // prędkość punktu doczytywania (m/s) – kafle wyprzedzająco przed samolotem
 	const net = { x: null, z: null, req: 0, pending: false, ms: 0, applyMs: 0, builds: 0, ready: null };
 	const netWorker = new Worker(new URL('./networker.js', import.meta.url), { type: 'module' });
 	netWorker.onmessage = (e) => {
@@ -138,6 +150,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 		 */
 		rebase(dx, dz, { traffic, trains, people }) {
 			const t0 = performance.now();
+			if (vel.x !== undefined) { vel.x -= dx; vel.z -= dz; }
 			view.shift(streamer.chunks.values(), dx, dz);
 			streamer.rebase(dx, dz);
 			farView.shift(farStreamer.chunks.values(), dx, dz);
@@ -173,8 +186,17 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 		},
 		/** Co klatkę: punkt doczytywania (samolot albo środek widoku) i kamera. */
 		update(camera, focus, time) {
-			streamer.update(focus.x, focus.z);
-			farStreamer.update(focus.x, focus.z);
+			// w trakcie wczytywania nowego miejsca (ready) – doczytywanie wokół niego, nie wokół starego położenia samolotu
+			if (hold) focus = hold;
+			// prędkość punktu doczytywania (wygładzona; skok – przesunięcie początku albo teleport – pomijany)
+			const now = performance.now(), dt = (now - (vel.t ?? now)) / 1000;
+			if (dt > 0 && vel.x !== undefined) {
+				const vx = (focus.x - vel.x) / dt, vz = (focus.z - vel.z) / dt;
+				if (Math.hypot(vx, vz) < 400) { const k = Math.min(1, dt * 2); vel.vx += (vx - vel.vx) * k; vel.vz += (vz - vel.vz) * k; }
+			}
+			vel.x = focus.x; vel.z = focus.z; vel.t = now;
+			streamer.update(focus.x, focus.z, vel.vx, vel.vz);
+			farStreamer.update(focus.x, focus.z, vel.vx, vel.vz);
 			view.update(camera, focus, time);
 			win.update(camera.position.x, camera.position.z);
 			map.update(focus.x, focus.z);
@@ -182,6 +204,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 		},
 		/** Czekanie na kafle wokół punktu (ekran wczytywania): progress(0..1). */
 		async ready(x, z, r, progress, timeout = 30000) {
+			hold = { x, z };
 			streamer.update(x, z);
 			const total = Math.max(1, streamer.missing(x, z, r));
 			const t0 = performance.now();
@@ -192,6 +215,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 				await new Promise((res) => setTimeout(res, 50));
 				streamer.update(x, z);
 			}
+			hold = null;
 		},
 	};
 }

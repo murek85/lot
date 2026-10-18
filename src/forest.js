@@ -111,7 +111,8 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const inside = win ? float(1) : step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
 			const pxz = xz.add(worldOffset);
 			const fw = forestCover(forestTex, uvR, pxz);
-			const st = forestStand(pxz);
+			const gh = heightAt(xz); // wysokość n.p.m. – w górach drzewostany nieregularne (src/gfx/stand.js)
+			const st = forestStand(pxz, gh);
 			// z danymi OSM drzewa omijają prawdziwe drogi (maska), bez nich – wymyślone dukty na granicach oddziałów
 			const notLane = win ? step(forestTex.sample(uvR).level(0).b, 0.4) : maskTex ? step(maskTex.sample(uvR).level(0).r, 0.4) : step(4, st.toEdge);
 			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(notLane).mul(inside);
@@ -129,7 +130,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const ca = cos(a), sa = sin(a);
 			const local = vec3(shape.x.mul(ca).sub(shape.z.mul(sa)), shape.y, shape.x.mul(sa).add(shape.z.mul(ca)))
 				.mul(vec3(mix(float(0.85), float(1.2), r2), 1, mix(float(0.85), float(1.2), r1))).mul(H);
-			const ground = heightAt(xz).sub(H.mul(0.22)); // DSM ma już część koron w rzeźbie – drzewo „siada” niżej
+			const ground = gh.sub(H.mul(0.22)); // DSM ma już część koron w rzeźbie – drzewo „siada” niżej
 			const world = vec3(xz.x, ground, xz.y).add(local);
 			const dc = world.xz.sub(U.cam);
 			const curved = world.sub(vec3(0, dot(dc, dc).div(2 * EARTH_R), 0));

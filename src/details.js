@@ -34,14 +34,23 @@ export function alongLine(pts, step, offset, sides, r) {
 	return out;
 }
 
-export function createDetails(osm, region, terrain, atmo, clouds, plane, worldShadow) {
+/**
+ * opts (kafle otwartego świata): { coverAt(x, z) → klasa COVER albo −1, classes, shared – wspólne materiały
+ * (obiekt wypełniany przy pierwszym użyciu: rows, pylons, pylonShadow, wires), seed }.
+ */
+export function createDetails(osm, region, terrain, atmo, clouds, plane, worldShadow, opts = {}) {
 	const half = region.size / 2 - 40;
-	const r = rng(4242);
-	const cover = region.coverTex.image.data, cn = region.meta.cover.res, cls = region.meta.cover.classes;
-	const coverAt = (x, z) => {
-		const i = Math.floor((x / region.size + 0.5) * cn), j = Math.floor((z / region.size + 0.5) * cn);
-		return i < 0 || j < 0 || i >= cn || j >= cn ? -1 : cover[j * cn + i];
-	};
+	const r = rng(opts.seed ?? 4242);
+	const sh = opts.shared ?? {};
+	let coverAt = opts.coverAt, cls = opts.classes;
+	if (!coverAt) {
+		const cover = region.coverTex.image.data, cn = region.meta.cover.res;
+		cls = region.meta.cover.classes;
+		coverAt = (x, z) => {
+			const i = Math.floor((x / region.size + 0.5) * cn), j = Math.floor((z / region.size + 0.5) * cn);
+			return i < 0 || j < 0 || i >= cn || j >= cn ? -1 : cover[j * cn + i];
+		};
+	}
 	const inside = (pts) => pts.every((v) => Math.abs(v) < half);
 	const toPts = (c) => { const p = []; for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10); return p; };
 
@@ -54,7 +63,7 @@ export function createDetails(osm, region, terrain, atmo, clouds, plane, worldSh
 			trees.push([x, z]);
 		}
 	};
-	for (const [c] of osm.treeRows) { const p = toPts(c); if (inside(p)) addRow(densify(p, 50), 8, 0, [1]); }
+	for (const [c] of osm.treeRows ?? []) { const p = toPts(c); if (inside(p)) addRow(densify(p, 50), 8, 0, [1]); }
 	for (const [cl, w10, surface, bridge, , c] of osm.roads) {
 		if (cl < 2 || cl > 4 || bridge || surface > 2) continue;
 		const p = toPts(c);
@@ -77,9 +86,9 @@ export function createDetails(osm, region, terrain, atmo, clouds, plane, worldSh
 			nrm.set([v.x, v.y, v.z], i * 3);
 		}
 		geo.setAttribute('normal', new Float32BufferAttribute(nrm, 3));
-		const mat = makeRowMaterial(atmo, clouds, plane, worldShadow);
+		const mat = (sh.rows ??= makeRowMaterial(atmo, clouds, plane, worldShadow));
 		const mesh = new InstancedMesh(geo, mat, trees.length);
-		const smesh = new InstancedMesh(geo, new MeshBasicNodeMaterial({ color: 0 }), trees.length);
+		const smesh = new InstancedMesh(geo, (sh.rowShadow ??= new MeshBasicNodeMaterial({ color: 0 })), trees.length);
 		const m4 = new Matrix4(), q = new Quaternion(), e = new Euler();
 		trees.forEach(([x, z], i) => {
 			const H = 13 + r() * 9;
@@ -99,7 +108,7 @@ export function createDetails(osm, region, terrain, atmo, clouds, plane, worldSh
 	// --- linie energetyczne: słupy w wierzchołkach linii, przewody ze zwisem ---
 	const pylons = new GeoBuilder();
 	const wires = [];
-	for (const [minor, c] of osm.power) {
+	for (const [minor, c] of osm.power ?? []) {
 		const p = toPts(c);
 		if (!inside(p)) continue;
 		const H = minor ? 10 : 26, arm = minor ? 0.9 : 5.5, W = minor ? 0.35 : 3.2;
@@ -140,13 +149,13 @@ export function createDetails(osm, region, terrain, atmo, clouds, plane, worldSh
 		}
 	}
 	if (pylons.count) {
-		const mat = makeLitMaterial({ atmo, clouds, plane, worldShadow });
+		const mat = (sh.pylons ??= makeLitMaterial({ atmo, clouds, plane, worldShadow }));
 		const geo = pylons.geometry();
 		const m = new Mesh(geo, mat);
 		m.frustumCulled = false;
 		objects.push(m);
 		updatable.push(mat);
-		const smat = makeLitMaterial({ atmo, clouds, plane, worldShadow: null });
+		const smat = (sh.pylonShadow ??= makeLitMaterial({ atmo, clouds, plane, worldShadow: null }));
 		const s = new Mesh(geo, smat);
 		s.layers.set(CASTER_LAYER);
 		s.frustumCulled = false;
@@ -156,12 +165,7 @@ export function createDetails(osm, region, terrain, atmo, clouds, plane, worldSh
 	if (wires.length) {
 		const g = new BufferGeometry();
 		g.setAttribute('position', new Float32BufferAttribute(wires, 3));
-		const mat = new LineBasicNodeMaterial({ transparent: true, opacity: 0.8 });
-		// przewody oświetlone jak otoczenie (słońce/księżyc + niebo) – nocą nie świecą
-		mat.colorNode = vec3(0.1, 0.105, 0.11).mul(atmo.sunLight(float(150)).mul(max(0, atmo.u.lightDir.y)).add(atmo.skyIrradiance())).div(Math.PI);
-		const camXZ = uniform(new Vector2());
-		mat.userData.camXZ = camXZ;
-		mat.positionNode = Fn(() => { const p = positionLocal; const d = p.xz.sub(camXZ); return onGround(p, camXZ); })();
+		const mat = (sh.wires ??= wireMaterial(atmo));
 		const lines = new LineSegments(g, mat);
 		lines.frustumCulled = false;
 		objects.push(lines);
@@ -171,6 +175,16 @@ export function createDetails(osm, region, terrain, atmo, clouds, plane, worldSh
 		objects, shadowCasters, treeCount: trees.length,
 		update(camera) { for (const m of updatable) m.userData.camXZ.value.set(camera.position.x, camera.position.z); },
 	};
+}
+
+/** Przewody linii energetycznych: oświetlone jak otoczenie (słońce/księżyc + niebo) – nocą nie świecą. */
+function wireMaterial(atmo) {
+	const mat = new LineBasicNodeMaterial({ transparent: true, opacity: 0.8 });
+	mat.colorNode = vec3(0.1, 0.105, 0.11).mul(atmo.sunLight(float(150)).mul(max(0, atmo.u.lightDir.y)).add(atmo.skyIrradiance())).div(Math.PI);
+	const camXZ = uniform(new Vector2());
+	mat.userData.camXZ = camXZ;
+	mat.positionNode = Fn(() => onGround(positionLocal, camXZ))();
+	return mat;
 }
 
 /** Materiał drzew przydrożnych (instancje z macierzami) – to samo światło co las 3D. */

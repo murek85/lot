@@ -1,0 +1,161 @@
+# Schemat własnych kafli gry (Planetiler, generate-custom): surowe znaczniki OpenStreetMap potrzebne grze –
+# przelicza je src/gen/lottiles.js tą samą logiką co narzędzia regionów (src/gen/osmtags.js). Obiekty tylko na z14
+# (kafle bliskie), miejscowości od z11 (daleki teren). Pokrycie terenu – osobno z ESA WorldCover
+# (tools/bake-tiles.js). Dane © współtwórcy OpenStreetMap, licencja ODbL.
+schema_name: Lot nad Polską
+schema_description: Kafle otwartego świata gry
+attribution: '© współtwórcy OpenStreetMap'
+args:
+  pbf:
+    description: Plik .osm.pbf obszaru
+    default: slaskie-latest.osm.pbf
+sources:
+  osm:
+    type: osm
+    local_path: '${ args.pbf }'
+layers:
+- id: roads
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      highway: [motorway, motorway_link, trunk, trunk_link, primary, primary_link, secondary, secondary_link, tertiary, tertiary_link,
+        unclassified, residential, living_street, service, track, path, footway, cycleway, pedestrian, bridleway, steps]
+    exclude_when:
+      area: 'yes'
+    attributes:
+    - key: highway
+    - key: surface
+    - key: width
+    - key: lanes
+    - key: oneway
+    - key: junction
+    - key: bridge
+    - key: tunnel
+    - key: layer
+- id: rails
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      railway: [rail, light_rail, preserved, narrow_gauge, disused, abandoned]
+    attributes:
+    - key: railway
+    - key: service
+    - key: bridge
+    - key: tunnel
+    - key: layer
+- id: platforms
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      railway: platform
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      railway: platform
+- id: buildings
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      building: __any__
+    exclude_when:
+      building: 'no'
+    attributes:
+    - key: building
+    - key: building:levels
+    - key: height
+    - key: roof:shape
+    - key: roof:levels
+    - key: amenity
+- id: waterways
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      waterway: [river, canal, stream, ditch, drain]
+    attributes:
+    - key: waterway
+    - key: width
+    - key: tunnel
+- id: water
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      natural: water
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      waterway: riverbank
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      landuse: [reservoir, basin]
+- id: power
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      power: [line, minor_line]
+    attributes:
+    - key: power
+- id: tree_rows
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      natural: tree_row
+- id: stations
+  features:
+  - source: osm
+    geometry: point
+    min_zoom: 14
+    include_when:
+      railway: [station, halt]
+    attributes:
+    - key: railway
+    - key: name
+- id: crossings
+  features:
+  - source: osm
+    geometry: point
+    min_zoom: 14
+    include_when:
+      railway: [level_crossing, crossing]
+    attributes:
+    - key: crossing:barrier
+- id: places
+  features:
+  - source: osm
+    geometry: point
+    min_zoom: 11
+    include_when:
+      place: [city, town, village]
+    attributes:
+    - key: place
+    - key: name
+    - key: name:pl
+    - key: population
+  - source: osm
+    geometry: point
+    min_zoom: 14
+    include_when:
+      place: [suburb, quarter, hamlet, neighbourhood, isolated_dwelling]
+    attributes:
+    - key: place
+    - key: name
+    - key: name:pl

@@ -5,7 +5,7 @@
 import { lonToTileX, latToTileY, localToLonLat, EARTH_RADIUS } from '../geo.js';
 import { GRID, CHUNK_Z, shiftOsm } from './chunkdata.js';
 
-/** Kafle z14 w promieniu r (m) od punktu (x, z) układu origin, od najbliższego; [{ x, y, d }]. */
+/** Kafle z14 w promieniu r (m) od punktu (x, z) układu origin, od najbliższego; [{ x, y, d, dx, dz }] (dx, dz – środek kafla względem punktu). */
 export function tilesAround(x, z, r, origin, Z = 14) {
 	const c = localToLonLat(x, z, origin);
 	const tx = lonToTileX(c.lon, Z), ty = latToTileY(c.lat, Z);
@@ -15,8 +15,8 @@ export function tilesAround(x, z, r, origin, Z = 14) {
 	const out = [];
 	for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
 		const ix = Math.floor(tx) + i, iy = Math.floor(ty) + j;
-		const d = Math.hypot((ix + 0.5 - tx) * tileM, (iy + 0.5 - ty) * tileM);
-		if (d <= r + tileM * 0.71) out.push({ x: ix, y: iy, d });
+		const dx = (ix + 0.5 - tx) * tileM, dz = (iy + 0.5 - ty) * tileM, d = Math.hypot(dx, dz);
+		if (d <= r + tileM * 0.71) out.push({ x: ix, y: iy, d, dx, dz });
 	}
 	return out.sort((a, b) => a.d - b.d);
 }
@@ -51,6 +51,7 @@ export class WorldStreamer {
 		this.pending = new Map(); // "x/y" → numer zlecenia
 		this.queue = [];
 		this.req = 0;
+		this.objReq = new Map(); // zlecenia obiektów kafla (budynki, drogi) → resolve
 		this.stats = { loaded: 0, ms: 0, fromCache: 0, errors: 0 };
 		const n = opts.workers ?? Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 4) - 1));
 		this.workers = Array.from({ length: n }, () => {
@@ -61,15 +62,23 @@ export class WorldStreamer {
 		});
 	}
 
-	/** Wywoływane co klatkę: punkt odniesienia (samolot) – ustala potrzebne kafle, zleca, zwalnia. */
-	update(x, z) {
+	/**
+	 * Wywoływane co klatkę: punkt odniesienia (samolot) i jego prędkość (m/s) – ustala potrzebne kafle, zleca,
+	 * zwalnia. Z prędkością kafle doczytywane są też wokół punktu wyprzedzenia (25 s lotu, do 3 km), a te przed
+	 * samolotem mają pierwszeństwo – szybka maszyna nie wlatuje w niewczytany teren.
+	 */
+	update(x, z, vx = 0, vz = 0) {
 		this.center = { x, z };
-		const want = tilesAround(x, z, this.radius, this.origin, this.Z);
-		const keep = new Set();
+		const sp = Math.hypot(vx, vz), lead = Math.min(3000, sp * 25);
+		const lx = sp > 1 ? (vx / sp) * lead : 0, lz = sp > 1 ? (vz / sp) * lead : 0;
+		const want = tilesAround(x, z, this.radius + lead, this.origin, this.Z)
+			.filter((t) => t.d <= this.radius + 1e-6 || Math.hypot(t.dx - lx, t.dz - lz) <= this.radius)
+			// pierwszeństwo: bliżej samolotu, a z przodu – jakby o 40% bliżej
+			.map((t) => ({ ...t, score: t.d - (lead > 0 ? 0.4 * Math.max(0, (t.dx * lx + t.dz * lz) / lead) : 0) }))
+			.sort((a, b) => a.score - b.score);
 		this.queue = [];
 		for (const t of want) {
 			const k = `${t.x}/${t.y}`;
-			keep.add(k);
 			const ch = this.chunks.get(k);
 			if (ch) {
 				// obiekty tylko w bliższym pierścieniu (z zapasem przy oddalaniu – bez migotania na granicy)
@@ -80,16 +89,17 @@ export class WorldStreamer {
 			}
 			if (!this.pending.has(k)) this.queue.push(t);
 		}
-		// zwalnianie: poza zasięgiem z zapasem 25%
-		const far = new Set(tilesAround(x, z, this.radius * 1.25, this.origin, this.Z).map((t) => `${t.x}/${t.y}`));
+		// zwalnianie: poza zasięgiem z zapasem 25% (od samolotu i od punktu wyprzedzenia)
+		const keep = new Set(tilesAround(x, z, this.radius * 1.25 + lead, this.origin, this.Z)
+			.filter((t) => t.d <= this.radius * 1.25 || Math.hypot(t.dx - lx, t.dz - lz) <= this.radius * 1.25)
+			.map((t) => `${t.x}/${t.y}`));
 		for (const [k, ch] of this.chunks) {
-			if (far.has(k)) continue;
+			if (keep.has(k)) continue;
 			if (ch.objectsOn) this.onObjects(ch, false);
 			this.onUnload(ch);
 			this.chunks.delete(k);
 		}
 		this.dispatch();
-		void keep;
 	}
 
 	dispatch() {
@@ -105,8 +115,29 @@ export class WorldStreamer {
 		}
 	}
 
+	/**
+	 * Obiekty kafla (budynki i drogi w tablicach) z wątku – najmniej zajętego; Promise z odpowiedzią albo null.
+	 */
+	requestObjects(ch) {
+		return new Promise((resolve) => {
+			const w = this.workers.reduce((a, b) => (b.busy < a.busy ? b : a));
+			const req = ++this.req;
+			this.objReq.set(req, resolve);
+			w.busy++;
+			w.postMessage({ type: 'objects', req, key: ch.key, x: ch.x, y: ch.y, origin: this.origin });
+		});
+	}
+
 	received(w, d) {
 		w.busy--;
+		if (this.objReq.has(d.req)) {
+			const done = this.objReq.get(d.req);
+			this.objReq.delete(d.req);
+			if (d.type === 'error') console.warn('Obiekty kafla', d.key, d.message);
+			done(d.type === 'objects' ? d : null);
+			this.dispatch();
+			return;
+		}
 		const k = d.key;
 		if (this.pending.get(k) !== d.req) { this.dispatch(); return; } // nieaktualne (np. po zmianie początku)
 		this.pending.delete(k);

@@ -1,6 +1,6 @@
 {
 	"name": "lot",
-	"version": "0.25",
+	"version": "0.27",
 	"private": true,
 	"description": "Arcade'owy lot nad prawdziwą mapą Polski – WebGPU (Three.js)",
 	"author": "Marcin Murawski",
@@ -14,6 +14,7 @@
 		"bake:osm": "node tools/bake-osm.js",
 		"bake:gen": "node tools/bake-gen.js",
 		"bake:labels": "node tools/bake-labels.js",
+		"bake:tiles": "node tools/bake-tiles.js",
 		"icon": "node tools/make-icon.js",
 		"web": "node tools/web.js",
 		"app": "electron .",

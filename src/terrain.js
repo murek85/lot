@@ -55,6 +55,9 @@ export function ringGeometry(inner, outer) {
 	return g;
 }
 
+/** Jasność lasu z tekstury koron względem lasu z drzew 3D (pomiar: średnia jasność obrazu w obu strefach). */
+export const farForest = uniform(0.45);
+
 let WAVES = null;
 const wavesTex = () => (WAVES ??= texture(createWaveTexture()));
 
@@ -208,7 +211,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 		if (!src.isRing) {
 		// bory: siatka oddziałów z duktami, prostokątne wydzielenia w różnym wieku, korony sosen
 		If(wForest.greaterThan(0.002), () => {
-			const { local, toEdge, sid, age, clear, young, leafy } = forestStand(xz);
+			const { local, toEdge, sid, age, clear, young, leafy } = forestStand(xz, h);
 			// dukt: pas ~4 m na granicy oddziału, z pokryciem zależnym od wielkości piksela (bez migotania z daleka)
 			const laneW = float(2.0);
 			const lane = src.hasOsm ? float(0) : smoothstep(laneW.sub(footprint.mul(0.5)), laneW.add(footprint.mul(0.5)), toEdge).oneMinus().mul(min(1, laneW.mul(2).div(footprint)));
@@ -232,6 +235,8 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const dCam = length(p.xz.sub(src.U.cam));
 			const trees3d = float(1).sub(smoothstep(src.U.treesFar.mul(0.8), src.U.treesFar, dCam)).mul(step(1, src.U.treesFar));
 			const floorCol = mix(COL.gap.mul(1.5), COL.pineYoung.mul(0.7), valueNoise(xz.div(3.5)).mul(0.6));
+			// poza zasięgiem drzew 3D korony z tekstury – przyciemnione do jasności lasu z drzew (bez jasnego pierścienia)
+			forest.mulAssign(mix(float(1), farForest, step(1, src.U.treesFar).mul(trees3d.oneMinus())));
 			forest.assign(mix(forest, floorCol, trees3d.mul(mix(float(0.85), float(0.3), young))));
 			const cutting = mix(mix(COL.sand.mul(0.55), COL.meadowB, valueNoise(xz.div(12))), COL.pineYoung, valueNoise(xz.div(5)).mul(0.5));
 			forest.assign(mix(forest, cutting, clear));
