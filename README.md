@@ -466,13 +466,24 @@ dochodzą (brak sieci). Regiony działają jak dotąd i zostają trybem główny
   najwyżej co 6 h na kafel), `trimTiles(max)` usuwa najdawniej używane do 90% limitu; otwarty świat przycina co
   10 minut do 1 GB (najwyżej 30% przydziału przeglądarki).
 
-- **Własne kafle** (`npm run bake:tiles -- <obszar>`, `tools/bake-tiles.js`): w `tools/.cache/tiles-src/` muszą
-  być `planetiler.jar` (github.com/onthegomap/planetiler), `<obszar>-latest.osm.pbf` i `<obszar>.poly` (Geofabrik,
-  np. download.geofabrik.de/europe/poland/slaskie-latest.osm.pbf). Planetiler ze schematem `tools/tiles/lot-schema.yml`
-  zapisuje kafle `data/tiles/lot/{z}/{x}/{y}.pbf` (warstwy: roads, rails, platforms, buildings, waterways, water,
-  power, tree_rows, stations, crossings – z14; places – od z11) z surowymi znacznikami OSM; narzędzie dokłada
-  rastry pokrycia 128² z ESA WorldCover (zapytania Range do COG, `tools/lib/cog.js`) dla z14 i z11
-  (`cover/{z}/{x}/{y}.bin.gz`) i opis `tiles.json` z listą kafli z14 w całości wewnątrz wielokąta obszaru.
+- **Własne kafle** (`npm run bake:tiles -- <obszar…|polska>`, `tools/bake-tiles.js`), np.
+  `npm run bake:tiles -- malopolskie opolskie`: obszary to województwa Geofabrik (`polska` – wszystkie 16). W
+  `tools/.cache/tiles-src/` musi być `planetiler.jar` (github.com/onthegomap/planetiler); wyciąg OSM
+  `<wyciąg>-latest.osm.pbf` (domyślnie `--osm=poland` – cała Polska, ok. 2 GB) i pliki `.poly` wyciągu i obszarów
+  narzędzie pobiera z Geofabrik samo, jeśli ich nie ma (`--no-download` – bez pobierania). Planetiler ze schematem
+  `tools/tiles/lot-schema.yml` zapisuje kafle wyciągu raz do `tools/.cache/tiles-src/vector-<wyciąg>/` (ponownie
+  dopiero po nowszym wyciągu albo z `--rebuild-vector`; pamięć Javy – `PLANETILER_XMX`, domyślnie 6g), a do
+  `data/tiles/lot/{z}/{x}/{y}.pbf` trafiają tylko kafle obszarów (warstwy: roads, rails, platforms, buildings,
+  waterways, water, power, tree_rows, stations, crossings – z14; places – od z11) z surowymi znacznikami OSM; inne
+  obszary zostają nietknięte. Narzędzie dokłada rastry pokrycia z ESA WorldCover (zapytania Range do COG,
+  `tools/lib/cog.js`) dla z14 i z11 (`cover/{z}/{x}/{y}.bin.gz`) i opis `tiles.json` (`src/gen/lotmanifest.js`,
+  wersja 4): obszary z czasem wypieczenia i kaflami z14 zapisanymi maskami 64-bitowymi po kaflach z11 (Śląskie – 5 kB
+  zamiast 64 kB listy). Obszar bierze kafle z14, które go dotykają (`tilesInPoly` w `tools/lib/poly.js`) i leżą
+  w całości wewnątrz wyciągu – kafle przecięte granicą województw mają pełne dane z obu stron, więc między
+  województwami nie ma pasa OpenFreeMap; kafel należy do obszaru wypieczonego ostatnio. Przy granicy Polski (poza
+  wyciągiem) zostaje OpenFreeMap. `--osm=<obszar>` – jak wcześniej: wyciąg samego województwa, tylko kafle w całości
+  wewnątrz niego. Znacznik wypieczenia obszaru trafia do kluczy pamięci kafli – po ponownym wypieczeniu jednego
+  województwa gra pobiera na nowo tylko jego kafle.
   W grze (`src/world/chunkworker.js`): kafel z listy – własne dane (`convertLotTile` w `src/gen/lottiles.js`,
   znaczniki → klasy tą samą logiką co narzędzia regionów: `src/gen/osmtags.js`), poza listą – OpenFreeMap.
   Do tego rastry wysokości `height/14/{x}/{y}.bin.gz` (131², Int16 w decymetrach – wierzchołki siatki 129² i

@@ -233,6 +233,51 @@ test('Obszar własnych kafli: plik .poly i punkt w wielokącie (z otworem)', () 
 	assert.ok(!inPoly(rings, 21, 51));
 });
 
+import { tilesInPoly, tileInPoly } from '../tools/lib/poly.js';
+import { encodeTiles, decodeTiles, readManifest, mergeArea, tilesBounds } from '../src/gen/lotmanifest.js';
+
+test('Własne kafle: sąsiednie województwa bez pasa kafli na granicy', () => {
+	const box = (w, e) => readPoly(`p\n1\n ${w} 50\n ${e} 50\n ${e} 50.2\n ${w} 50.2\nEND\nEND\n`);
+	const a = box(19, 19.137), b = box(19.137, 19.3), kraj = box(18.5, 19.8);
+	// dawniej: tylko kafle w całości wewnątrz województwa – kafle przecięte granicą nie należały do żadnego
+	const inA = new Set(tilesInPoly(a, 14, 'inside')), inB = new Set(tilesInPoly(b, 14, 'inside'));
+	const both = tilesInPoly(box(19, 19.3), 14, 'inside');
+	assert.ok(both.some((k) => !inA.has(k) && !inB.has(k)), 'pas na granicy');
+	// teraz: kafle dotykające województwa i w całości wewnątrz wyciągu (kraju)
+	const pick = (r) => tilesInPoly(r, 14, 'touch').filter((k) => tileInPoly(kraj, 14, k, 'inside'));
+	const union = new Set([...pick(a), ...pick(b)]);
+	assert.ok(both.every((k) => union.has(k)), 'bez pasa');
+	// wierzchołek wąskiego cypla w kaflu – kafel dotyka obszaru, choć żaden z 9 punktów nie leży w wielokącie
+	const spike = readPoly('p\n1\n 19.0001 50.0\n 19.0002 50.0\n 19.00015 50.0003\nEND\nEND\n');
+	assert.equal(tilesInPoly(spike, 14, 'touch').length, 1);
+});
+
+test('Własne kafle: opis v4 – maski kafli, obszar wypieczony później przejmuje kafle na granicy', () => {
+	const keys = ['9057/5537', '9056/5536', '9063/5543', '9064/5544'];
+	const enc = encodeTiles(keys);
+	assert.equal(Object.keys(enc).length, 2);
+	assert.ok(Object.values(enc).every((h) => /^[0-9a-f]{16}$/.test(h)));
+	assert.deepEqual(decodeTiles(enc).sort(), [...keys].sort());
+	// stary opis v3 (listy) – czytany, znacznik z nazwą obszaru
+	const v3 = { version: 3, heightRes: 131, areas: { slaskie: { bounds: [18, 49.4, 20, 51.1], built: '2026-10-18', z14: ['9057/5537', '9058/5537'], z11: ['1132/692'] } } };
+	const r3 = readManifest(v3);
+	assert.equal(r3.z14.get('9057/5537'), 'v3-slaskie-2026-10-18');
+	assert.ok(r3.heights && r3.areas[0].z14.has('9058/5537'));
+	// małopolskie przejmuje wspólny kafel; śląskie zachowuje resztę i swój znacznik
+	const m = mergeArea(v3, 'malopolskie', { bounds: tilesBounds(['9058/5537', '9059/5537']), built: '2026-10-19T10:00', z14: ['9058/5537', '9059/5537'], z11: ['1132/692'] }, { heightRes: 131 });
+	assert.equal(m.version, 4);
+	const r4 = readManifest(m);
+	assert.equal(r4.z14.get('9057/5537'), 'v4-slaskie-2026-10-18');
+	assert.equal(r4.z14.get('9058/5537'), 'v4-malopolskie-2026-10-19T10:00');
+	assert.equal(r4.z11.get('1132/692'), 'v4-malopolskie-2026-10-19T10:00');
+	assert.deepEqual([...r4.areas.find((a) => a.id === 'slaskie').z14], ['9057/5537']);
+	// prostokąt śląskiego zawężony do jego kafli
+	const [w, s, e, n] = r4.areas.find((a) => a.id === 'slaskie').bounds;
+	assert.ok(w < 19.0238 && e > 19.0238 && e - w < 0.03 && s < 50.2649 && n > 50.2649);
+	// obszar, któremu nie zostały kafle – wypada
+	assert.deepEqual(Object.keys(mergeArea(m, 'x', { bounds: [0, 0, 0, 0], built: 'b', z14: ['9057/5537'], z11: [] }).areas).sort(), ['malopolskie', 'x']);
+});
+
 import { shoreDistance, resampleCover, lotHeights, fillHeights } from '../src/world/chunkdata.js';
 
 test('Otwarty świat: odległość od brzegu w wodzie (głębia, piana), woda przecięta brzegiem kafla bez fałszywego brzegu', () => {

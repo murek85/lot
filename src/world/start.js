@@ -1,5 +1,6 @@
 // Otwarty świat – wybór miejsca startu (ekran „Otwarty świat” w menu): gotowe miejsca i jakość danych w punkcie.
 // Część bez DOM i bez Three.js – testowana w Node.
+import { readManifest } from '../gen/lotmanifest.js';
 
 /** Gotowe miejsca startu – po kilka z różnych stron Polski (Śląsk – pełna jakość własnych kafli). */
 export const WORLD_PRESETS = [
@@ -21,7 +22,7 @@ export const WORLD_PRESETS = [
  * w prostokącie Śląska, ale poza jego kaflami).
  */
 export function ownAreasOf(manifest) {
-	return Object.entries(manifest?.areas ?? {}).filter(([, a]) => Array.isArray(a.bounds)).map(([id, a]) => ({ id, bounds: a.bounds, z14: new Set(a.z14 ?? []) }));
+	return readManifest(manifest).areas;
 }
 
 const tileKey = (p) => {

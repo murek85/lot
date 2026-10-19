@@ -3,6 +3,7 @@
 // { type: 'chunk', req, x, y, origin } → { type: 'chunk', req, key, … } z buforami przekazanymi bez kopiowania.
 import { fetchTile, gunzipBlob } from '../gen/store.js';
 import { tileKey } from '../gen/tiles.js';
+import { readManifest } from '../gen/lotmanifest.js';
 import { buildBuildingTiles } from '../buildgeo.js';
 import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
 import { COVER } from '../gen/terrain.js';
@@ -16,16 +17,13 @@ let tpl = null;
 // własne kafle gry (tools/bake-tiles.js) – opis z listą kafli; bez niego (albo poza obszarami) – OpenFreeMap
 const LOT = new URL('../../data/tiles/lot/', import.meta.url).href;
 let lotp = null;
-const lotTiles = () => (lotp ??= fetch(`${LOT}tiles.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((m) => {
-	const z14 = new Set(), z11 = new Set();
-	for (const a of Object.values(m?.areas ?? {})) { for (const k of a.z14) z14.add(k); for (const k of a.z11 ?? []) z11.add(k); }
-	// znacznik wersji w kluczach pamięci kafli – po ponownym wypieczeniu nie wracają stare kafle z IndexedDB
-	const stamp = `v${m?.version ?? 0}-${Object.values(m?.areas ?? {}).map((a) => a.built).join('.')}`;
-	return { z14, z11, stamp, heights: !!m?.heightRes, farHeights: !!m?.farHeightRes };
-}));
+// opis (src/gen/lotmanifest.js): kafel → znacznik wypieczenia jego obszaru – w kluczach pamięci kafli, więc po ponownym
+// wypieczeniu obszaru nie wracają jego stare kafle z IndexedDB, a kafle pozostałych obszarów zostają
+const lotTiles = () => (lotp ??= fetch(`${LOT}tiles.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null).then(readManifest));
 /** Raster pokrycia własnych kafli (gzip) albo null. */
 async function lotFile(kind, z, x, y) {
-	const { stamp } = await lotTiles();
+	const own = await lotTiles();
+	const stamp = (z === 14 ? own.z14 : own.z11).get(`${x}/${y}`) ?? 'v0';
 	const t = await fetchTile(`lot${kind}/${stamp}/${z}/${x}/${y}`, `${LOT}${kind ? `${kind}/` : ''}${z}/${x}/${y}.${kind ? 'bin.gz' : 'pbf'}`);
 	return t;
 }

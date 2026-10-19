@@ -1,4 +1,4 @@
-// Własne kafle otwartego świata dla obszaru (np. województwa) → data/tiles/lot/:
+// Własne kafle otwartego świata dla obszarów (województw) → data/tiles/lot/:
 //   {z}/{x}/{y}.pbf          – kafle wektorowe ze schematu tools/tiles/lot-schema.yml (Planetiler, z11–z14):
 //                              surowe znaczniki OSM – drogi, tory, budynki z rodzajem i dachem, cieki, woda, linie
 //                              energetyczne, szpalery, stacje, przejazdy, perony, miejscowości;
@@ -6,67 +6,118 @@
 //                              z WorldCover w zabudowie OSM (osiedla, usługi, przemysł – poza lasem OSM) → zabudowa;
 //   height/{z}/{x}/{y}.bin.gz – wysokości z14: 131², z11: 67² (Int16, decymetry; wierzchołki siatki + margines) z numerycznego
 //                              modelu terenu GUGiK (LIDAR, usługa WCS w układzie Web Mercator);
-//   tiles.json               – opis: obszary, granice, lista kafli z14 w całości wewnątrz obszaru (tylko tych gra
-//                              używa – kafle na granicy wyciągu są niepełne, tam zostaje OpenFreeMap).
-// Wejście w tools/.cache/tiles-src/: planetiler.jar, <obszar>-latest.osm.pbf i <obszar>.poly (Geofabrik).
-// Użycie: npm run bake:tiles -- slaskie [--skip-vector] [--skip-cover] [--skip-height]
+//   tiles.json               – opis (src/gen/lotmanifest.js): obszary z czasem wypieczenia i kaflami, których gra używa.
+// Kafle wektorowe powstają z jednego wyciągu OSM (domyślnie cała Polska – --osm=poland) w osobnym katalogu
+// tools/.cache/tiles-src/vector-<wyciąg>/ (Planetiler raz na wyciąg); do data/tiles/lot/ trafiają tylko kafle obszarów.
+// Obszar bierze kafle z14, które go dotykają i leżą w całości wewnątrz wyciągu – kafle na granicy województw są więc
+// pełne z obu stron (bez pasa OpenFreeMap między województwami) i należą do obszaru wypieczonego ostatnio. Poza
+// wyciągiem (granica Polski) zostaje OpenFreeMap. --osm=<obszar> – jak dawniej: wyciąg samego obszaru, tylko kafle
+// w całości wewnątrz niego.
+// Wejście w tools/.cache/tiles-src/: planetiler.jar, <wyciąg>-latest.osm.pbf i pliki .poly wyciągu i obszarów (Geofabrik;
+// brakujące narzędzie pobiera samo, chyba że --no-download).
+// Użycie: npm run bake:tiles -- <obszar…|polska> [--osm=poland] [--rebuild-vector] [--skip-vector] [--skip-cover]
+//         [--skip-height] [--no-download]     np. npm run bake:tiles -- malopolskie opolskie
 // Dane © współtwórcy OpenStreetMap (ODbL), ESA WorldCover 2021 (CC BY 4.0), GUGiK (NMT).
-// Dane © współtwórcy OpenStreetMap (ODbL), ESA WorldCover 2021 (CC BY 4.0).
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { spawnSync } from 'node:child_process';
-import { lonToTileX, latToTileY } from '../src/geo.js';
 import { tilePointLonLat } from '../src/gen/tiles.js';
 import { worldCoverClass, COVER } from '../src/gen/terrain.js';
 import { decodeTile } from '../src/gen/mvt.js';
 import { rasterizePolygon } from '../src/gen/convert.js';
+import { mergeArea, tilesBounds } from '../src/gen/lotmanifest.js';
 import { readFloatTiff } from './lib/tiff.js';
 import { openCog } from './lib/cog.js';
 import { pool } from './lib/net.js';
-import { readPoly, inPoly } from './lib/poly.js';
+import { readPoly, tilesInPoly, tileInPoly } from './lib/poly.js';
 
 const RES = 256; // piksele pokrycia na bok kafla (jak COVER_RES w src/world/chunkdata.js)
 const HN = 131; // siatka wysokości kafla z14: 129 wierzchołków (~12 m) + margines po jednym z każdej strony
 const WCS = 'https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WCS/DigitalTerrainModelFormatTIFF';
 const WC_PX = 12000; // pikseli WorldCover na stopień
 const WORLDCOVER = (lat3, lon3) => `https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N${String(lat3).padStart(2, '0')}E${String(lon3).padStart(3, '0')}_Map.tif`;
+const GEOFABRIK = (name) => `https://download.geofabrik.de/europe/${name.startsWith('poland') ? '' : 'poland/'}${name}`;
+const VOIVODESHIPS = ['dolnoslaskie', 'kujawsko-pomorskie', 'lodzkie', 'lubelskie', 'lubuskie', 'malopolskie', 'mazowieckie', 'opolskie',
+	'podkarpackie', 'podlaskie', 'pomorskie', 'slaskie', 'swietokrzyskie', 'warminsko-mazurskie', 'wielkopolskie', 'zachodniopomorskie'];
 const SRC = path.join(import.meta.dirname, '.cache', 'tiles-src');
 const OUT = path.join(import.meta.dirname, '..', 'data', 'tiles', 'lot');
 const args = process.argv.slice(2);
-const area = args.find((a) => !a.startsWith('--')) || 'slaskie';
+const flag = (f) => args.includes(`--${f}`);
+const opt = (name) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+const areas = [...new Set(args.filter((a) => !a.startsWith('--')).flatMap((a) => (a === 'polska' ? VOIVODESHIPS : [a])))];
+if (!areas.length) areas.push('slaskie');
+for (const a of areas) if (!VOIVODESHIPS.includes(a)) console.warn(`Uwaga: „${a}” to nie województwo z Geofabrik (${VOIVODESHIPS.join(', ')})`);
+const osm = opt('osm') ?? 'poland';
 const t0 = Date.now();
 const log = (s) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0)} s] ${s}`);
 
-// --- 1. kafle wektorowe ---
-if (!args.includes('--skip-vector')) {
-	log(`Planetiler: ${area}-latest.osm.pbf → ${OUT}`);
-	const r = spawnSync('java', ['-Xmx6g', '-jar', path.join(SRC, 'planetiler.jar'), 'generate-custom',
-		`--schema=${path.join(import.meta.dirname, 'tiles', 'lot-schema.yml')}`, `--pbf=${path.join(SRC, `${area}-latest.osm.pbf`)}`,
-		`--output=${OUT}/?format=files`, '--tile_compression=none', '--minzoom=11', '--maxzoom=14', '--force', `--tmpdir=${path.join(SRC, 'tmp')}`],
-	{ stdio: ['ignore', 'ignore', 'inherit'] });
-	if (r.status !== 0) throw new Error(`Planetiler zakończył się kodem ${r.status}`);
+/** Plik z Geofabrik w tools/.cache/tiles-src/ (pobierany, jeśli go nie ma: najpierw .part, potem zmiana nazwy). */
+async function ensureFile(name) {
+	const file = path.join(SRC, name);
+	if (fs.existsSync(file)) return file;
+	if (flag('no-download')) throw new Error(`Brak ${file} (--no-download)`);
+	const res = await fetch(GEOFABRIK(name), { headers: { 'User-Agent': 'lot-prototyp/0.1 (gra; wypiekanie terenu)' } });
+	if (!res.ok) throw new Error(`${res.status} ${GEOFABRIK(name)}`);
+	const size = Number(res.headers.get('content-length'));
+	log(`Pobieranie ${GEOFABRIK(name)}${size ? ` (${(size / 2 ** 20).toFixed(0)} MB)` : ''}`);
+	fs.mkdirSync(SRC, { recursive: true });
+	await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(`${file}.part`));
+	fs.renameSync(`${file}.part`, file);
+	return file;
+}
+const polyOf = async (name) => readPoly(fs.readFileSync(await ensureFile(`${name}.poly`), 'utf8'));
+
+// --- 1. kafle wektorowe wyciągu (Planetiler do osobnego katalogu – nigdy wprost do data/tiles/lot/) ---
+const VEC = path.join(SRC, `vector-${osm}`);
+if (!flag('skip-vector')) {
+	const pbf = await ensureFile(`${osm}-latest.osm.pbf`);
+	const done = path.join(VEC, 'metadata.json');
+	if (flag('rebuild-vector') || !fs.existsSync(done) || fs.statSync(done).mtimeMs < fs.statSync(pbf).mtimeMs) {
+		log(`Planetiler: ${path.basename(pbf)} → ${VEC}`);
+		const r = spawnSync('java', [`-Xmx${process.env.PLANETILER_XMX ?? '6g'}`, '-jar', path.join(SRC, 'planetiler.jar'), 'generate-custom',
+			`--schema=${path.join(import.meta.dirname, 'tiles', 'lot-schema.yml')}`, `--pbf=${pbf}`,
+			`--output=${VEC}/?format=files`, '--tile_compression=none', '--minzoom=11', '--maxzoom=14', '--force', `--tmpdir=${path.join(SRC, 'tmp')}`],
+		{ stdio: ['ignore', 'ignore', 'inherit'] });
+		if (r.status !== 0) throw new Error(`Planetiler zakończył się kodem ${r.status}`);
+	} else log(`Kafle wektorowe ${osm} aktualne (${VEC}) – bez Planetilera (--rebuild-vector wymusza)`);
 }
 
-// --- 2. obszar: wielokąt z pliku .poly, kafle z14 w całości wewnątrz ---
-const rings = readPoly(fs.readFileSync(path.join(SRC, `${area}.poly`), 'utf8'));
-let W = 180, E = -180, S = 90, N = -90;
-for (const { pts } of rings) for (const [lon, lat] of pts) { W = Math.min(W, lon); E = Math.max(E, lon); S = Math.min(S, lat); N = Math.max(N, lat); }
-const tilesIn = (z, test) => {
-	const out = [];
-	for (let y = Math.floor(latToTileY(N, z)); y <= Math.floor(latToTileY(S, z)); y++) {
-		for (let x = Math.floor(lonToTileX(W, z)); x <= Math.floor(lonToTileX(E, z)); x++) if (test(z, x, y)) out.push([x, y]);
+// --- 2. obszary: kafle z14 dotykające obszaru i w całości wewnątrz wyciągu, z11 – dotykające obszaru ---
+const srcRings = await polyOf(osm);
+const plan = [];
+for (const area of areas) {
+	const rings = osm === area ? srcRings : await polyOf(area);
+	const z14 = osm === area ? tilesInPoly(rings, 14, 'inside')
+		: tilesInPoly(rings, 14, 'touch').filter((k) => tileInPoly(srcRings, 14, k, 'inside'));
+	const z11 = tilesInPoly(rings, 11, 'touch');
+	// z12–z13: kafle wektorowe tylko do kompletu (gra bierze z14 i z11)
+	const mid = [12, 13].map((z) => [z, tilesInPoly(rings, z, 'touch')]);
+	plan.push({ area, z14, z11, mid });
+	log(`Obszar ${area}: ${z14.length} kafli z14, ${z11.length} kafli z11`);
+}
+
+// kafle wektorowe obszarów z katalogu wyciągu do data/tiles/lot/
+if (!flag('skip-vector')) {
+	let n = 0, empty = 0;
+	const copy = (z, k) => {
+		const [x, y] = k.split('/'), from = path.join(VEC, String(z), x, `${y}.pbf`), to = path.join(OUT, String(z), x, `${y}.pbf`);
+		if (!fs.existsSync(from)) { if (fs.existsSync(to)) fs.rmSync(to); empty++; return; } // kafel bez obiektów
+		fs.mkdirSync(path.dirname(to), { recursive: true });
+		fs.copyFileSync(from, to);
+		n++;
+	};
+	for (const { z14, z11, mid } of plan) {
+		for (const k of z14) copy(14, k);
+		for (const k of z11) copy(11, k);
+		for (const [z, list] of mid) for (const k of list) copy(z, k);
 	}
-	return out;
-};
-// kafel w całości wewnątrz: rogi, środki boków i środek w wielokącie (granica województwa jest gładka w skali 1,5 km)
-const inside = (z, x, y) => [[0, 0], [0.5, 0], [1, 0], [0, 0.5], [0.5, 0.5], [1, 0.5], [0, 1], [0.5, 1], [1, 1]]
-	.every(([u, v]) => { const p = tilePointLonLat(z, x, y, u * 4096, v * 4096, 4096); return inPoly(rings, p.lon, p.lat); });
-const touches = (z, x, y) => [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]]
-	.some(([u, v]) => { const p = tilePointLonLat(z, x, y, u * 4096, v * 4096, 4096); return inPoly(rings, p.lon, p.lat); });
-const z14 = tilesIn(14, inside);
-const z11 = tilesIn(11, touches);
-log(`Obszar ${area}: ${z14.length} kafli z14 w całości wewnątrz, ${z11.length} kafli z11`);
+	log(`Kafle wektorowe → ${OUT}: ${n} skopiowanych, ${empty} pustych`);
+}
+const all14 = [...new Set(plan.flatMap((p) => p.z14))].map((k) => k.split('/').map(Number));
+const all11 = [...new Set(plan.flatMap((p) => p.z11))].map((k) => k.split('/').map(Number));
 
 // --- 3. pokrycie z WorldCover (zapytania Range do COG, wiersz po wierszu z północy) ---
 const files = new Map();
@@ -179,23 +230,23 @@ async function heightTiles(list, z = 14, HN = 131) {
 	log(`  wysokości: pobrane ${done - failed}, wcześniej ${skipped}, błędy ${failed}`);
 }
 
-if (!args.includes('--skip-cover')) {
-	await coverTiles(11, z11);
-	await coverTiles(14, z14);
+if (!flag('skip-cover')) {
+	await coverTiles(11, all11);
+	await coverTiles(14, all14);
 }
-if (!args.includes('--skip-height')) {
-	await heightTiles(z14, 14, HN);
-	await heightTiles(z11, 11, 67);
+if (!flag('skip-height')) {
+	await heightTiles(all14, 14, HN);
+	await heightTiles(all11, 11, 67);
 }
 
-// --- 4. opis ---
+// --- 4. opis: obszary po kolei – kafle obszaru odchodzą z wcześniej wypieczonych (kafle na granicy – do nowszego) ---
 const manifestFile = path.join(OUT, 'tiles.json');
-const old = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : { areas: {} };
-old.areas[area] = { bounds: [W, S, E, N], built: new Date().toISOString().slice(0, 10), z14: z14.map(([x, y]) => `${x}/${y}`), z11: z11.map(([x, y]) => `${x}/${y}` ) };
-const manifest = {
-	name: 'Lot nad Polską – własne kafle', version: 3, coverRes: RES, heightRes: HN, farHeightRes: 67,
+let manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : { areas: {} };
+const built = new Date().toISOString().slice(0, 16);
+const info = {
+	name: 'Lot nad Polską – własne kafle', coverRes: RES, heightRes: HN, farHeightRes: 67,
 	attribution: 'Dane © współtwórcy OpenStreetMap (ODbL) · ESA WorldCover 2021 (CC BY 4.0) · NMT © GUGiK',
-	areas: old.areas,
 };
+for (const { area, z14, z11 } of plan) manifest = mergeArea(manifest, area, { bounds: tilesBounds(z14) ?? [0, 0, 0, 0], built, source: osm, z14, z11 }, info);
 fs.writeFileSync(manifestFile, JSON.stringify(manifest));
-log(`Gotowe: ${manifestFile}`);
+log(`Gotowe: ${manifestFile} (${Object.keys(manifest.areas).join(', ')}; ${(fs.statSync(manifestFile).size / 1024).toFixed(0)} kB)`);
