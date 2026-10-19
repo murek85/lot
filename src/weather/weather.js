@@ -27,6 +27,19 @@ export const WINDS = [
 ];
 
 export const weatherById = (id) => WEATHER.find((w) => w.id === id) ?? WEATHER[2];
+
+/** Śnieg na ziemi zimą przy każdej pogodzie (0..1) – mniej niż przy opadzie śniegu, w plamach widać ściernisko i łąki. */
+export const WINTER_SNOW = 0.75;
+
+/**
+ * Pogoda w danej porze roku: zimą opad deszczu zamienia się w śnieg (burza – w śnieżycę z grzmotami), na ziemi leży
+ * śnieg. Poza zimą – bez zmian.
+ */
+export function seasonWeather(w, season) {
+	if (season !== 'winter') return w;
+	const precip = w.precip?.type === 'rain' ? { type: 'snow', rate: Math.min(1, w.precip.rate + 0.1) } : w.precip;
+	return { ...w, precip, snow: Math.max(w.snow ?? 0, WINTER_SNOW) };
+}
 export const windById = (id) => WINDS.find((w) => w.id === id) ?? WINDS[1];
 
 /** Wiatr obowiązujący przy danej pogodzie (burza podnosi słabszy wiatr do swojego minimum). */

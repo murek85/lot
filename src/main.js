@@ -13,7 +13,7 @@ import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
 import { WORLD_ID, worldStart, worldRegion, createWorld, trimTileCache, REBASE_AT, REBASE_STEP } from './world/world.js';
 import { WorldLights } from './world/lights.js';
-import { setTerrainUniforms, setCityLights, snowCover } from './gfx/ground.js';
+import { setTerrainUniforms, setCityLights, snowCover, bareTrees } from './gfx/ground.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
 import { Clouds } from './clouds/clouds.js';
@@ -34,7 +34,7 @@ import { createBirdView } from './fauna/birdview.js';
 import { BirdDots } from './fauna/birddots.js';
 import { PeopleSim, peopleByHour } from './fauna/people.js';
 import { createPeopleView } from './fauna/peopleview.js';
-import { weatherById, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt } from './weather/weather.js';
+import { weatherById, seasonWeather, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt } from './weather/weather.js';
 import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
 import { sunPosition, sunDirection, dayOfYear } from './sun.js';
@@ -388,10 +388,13 @@ async function start() {
 	const setEnvironment = (kind, id, instant = false) => {
 		env[kind] = id;
 		if (kind === 'time') state.hour = (TIMES.find((t) => t.id === id) ?? TIMES[1]).hour;
-		if (kind === 'season') state.day = (SEASONS.find((t) => t.id === id) ?? SEASONS[1]).day;
+		if (kind === 'season') {
+			state.day = (SEASONS.find((t) => t.id === id) ?? SEASONS[1]).day;
+			bareTrees.value = id === 'winter' ? 1 : 0;
+		}
 		if (kind === 'timeSpeed' && id !== 'stop') lastRunning = id;
-		if (kind === 'weather') {
-			const w = WEATHER.find((t) => t.id === id) ?? WEATHER[2];
+		if (kind === 'weather' || kind === 'season') {
+			const w = seasonWeather(weatherById(env.weather), env.season);
 			state.cover = w.cover;
 			state.haze = w.haze;
 			const c = w.clouds ?? { base: 1500, thickness: 1600, extinction: 0.12 };
@@ -1018,7 +1021,7 @@ async function start() {
 		controls.pitch += (input.pitch - controls.pitch) * ease;
 		controls.yaw += (input.roll * 0.4 - controls.yaw) * ease;
 		// --- pogoda: wiatr (znoszenie, turbulencja, chmury), śnieg na ziemi, burza ---
-		const W = weatherById(env.weather);
+		const W = seasonWeather(weatherById(env.weather), env.season); // zimą opady śniegu zamiast deszczu
 		const windNow = windVector(effectiveWind(env.weather, env.wind).speed, t);
 		wx.wind = windNow;
 		clouds.windVelocity.set(1 + windNow.x * 1.2, 0.4 + windNow.z * 1.2);

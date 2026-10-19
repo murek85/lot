@@ -309,7 +309,7 @@ klawiszu (ekran startowy), w karcie w tle jest wstrzymany.
   - ekran startowy z logo, paskiem wczytywania i „Kliknij lub naciśnij dowolny klawisz”;
   - menu nad żywą sceną: Dromader krąży na autopilocie, kamera powoli go okrąża, przyciemnienie od lewej; rama z celownikami w rogach i pasem skanu, marka u góry, stopka z wersją;
   - ekran główny: Kontynuuj lot (autozapis), Szybki start, Nowy lot, Wczytaj lot, Ustawienia, Sterowanie; obok karta „Plan lotu”;
-  - plan lotu: miejsce startu (Tuchola, Jezioro Charzykowskie, Chojnice, Rytel, Czersk, Człuchów), pora dnia, pora roku, pogoda i widok – wybór od razu zmienia scenę w tle;
+  - plan lotu: miejsce startu (Tuchola, Jezioro Charzykowskie, Chojnice, Rytel, Czersk, Człuchów), pora dnia, pora roku (wiosna, lato, wczesna jesień, zima – śnieg i drzewa bez liści), pogoda i widok – wybór od razu zmienia scenę w tle;
   - pauza (Esc): Wznów, Pogoda i pora dnia, Zapisz / wczytaj – jeden ekran jak w Maszyniście: przy każdym z 5 slotów i autozapisie przyciski Zapisz (Nadpisz), Wczytaj i ✕ (usuń); nadpisanie, usunięcie i wczytanie w locie wymagają drugiego kliknięcia („NA PEWNO?”); autozapis co 30 s i przy wyjściu do menu; z ekranu głównego i po kraksie ten sam ekran tylko do wczytywania, Ustawienia, Sterowanie, Menu główne, z raportem lotu (położenie „2 km na płd.-wsch. od Tucholi”, prędkość, wysokość, kurs, czas);
   - kraksa jako okno z „Leć ponownie” (Enter), „Wczytaj lot”, „Menu główne”;
   - ustawienia w zakładkach Obraz / Sterowanie / Interfejs (miniatura, ekspozycja, rozdzielczość, przewyższenie, odwrócona oś, czułość myszy, pole widzenia w kabinie, panel lotu, licznik klatek, ograniczenie animacji, panel deweloperski) – zapamiętywane w `localStorage` (klucze `lot-…`);

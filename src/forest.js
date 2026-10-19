@@ -12,7 +12,7 @@ import { hash12, hash22 } from './gfx/noise.js';
 import { forestStand, forestCover } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
 import { CASTER_LAYER } from './shadows.js';
-import { cityLight, snowCover, worldOffset } from './gfx/ground.js';
+import { cityLight, snowCover, bareTrees, BARE, worldOffset } from './gfx/ground.js';
 
 const EARTH_R = 6371000;
 const SPACING = 5;
@@ -159,8 +159,12 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			// rozproszone znikanie na skraju zasięgu
 			If(interleavedGradientNoise(screenCoordinate.xy).greaterThan(vFade), () => { Discard(); });
 			const part = vInfo.x, rel = vInfo.y, type = vInfo.z, tint = vInfo.w;
+			// zima: korona liściastych z prześwitami (gałęzie zamiast liści) – plamki ~0,6 m stałe w świecie, widać przez nie
+			// śnieg na ziemi
+			const twig = hash12(floor(vWorld.xz.add(worldOffset).mul(1.7)).add(floor(vWorld.y.mul(1.7)).mul(17.31)));
+			If(type.greaterThan(1.5).and(part.greaterThan(0.5)).and(twig.lessThan(bareTrees.mul(0.55))), () => { Discard(); });
 			// sosny ciemniejsze i chłodniejsze, liściaste jaśniejsze – ale bez jaskrawości
-			const crown = select(type.greaterThan(1.5), COL.leafy.mul(1.6), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
+			const crown = select(type.greaterThan(1.5), mix(COL.leafy.mul(1.6), vec3(...BARE).mul(1.6), bareTrees), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
 				.mul(mix(float(0.8), float(1.2), tint));
 			const bark = vec3(0.09, 0.055, 0.035);
 			const N = normalize(vNormal);

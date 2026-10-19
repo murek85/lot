@@ -2,7 +2,7 @@
 // (pola w pasach z koleinami, bory z koronami drzew i duktami, zabudowa, woda z odbiciem nieba), oświetlone
 // fizycznie: światło słońca po przejściu przez atmosferę, światło nieba, cienie rzeźby i ścian lasu.
 // Poza regionem ciągnie się płaski „świat zastępczy” z tym samym materiałem – zakrzywiony jak Ziemia aż po horyzont.
-import { cityLight, snowCover, worldOffset } from './gfx/ground.js';
+import { cityLight, snowCover, bareTrees, BARE, worldOffset } from './gfx/ground.js';
 import {
 	Mesh, Group, PlaneGeometry, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DataTexture, RGBAFormat,
 	UnsignedByteType, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter,
@@ -218,7 +218,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			// dukt: pas ~4 m na granicy oddziału, z pokryciem zależnym od wielkości piksela (bez migotania z daleka)
 			const laneW = float(2.0);
 			const lane = src.hasOsm ? float(0) : smoothstep(laneW.sub(footprint.mul(0.5)), laneW.add(footprint.mul(0.5)), toEdge).oneMinus().mul(min(1, laneW.mul(2).div(footprint)));
-			const crown = mix(mix(COL.pineOld, COL.pineYoung, young), COL.leafy, leafy).mul(mix(float(0.85), float(1.15), hash12(sid.add(7.7))));
+			const crown = mix(mix(COL.pineOld, COL.pineYoung, young), mix(COL.leafy, vec3(...BARE), bareTrees), leafy).mul(mix(float(0.85), float(1.15), hash12(sid.add(7.7))));
 			const size = mix(float(4.2), float(7.5), leafy).mul(mix(float(1), float(0.55), young));
 			const detail = float(1).sub(smoothstep(size.mul(0.25), size.mul(0.9), footprint));
 			// z daleka: zwarty łan koron z niejednorodnością (luki, kępy) zamiast płaskiego koloru

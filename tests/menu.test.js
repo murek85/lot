@@ -30,7 +30,7 @@ test('„Co nowego”: wersje od bieżącej do 0.1, bieżąca zgodna z numerem w
 	const { readFileSync } = await import('node:fs');
 	const src = readFileSync(new URL('../src/ui/menu.js', import.meta.url), 'utf8');
 	const versions = [...src.matchAll(/\{ v: '(\d+\.\d+)'/g)].map((m) => m[1]);
-	assert.deepEqual(versions, ['0.34', '0.33', '0.32', '0.31', '0.30', '0.29', '0.28', '0.27', '0.26', '0.25', '0.24', '0.23', '0.22', '0.21', '0.20', '0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
+	assert.deepEqual(versions, ['0.35', '0.34', '0.33', '0.32', '0.31', '0.30', '0.29', '0.28', '0.27', '0.26', '0.25', '0.24', '0.23', '0.22', '0.21', '0.20', '0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
 	assert.ok(src.includes(`'PROTOTYP ${versions[0]}'`));
 	const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 	assert.deepEqual([...log.matchAll(/^## (\d+\.\d+)/gm)].map((m) => m[1]), versions);
@@ -140,4 +140,16 @@ test('otwarty świat: miejsca startu i jakość mapy', async () => {
 	assert.equal(qualityAt(areas, { lon: 19.0238, lat: 50.2649 }).full, true);
 	assert.equal(qualityAt([], { lon: 19.0238, lat: 50.2649 }).name, 'podstawowa jakość');
 	assert.deepEqual(ownAreasOf(null), []);
+});
+
+test('zima: śnieg na ziemi i opady śniegu zamiast deszczu', async () => {
+	const { seasonWeather, weatherById, WINTER_SNOW } = await import('../src/weather/weather.js');
+	assert.ok(SEASONS.some((p) => p.id === 'winter' && p.day < 60));
+	const rain = weatherById('rain');
+	assert.equal(seasonWeather(rain, 'summer'), rain);
+	assert.equal(seasonWeather(rain, 'winter').precip.type, 'snow');
+	assert.equal(seasonWeather(weatherById('clear'), 'winter').snow, WINTER_SNOW);
+	assert.equal(seasonWeather(weatherById('clear'), 'winter').precip, undefined);
+	assert.equal(seasonWeather(weatherById('snow'), 'winter').snow, 1);
+	assert.equal(seasonWeather(weatherById('storm'), 'winter').storm, true);
 });

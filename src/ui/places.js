@@ -25,6 +25,7 @@ export const SEASONS = [
 	{ id: 'spring', name: 'Wiosna', day: 121, note: '1 maja, pełnia' },
 	{ id: 'summer', name: 'Lato', day: 180, note: '29 czerwca, pełnia' },
 	{ id: 'autumn', name: 'Wczesna jesień', day: 269, note: '26 września, pełnia' },
+	{ id: 'winter', name: 'Zima', day: 3, note: '3 stycznia, pełnia – śnieg i nagie drzewa' },
 ];
 
 /** Upływ czasu w locie: mnożnik czasu rzeczywistego (0 – zegar stoi). */

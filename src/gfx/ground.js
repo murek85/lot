@@ -13,6 +13,12 @@ export const worldOffset = uniform(new Vector2());
 /** Śnieg na ziemi 0..1 (pogoda „Śnieg”) – teren i korony drzew bieleją. */
 export const snowCover = uniform(0);
 
+/** Drzewa liściaste bez liści 0..1 (zima) – korony szarobrązowe z gałęzi, sosny bez zmian. */
+export const bareTrees = uniform(0);
+
+/** Kolor bezlistnej korony (gałązki) – zbliżony jasnością do liściastej, żeby las nie robił się czarny. */
+export const BARE = [0.095, 0.082, 0.068];
+
 const EARTH_R = 6371000;
 let T = null;
 

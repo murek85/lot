@@ -3,6 +3,15 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.35 – zima
+
+- **Pora roku „Zima”** (plan lotu i pogoda w locie): 3 stycznia, pełnia – niskie słońce i krótki dzień.
+- **Śnieg na ziemi przy każdej pogodzie** (`WINTER_SNOW` = 0,75 – w plamach widać ściernisko i łąki); przy pogodzie
+  „Śnieg” – pełna pokrywa. Zmiana pory roku w locie – śnieg narasta i topnieje stopniowo.
+- **Opady**: zimą deszcz pada jako śnieg, burza – jako śnieżyca z grzmotami (`seasonWeather` w `src/weather/weather.js`).
+- **Drzewa liściaste bez liści**: brązowoszare korony z prześwitami (widać przez nie śnieg na ziemi), także w alejach
+  i na dalekim terenie; sosny i świerki zielone.
+
 ## 0.34 – otwarty świat dla każdego (beta)
 
 - **Menu główne → „Otwarty świat · cała Polska · beta”**: osobny ekran wyboru miejsca startu – 10 gotowych miejsc

@@ -2,7 +2,7 @@
 // poza zabudową i lasem), linie energetyczne ze słupami i zwisającymi przewodami.
 import { InstancedMesh, Vector3, Mesh, LineSegments, BufferGeometry, BufferAttribute, Float32BufferAttribute, LineBasicNodeMaterial, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
 import { Fn, vec3, float, attribute, varying, positionLocal, positionWorld, normalWorld, uniform, max, dot, normalize, mix, instanceIndex, cameraPosition, pow } from 'three/tsl';
-import { onGround, cityLight } from './gfx/ground.js';
+import { onGround, cityLight, bareTrees, BARE } from './gfx/ground.js';
 import { treeGeometry } from './forest.js';
 import { makeLitMaterial, litGeometry } from './gfx/lit.js';
 import { alongLine, detailArrays } from './objgeo.js';
@@ -113,7 +113,7 @@ function makeRowMaterial(atmo, clouds, plane, worldShadow) {
 	})();
 	m.colorNode = Fn(() => {
 		const part = vInfo.x, rel = vInfo.y, tint = vInfo.z;
-		const albedo = mix(vec3(0.09, 0.06, 0.04), COL.leafy.mul(1.7).mul(mix(float(0.8), float(1.2), tint)), part);
+		const albedo = mix(vec3(0.09, 0.06, 0.04), mix(COL.leafy, vec3(...BARE), bareTrees).mul(1.7).mul(mix(float(0.8), float(1.2), tint)), part);
 		const N = normalize(normalWorld);
 		const sun = atmo.u.lightDir;
 		const sunE = atmo.sunLight(vWorld.y);
