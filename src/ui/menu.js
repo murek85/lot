@@ -1,13 +1,15 @@
 // Menu gry: ekrany składane z szablonów (jak w Pograniczu Galaktyki), nad żywą sceną 3D (jak w Maszyniście).
 // Ekrany: home (dowództwo lotu), newflight (plan lotu: miejsce, pora roku i dnia, pogoda, widok), slots (zapis i
 // odczyt w jednym – jak w Maszyniście; z menu głównego i po kraksie tylko odczyt), settings (zakładki), help, news, pause, pauseEnv (pogoda i pora w trakcie lotu), crash, regions (lista
-// regionów: wbudowany i wygenerowane), generator (nowy region z kafli OpenStreetMap).
+// regionów: wbudowany i wygenerowane), generator (nowy region z kafli OpenStreetMap), world (otwarty świat – wybór
+// miejsca startu).
 // Esc cofa o jeden poziom; w locie otwiera pauzę, na pauzie wznawia. Gra dostarcza obiekt `game` z akcjami.
 import { TIMES, SEASONS, WEATHER, WINDS, TIME_SPEEDS } from './places.js';
 import { listRegions, estimate, geocode, usage, PRESETS } from '../gen/client.js';
 import { AIRCRAFT, aircraftById } from '../plane/aircraft.js';
+import { WORLD_PRESETS, qualityAt } from '../world/start.js';
 
-export const VERSION = 'PROTOTYP 0.33'; // zgodnie z CHANGELOG.md i NEWS
+export const VERSION = 'PROTOTYP 0.34'; // zgodnie z CHANGELOG.md i NEWS
 
 export const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
 <path fill="currentColor" d="M32 5c1.8 0 2.9 2 2.9 5.2V22l24.6 2.6v6.2L34.9 33v13.6l7.6 2.6v4.2L32 52.2l-10.5 1.2v-4.2l7.6-2.6V33L4.5 30.8v-6.2L29.1 22V10.2C29.1 7 30.2 5 32 5z"/>
@@ -27,6 +29,7 @@ const EYEBROWS = {
 	crash: 'ZDARZENIE LOTNICZE',
 	regions: 'MAPY / REGIONY LOTÓW',
 	generator: 'GENERATOR REGIONÓW / OPENSTREETMAP',
+	world: 'OTWARTY ŚWIAT / BETA · CAŁA POLSKA',
 };
 
 const SIZES = [
@@ -49,6 +52,10 @@ const num = (v) => Math.round(v).toLocaleString('pl');
 
 // „Co nowego” – skrót pliku CHANGELOG.md (wersje 0.1–0.6 nadane wstecz kolejnym etapom prac)
 export const NEWS = [
+	{ v: '0.34', title: 'Otwarty świat dla każdego', items: [
+		['Otwarty świat (beta)', 'menu główne – cała Polska bez granic regionu: gotowe miejsca startu albo wyszukiwarka, mapa doczytywana w locie.'],
+		['Jakość mapy', 'przy każdym miejscu startu: pełna na Śląsku (własne kafle gry), podstawowa w pozostałej części Polski; podpowiedź w locie przy granicy.'],
+	] },
 	{ v: '0.33', title: 'Skok w dowolne miejsce', items: [
 		['Tryb deweloperski', 'panel H – „Skok do”: nazwa miejscowości albo współrzędne; duża mapa – Shift+klik przenosi samolot w to miejsce.'],
 	] },
@@ -242,10 +249,18 @@ export class GameMenu {
 			this.hovered = b;
 		});
 		root.addEventListener('input', (e) => this.onInput(e));
-		root.addEventListener('keydown', (e) => { if (e.code === 'Enter' && e.target.dataset?.gen === 'query') { e.preventDefault(); this.search(); } });
+		root.addEventListener('keydown', (e) => {
+			if (e.code !== 'Enter') return;
+			if (e.target.dataset?.gen === 'query') { e.preventDefault(); this.search(); }
+			if (e.target.dataset?.world === 'query') { e.preventDefault(); this.worldSearch(); }
+		});
 		this.gen = { name: PRESETS[0].name, lon: PRESETS[0].lon, lat: PRESETS[0].lat, size: '46000', terrain: 'standard', buildings: 'all', query: '' };
 		this.genResults = null;
 		this.est = null;
+		// otwarty świat: wybrane miejsce startu, wyniki wyszukiwania, obszary własnych kafli (jakość mapy)
+		const ws = game.worldStart;
+		this.world = { sel: ws ? { ...ws } : { ...WORLD_PRESETS[0] }, query: '', results: null, areas: [] };
+		Promise.resolve(game.ownAreas?.()).then((a) => { this.world.areas = a ?? []; if (this.screen === 'world') this.show('world'); }).catch(() => {});
 	}
 
 	get open() { return !this.root.hidden; }
@@ -308,6 +323,7 @@ export class GameMenu {
 				${this.btn('quick', 'Szybki start', { prominent: !cont, hint: '<kbd>ENTER</kbd>' })}
 				${this.btn('new', 'Nowy lot — plan lotu')}
 				${this.btn('load', 'Wczytaj lot — sloty')}
+				${this.btn('world', 'Otwarty świat <small style="opacity:.7;font-weight:400">· cała Polska · beta</small>')}
 				${this.btn('regions', 'Regiony i generator map')}
 				${this.btn('settings', 'Ustawienia')}
 				${this.btn('help', 'Sterowanie i pomoc')}
@@ -422,14 +438,14 @@ export class GameMenu {
 		// otwarty świat (wersja rozwojowa): ostatnie miejsce startu; nowe – w generatorze („Otwarty świat stąd”)
 		const ws = this.game.worldStart;
 		const worldRow = ws ? `<div class="region-row"><button class="menu-action slot${this.game.inWorld ? ' current' : ''}" data-act="world-last"${this.game.inWorld ? ' disabled' : ''}>
-				<span class="slot-no"><small>${this.game.inWorld ? 'TERAZ' : 'DEV'}</small>${this.game.inWorld ? '●' : '◇'}</span><span><b>Otwarty świat · ${esc(ws.name)}</b><span class="meta">kafle doczytywane w locie · OpenFreeMap z14 · start ${ws.lat.toFixed(2)}° N, ${ws.lon.toFixed(2)}° E</span></span>
+				<span class="slot-no"><small>${this.game.inWorld ? 'TERAZ' : 'BETA'}</small>${this.game.inWorld ? '●' : '◇'}</span><span><b>Otwarty świat · ${esc(ws.name)}</b><span class="meta">kafle doczytywane w locie · ${qualityAt(this.world.areas, ws).name} · start ${ws.lat.toFixed(2)}° N, ${ws.lon.toFixed(2)}° E</span></span>
 				<span aria-hidden="true">${this.game.inWorld ? 'WCZYTANY' : 'LEĆ TUTAJ'}</span></button></div>` : '';
 		const date = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`; };
 		const km = (m) => `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km`;
 		el.innerHTML = builtin.map(({ r, m }) => row(r.id, r.name, `${km(r)}${m?.osm ? ` · ${num(m.osm.counts.buildings)} budynków` : ''} · ${r.gen ? 'kafle OpenStreetMap' : 'ESA WorldCover i OpenStreetMap'} · wbudowany`, false)).join('') +
 			list.map((m) => row(m.id, m.name, `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km · ${num(m.osm.counts.buildings)} budynków · ${(m.bytes / 1e6).toFixed(0)} MB · ${date(m.baked)}`, true)).join('') +
 			(list.length ? '' : '<p class="lead" style="margin-top:14px">Nie ma jeszcze wygenerowanych regionów – zacznij od generatora, np. Katowice albo Beskid Śląski.</p>') +
-			(ws ? `<h2>Otwarty świat · wersja rozwojowa</h2>${worldRow}` : '');
+			(ws ? `<h2>Otwarty świat · beta</h2>${worldRow}` : '');
 		const u = await usage();
 		const ue = this.root.querySelector('#region-usage');
 		if (u && ue) ue.textContent = `Pamięć przeglądarki: ${(u.used / 1e6).toFixed(0)} MB${u.quota ? ` z ${(u.quota / 1e9).toFixed(0)} GB` : ''}`;
@@ -451,7 +467,7 @@ export class GameMenu {
 				<h2>Budynki</h2>${tiles(BUILDINGS, 'buildings')}
 				<p class="gen-note">Dane: kafle wektorowe OpenFreeMap (© OpenMapTiles, © współtwórcy OpenStreetMap) i rzeźba AWS Terrain Tiles. Pobrane kafle zostają w pamięci przeglądarki – drugi region w tej samej okolicy powstaje szybciej.</p>
 			</div>
-			<div class="menu-window-actions">${this.btn('generate', 'Generuj region', { prominent: true })}${this.btn('world', 'Otwarty świat stąd', { hint: 'DEV' })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
+			<div class="menu-window-actions">${this.btn('generate', 'Generuj region', { prominent: true })}${this.btn('world-gen', 'Otwarty świat stąd')}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
 	}
 
 	resultTiles() {
@@ -459,6 +475,59 @@ export class GameMenu {
 		const list = this.genResults ?? PRESETS.map((p) => ({ ...p, label: `${p.lat.toFixed(2)}° N, ${p.lon.toFixed(2)}° E` }));
 		if (!list.length) return '<p class="gen-note">Nic nie znaleziono – spróbuj innej nazwy.</p>';
 		return list.map((p, i) => `<button class="tile${Math.abs(p.lon - g.lon) < 1e-6 && Math.abs(p.lat - g.lat) < 1e-6 ? ' sel' : ''}" data-genplace="${i}"><span class="num">${String(i + 1).padStart(2, '0')}</span><b>${esc(p.name)}</b><small>${esc(p.label)}</small></button>`).join('');
+	}
+
+	render_world() {
+		const w = this.world, ws = this.game.worldStart;
+		const last = ws && !this.game.inWorld ? `<h2>Ostatni start</h2><div class="tiles wide">${this.worldTile(ws, -1, '↺')}</div>` : '';
+		return `<section class="menu-content menu-window">${this.head('Otwarty świat.', 'Cała Polska bez granic regionu: mapa doczytuje się w locie z internetu, kafel po kaflu wokół samolotu. Wersja beta – pierwsze wczytanie okolicy trwa dłużej, potem kafle zostają w pamięci przeglądarki.')}
+			<div class="menu-scroll">
+				${last}
+				<h2>Miejsce startu</h2>
+				<div class="gen-search"><input type="search" class="menu-input" data-world="query" value="${esc(w.query)}" placeholder="Szukaj miejscowości, np. Wisła, Toruń, Ustka…" autocomplete="off" spellcheck="false">
+				${this.btn('world-search', 'Szukaj', { hint: '⌕' })}</div>
+				<div class="tiles wide" id="world-results">${this.worldTiles()}</div>
+				<p class="gen-note">Dane: © współtwórcy OpenStreetMap, OpenFreeMap (© OpenMapTiles), AWS Terrain Tiles; na Śląsku – własne kafle gry (ESA WorldCover, NMT © GUGiK). Potrzebne połączenie z internetem.</p>
+			</div>
+			<div class="menu-window-actions">${this.btn('world-go', 'Leć tutaj', { prominent: true })}${this.btn('back', 'Wróć', { hint: '<kbd>ESC</kbd>' })}</div></section>`;
+	}
+
+	/** Kafelek miejsca startu: nazwa, opis (albo rodzaj i położenie z wyszukiwarki) i jakość mapy. */
+	worldTile(p, i, mark) {
+		const w = this.world, q = qualityAt(w.areas, p);
+		const sel = Math.abs(p.lon - w.sel.lon) < 1e-6 && Math.abs(p.lat - w.sel.lat) < 1e-6;
+		const sub = p.note ?? ([p.kind, p.area].filter(Boolean).join(' · ') || `${p.lat.toFixed(2)}° N, ${p.lon.toFixed(2)}° E`);
+		const attr = i < 0 ? 'data-worldlast="1"' : `data-worldplace="${i}"`;
+		return `<button class="tile${sel ? ' sel' : ''}" ${attr}${p.label ? ` title="${esc(p.label)}"` : ''}><span class="num">${mark ?? String(i + 1).padStart(2, '0')}</span><b>${esc(p.name)}</b><small>${esc(sub)}</small><small class="q${q.full ? ' full' : ''}">${q.full ? '◆' : '◇'} ${q.name}</small></button>`;
+	}
+
+	worldTiles() {
+		const list = this.world.results ?? WORLD_PRESETS;
+		if (!list.length) return '<p class="gen-note">Nic nie znaleziono – spróbuj innej nazwy.</p>';
+		return list.map((p, i) => this.worldTile(p, i)).join('');
+	}
+
+	card_world() {
+		return `<aside class="menu-card" id="world-card">${this.worldCard()}</aside>`;
+	}
+
+	worldCard() {
+		const p = this.world.sel, q = qualityAt(this.world.areas, p);
+		return `<div class="eyebrow">MIEJSCE STARTU</div><h2>${esc(p.name)}</h2>
+			<dl><dt>Położenie</dt><dd>${p.lat.toFixed(3)}° N · ${p.lon.toFixed(3)}° E</dd>${p.area ? `<dt>Okolica</dt><dd>${esc(p.area)}</dd>` : ''}
+			<dt>Mapa</dt><dd title="${esc(q.note)}">${q.full ? 'pełna jakość – własne kafle gry' : 'podstawowa – OpenFreeMap'}</dd><dt>Obszar</dt><dd>bez granic</dd></dl>
+			<span class="tag ${q.full ? 'ok' : 'mid'}">${q.full ? 'PEŁNA JAKOŚĆ · WŁASNE KAFLE' : 'PODSTAWOWA JAKOŚĆ · OPENFREEMAP'}</span>`;
+	}
+
+	async worldSearch() {
+		const w = this.world, q = w.query.trim();
+		const box = () => this.root.querySelector('#world-results');
+		if (!q) { w.results = null; if (box()) box().innerHTML = this.worldTiles(); return; }
+		if (box()) box().innerHTML = '<p class="gen-note">Szukanie…</p>';
+		try { w.results = await geocode(q); } catch (e) { w.results = []; console.warn(e); }
+		// jeden wynik – od razu wybrany
+		if (w.results.length === 1) { w.sel = { ...w.results[0] }; const c = this.root.querySelector('#world-card'); if (c) c.innerHTML = this.worldCard(); }
+		if (this.screen === 'world' && box()) box().innerHTML = this.worldTiles();
 	}
 
 	card_generator() {
@@ -611,6 +680,13 @@ export class GameMenu {
 			this.root.querySelectorAll('[data-genplace]').forEach((b) => b.classList.toggle('sel', b === t));
 			return this.requestEstimate();
 		}
+		if (t.dataset.worldplace || t.dataset.worldlast) {
+			this.world.sel = { ...(t.dataset.worldlast ? g.worldStart : (this.world.results ?? WORLD_PRESETS)[+t.dataset.worldplace]) };
+			this.root.querySelectorAll('[data-worldplace], [data-worldlast]').forEach((b) => b.classList.toggle('sel', b === t));
+			const card = this.root.querySelector('#world-card');
+			if (card) card.innerHTML = this.worldCard();
+			return;
+		}
 		if (t.dataset.region) return g.switchRegion(t.dataset.region);
 		if (t.dataset.del) {
 			const row = t.closest('.region-row');
@@ -639,7 +715,10 @@ export class GameMenu {
 			case 'generator': return this.show('generator', 'regions');
 			case 'geo': return this.search();
 			case 'generate': return this.startGenerate();
-			case 'world': return g.openWorld?.({ name: (this.gen.name || '').trim() || 'Start', lon: this.gen.lon, lat: this.gen.lat });
+			case 'world': return this.show('world', this.screen);
+			case 'world-gen': return g.openWorld?.({ name: (this.gen.name || '').trim() || 'Start', lon: this.gen.lon, lat: this.gen.lat });
+			case 'world-go': return g.openWorld?.(this.world.sel);
+			case 'world-search': return this.worldSearch();
 			case 'world-last': return g.openWorld?.(g.worldStart);
 			case 'env': return this.show('pauseEnv', 'pause');
 			case 'map': return g.openMap?.();
@@ -663,6 +742,7 @@ export class GameMenu {
 
 	onInput(e) {
 		const el = e.target;
+		if (el.dataset.world) { this.world[el.dataset.world] = el.value; return; }
 		if (el.dataset.gen) {
 			this.gen[el.dataset.gen] = el.value;
 			if (el.dataset.gen === 'name') { const h = this.root.querySelector('#gen-card h2'); if (h) h.textContent = el.value || 'Region'; }

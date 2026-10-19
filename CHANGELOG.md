@@ -3,6 +3,20 @@
 Historia do 0.7 odtworzona z przebiegu prac nad prototypem (sprzed pierwszego commitu). Numery 0.1–0.6 nadane
 wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnątrz wersji – od najważniejszych zmian.
 
+## 0.34 – otwarty świat dla każdego (beta)
+
+- **Menu główne → „Otwarty świat · cała Polska · beta”**: osobny ekran wyboru miejsca startu – 10 gotowych miejsc
+  (Śląsk, Kraków, Zakopane, Wrocław, Warszawa, Gdańsk, Mazury), wyszukiwarka miejscowości (rodzaj i położenie jak
+  w „Skok do”), ostatni start; karta z położeniem i jakością mapy, przycisk „Leć tutaj”. Regiony zostają trybem
+  głównym.
+- **Jakość mapy przy każdym miejscu**: „pełna jakość” na wypieczonych kaflach własnych (Śląsk – rodzaje i dachy
+  budynków, linie energetyczne, rzeźba GUGiK), „podstawowa” poza nimi (OpenFreeMap i AWS Terrain Tiles). Liczona
+  z listy kafli z14 w `data/tiles/lot/tiles.json` (bez niego – wszędzie podstawowa).
+- **W locie**: podpowiedź przy wejściu do otwartego świata; komunikat przy wlocie i wylocie z obszaru pełnej jakości;
+  komunikat, gdy kafle nie dochodzą (brak internetu albo serwer kafli nie odpowiada).
+- Bez etykiet „DEV”: przycisk „Otwarty świat stąd” w generatorze i wpis na liście regionów („BETA”). Skok w dowolne
+  miejsce zostaje w trybie deweloperskim.
+
 ## 0.33 – skok w dowolne miejsce (tryb deweloperski)
 
 - **Panel H – pole „Skok do”**: nazwa miejscowości (wyszukiwarka jak w generatorze; kilka wyników – lista z rodzajem

@@ -395,12 +395,15 @@ większych obszarów (np. całe województwo) kafel po kaflu.
 Czego kafle OpenMapTiles nie mają: linii energetycznych, szpalerów drzew, przejazdów kolejowych, kształtów dachów
 i rodzajów budynków – w regionach generowanych ich nie ma albo są wyprowadzane z wysokości i pola.
 
-## Otwarty świat (wersja rozwojowa)
+## Otwarty świat (beta)
 
 Osobny tryb obok regionów: zamiast wycinka wczytanego w całości – kafle doczytywane w locie wokół samolotu, z tych
-samych źródeł co generator (OpenFreeMap z14, Terrarium z12) i z tą samą pamięcią kafli w IndexedDB. Wejście: generator
-→ **Otwarty świat stąd** (środek z wyszukiwarki albo propozycji), potem z listy regionów („Otwarty świat · …”).
-Regiony działają jak dotąd.
+samych źródeł co generator (OpenFreeMap z14, Terrarium z12) i z tą samą pamięcią kafli w IndexedDB. Wejście: menu
+główne → **Otwarty świat · cała Polska · beta** – gotowe miejsca startu (`WORLD_PRESETS` w `src/world/start.js`),
+wyszukiwarka miejscowości i ostatni start; przy każdym miejscu jakość mapy (`qualityAt`: pełna na wypieczonych kaflach
+własnych z listy z14 w `data/tiles/lot/tiles.json`, podstawowa poza nimi). Dalej też: generator → **Otwarty świat
+stąd** i lista regionów („Otwarty świat · …”). W locie – komunikaty przy granicy pełnej jakości i gdy kafle nie
+dochodzą (brak sieci). Regiony działają jak dotąd i zostają trybem głównym.
 
 - **Kafel** (`src/world/chunkdata.js`) = kafel Web Mercator z14 (~1,5 km): siatka wysokości 65² z marginesem (normalne
   ze wspólnych punktów – bez szwów światła), raster pokrycia 128² (~12 m), obiekty z `convertTile` w metrach świata.

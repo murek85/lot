@@ -49,6 +49,7 @@ import { loadingScreen, nextFrames } from './ui/loading.js';
 import { DEFAULT_REGION, REGIONS } from './regions.js';
 import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta, geocode } from './gen/client.js';
 import { parseCoords, pushRecent, coordName, distDir } from './ui/jump.js';
+import { ownAreasOf, inOwnArea } from './world/start.js';
 import { TIME_SPEEDS, advanceClock, PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
 
 const $ = (id) => document.getElementById(id);
@@ -430,8 +431,8 @@ async function start() {
 		document.body.classList.add('flying');
 		menu.hide();
 		if (mode !== view) setMode(view === 'cockpit' || view === 'free' ? view : 'plane');
-		$('esc-hint').textContent = 'Esc – pauza i menu';
-		escHintUntil = performance.now() + 5000;
+		$('esc-hint').textContent = world ? 'Otwarty świat (beta) – mapa doczytuje się w locie · Tab – mapa · Esc – pauza i menu' : 'Esc – pauza i menu';
+		escHintUntil = performance.now() + (world ? 8000 : 5000);
 		autosaveAt = performance.now() + 30000;
 	};
 	// --- wczytywanie z ekranem (jak w Maszyniście): praca rozłożona na klatki, potem rozgrzewka za kartą ---
@@ -617,6 +618,7 @@ async function start() {
 		// otwarty świat (wersja rozwojowa): miejsce startu zapamiętane, przeładowanie jak przy zmianie regionu
 		openWorld: (p) => { worldStart.set(p); return switchRegion(WORLD_ID); },
 		worldStart: worldStart.get(),
+		ownAreas: () => ownAreas,
 		inWorld: !!region.world,
 		uiSound: (name) => audio.ui(name),
 		builtinRegions: Object.values(REGIONS),
@@ -663,6 +665,10 @@ async function start() {
 			};
 		},
 	};
+	// obszary własnych kafli gry (pełna jakość mapy) – do znaczków w menu i podpowiedzi w locie
+	const ownAreas = fetch('data/tiles/lot/tiles.json').then((r) => (r.ok ? r.json() : null)).catch(() => null).then(ownAreasOf);
+	let areas = [];
+	ownAreas.then((a) => { areas = a; });
 	const menu = new GameMenu($('menu'), menuApi);
 	for (const [k, v] of Object.entries(settings)) applySetting(k, v);
 	applyPlanEnv(plan);
@@ -881,6 +887,21 @@ async function start() {
 		} finally {
 			jumping = false;
 		}
+	};
+	// otwarty świat w locie (co sekundę): wlot i wylot z obszaru własnych kafli, kafle, które nie dochodzą (brak sieci)
+	let worldCheckAt = 0, ownHere = null, tileErrors = 0;
+	const worldCheck = () => {
+		worldCheckAt = performance.now() + 1000;
+		const own = areas.length ? inOwnArea(areas, localToLonLat(flight.x, flight.z, region.meta.center)) : null;
+		if (own !== null && ownHere !== null && own !== ownHere) {
+			hint(own ? 'Obszar pełnej jakości mapy – własne kafle gry' : 'Koniec obszaru pełnej jakości – dalej mapa podstawowa (OpenFreeMap)', 5000);
+		}
+		ownHere = own;
+		const errors = world.streamer.stats.errors;
+		if (errors > tileErrors && world.streamer.missing(flight.x, flight.z, 2500)) {
+			hint(navigator.onLine === false ? 'Brak połączenia z internetem – mapa doczyta się po powrocie sieci' : 'Mapa nie doczytuje się – serwer kafli nie odpowiada, ponawiam…', 4000);
+		}
+		tileErrors = errors;
 	};
 	// panel H: pole „Skok do” (miejscowość z wyszukiwarki albo współrzędne), przyciski: start, +10 km, ostatnie
 	const jumpInput = $('jump-q'), jumpList = $('jump-list');
@@ -1167,6 +1188,7 @@ async function start() {
 			const dx = Math.round(flight.x / REBASE_STEP) * REBASE_STEP, dz = Math.round(flight.z / REBASE_STEP) * REBASE_STEP;
 			shiftOrigin(dx, dz);
 		}
+		if (world && game === 'flying' && !jumping && performance.now() > worldCheckAt) worldCheck();
 		if (world) {
 			// doczytywanie wokół samolotu (w widoku swobodnym – wokół środka widoku)
 			const f = mode === 'free' && game !== 'menu' ? view.target : flight;

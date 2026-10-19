@@ -1,6 +1,6 @@
 {
 	"name": "lot",
-	"version": "0.33",
+	"version": "0.34",
 	"private": true,
 	"description": "Arcade'owy lot nad prawdziwą mapą Polski – WebGPU (Three.js)",
 	"author": "Marcin Murawski",

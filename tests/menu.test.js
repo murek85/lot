@@ -30,7 +30,7 @@ test('„Co nowego”: wersje od bieżącej do 0.1, bieżąca zgodna z numerem w
 	const { readFileSync } = await import('node:fs');
 	const src = readFileSync(new URL('../src/ui/menu.js', import.meta.url), 'utf8');
 	const versions = [...src.matchAll(/\{ v: '(\d+\.\d+)'/g)].map((m) => m[1]);
-	assert.deepEqual(versions, ['0.33', '0.32', '0.31', '0.30', '0.29', '0.28', '0.27', '0.26', '0.25', '0.24', '0.23', '0.22', '0.21', '0.20', '0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
+	assert.deepEqual(versions, ['0.34', '0.33', '0.32', '0.31', '0.30', '0.29', '0.28', '0.27', '0.26', '0.25', '0.24', '0.23', '0.22', '0.21', '0.20', '0.19', '0.18', '0.17', '0.16', '0.15', '0.14', '0.13', '0.12', '0.11', '0.10', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1']);
 	assert.ok(src.includes(`'PROTOTYP ${versions[0]}'`));
 	const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 	assert.deepEqual([...log.matchAll(/^## (\d+\.\d+)/gm)].map((m) => m[1]), versions);
@@ -127,4 +127,17 @@ test('wyniki wyszukiwania: rodzaj, położenie, odległość i kierunek', () => 
 	assert.equal(distDir(2000, 2000), '2,8 km na płd.-wsch.');
 	assert.equal(distDir(-50000, 0), '50 km na zach.');
 	assert.equal(distDir(100, 100), 'tutaj');
+});
+
+test('otwarty świat: miejsca startu i jakość mapy', async () => {
+	const { WORLD_PRESETS, ownAreasOf, inOwnArea, qualityAt } = await import('../src/world/start.js');
+	assert.ok(WORLD_PRESETS.length >= 6 && WORLD_PRESETS.every((p) => p.name && p.lat > 49 && p.lat < 55 && p.lon > 14 && p.lon < 24.2));
+	// Katowice – kafel z14 9057/5537; Kraków w prostokącie obszaru, ale bez kafla
+	const areas = ownAreasOf({ areas: { slaskie: { bounds: [18.0, 49.4, 20.0, 51.1], z14: ['9057/5537'] } } });
+	assert.equal(inOwnArea(areas, { lon: 19.0238, lat: 50.2649 }), true);
+	assert.equal(inOwnArea(areas, { lon: 19.945, lat: 50.0647 }), false);
+	assert.equal(inOwnArea(areas, { lon: 21.01, lat: 52.23 }), false);
+	assert.equal(qualityAt(areas, { lon: 19.0238, lat: 50.2649 }).full, true);
+	assert.equal(qualityAt([], { lon: 19.0238, lat: 50.2649 }).name, 'podstawowa jakość');
+	assert.deepEqual(ownAreasOf(null), []);
 });
