@@ -38,6 +38,15 @@ for (const rel of list) {
 	fs.mkdirSync(path.dirname(dst), { recursive: true });
 	fs.copyFileSync(path.join(ROOT, rel), dst);
 }
+// własne kafle otwartego świata (npm run pack:tiles): opis tiles.json i archiwa województw <obszar>.pmtiles – tylko
+// do folderu (setki MB, wgrywane osobno; luźnych plików kafli nie kopiujemy)
+const TILES = 'data/tiles/lot';
+const tileFiles = fs.existsSync(path.join(ROOT, TILES, 'tiles.json'))
+	? ['tiles.json', ...fs.readdirSync(path.join(ROOT, TILES)).filter((f) => f.endsWith('.pmtiles'))].map((f) => `${TILES}/${f}`) : [];
+for (const rel of tileFiles) {
+	fs.mkdirSync(path.join(OUT, TILES), { recursive: true });
+	fs.copyFileSync(path.join(ROOT, rel), path.join(OUT, rel));
+}
 const zipName = `${NAME}-${version}.zip`;
 fs.writeFileSync(path.join(WEB, zipName), zip(list.map((rel) => ({ name: rel, data: fs.readFileSync(path.join(ROOT, rel)) }))));
 
@@ -47,4 +56,5 @@ const mb = (n) => (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
 console.log(`Wersja przeglądarkowa ${version}: ${list.length} plików, ${mb(size)}`);
 console.log(`  folder:   web/${NAME}/  (zawartość wgraj do katalogu strony, np. public_html)`);
 console.log(`  archiwum: web/${zipName}  (${mb(zsize)} – to samo w jednym pliku)`);
+if (tileFiles.length > 1) console.log(`  kafle:    web/${NAME}/${TILES}/ (${tileFiles.length - 1} województw, ${mb(tileFiles.reduce((a, rel) => a + fs.statSync(path.join(ROOT, rel)).size, 0))} – bez archiwum ZIP; wgraj osobno, serwer musi obsługiwać HTTP Range)`);
 console.log('WebGPU działa tylko na stronach HTTPS (albo z localhost) – serwer musi podawać stronę przez https://.');

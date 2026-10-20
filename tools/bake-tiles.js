@@ -6,7 +6,8 @@
 //                              z WorldCover w zabudowie OSM (osiedla, usługi, przemysł – poza lasem OSM) → zabudowa;
 //   height/{z}/{x}/{y}.bin.gz – wysokości z14: 131², z11: 67² (Int16, decymetry; wierzchołki siatki + margines) z numerycznego
 //                              modelu terenu GUGiK (LIDAR, usługa WCS w układzie Web Mercator);
-//   tiles.json               – opis (src/gen/lotmanifest.js): obszary z czasem wypieczenia i kaflami, których gra używa.
+//   tiles.json               – opis (src/gen/lotmanifest.js): obszary z czasem wypieczenia i kaflami, których gra używa;
+//   <obszar>.pmtiles         – kafle obszaru w jednym pliku (tools/pack-tiles.js) – na serwer gry: tiles.json i te pliki.
 // Kafle wektorowe powstają z jednego wyciągu OSM (domyślnie cała Polska – --osm=poland) w osobnym katalogu
 // tools/.cache/tiles-src/vector-<wyciąg>/ (Planetiler w prostokącie obszarów); do data/tiles/lot/ – tylko kafle obszarów.
 // Obszar bierze kafle z14, które go dotykają i leżą w całości wewnątrz wyciągu – kafle na granicy województw są więc
@@ -33,6 +34,7 @@ import { readFloatTiff } from './lib/tiff.js';
 import { openCog } from './lib/cog.js';
 import { pool } from './lib/net.js';
 import { readPoly, tilesInPoly, tileInPoly } from './lib/poly.js';
+import { packTiles } from './pack-tiles.js';
 
 const RES = 256; // piksele pokrycia na bok kafla (jak COVER_RES w src/world/chunkdata.js)
 const HN = 131; // siatka wysokości kafla z14: 129 wierzchołków (~12 m) + margines po jednym z każdej strony
@@ -257,3 +259,7 @@ const info = {
 for (const { area, z14, z11 } of plan) manifest = mergeArea(manifest, area, { bounds: tilesBounds(z14) ?? [0, 0, 0, 0], built, source: osm, z14, z11 }, info);
 fs.writeFileSync(manifestFile, JSON.stringify(manifest));
 log(`Gotowe: ${manifestFile} (${Object.keys(manifest.areas).join(', ')}; ${(fs.statSync(manifestFile).size / 1024).toFixed(0)} kB)`);
+
+// --- 5. po jednym pliku na wypieczony obszar dla serwera gry: data/tiles/lot/<obszar>.pmtiles ---
+for (const r of packTiles(OUT, plan.map((p) => p.area))) log(`Spakowane: data/tiles/lot/${path.basename(r.file)} – ${r.tiles} kafli, ${(r.bytes / 1e6).toFixed(0)} MB`);
+log('Na serwer gry: data/tiles/lot/tiles.json i pliki .pmtiles wypieczonych obszarów');

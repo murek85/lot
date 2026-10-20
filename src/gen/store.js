@@ -53,11 +53,15 @@ async function touch(key, bytes) {
 export async function fetchTile(key, url, signal) {
 	const have = await getTile(key);
 	if (have !== undefined) { touch(key, have.byteLength); return { buf: have, cached: true }; }
-	const res = await fetch(url, { signal });
 	let buf;
-	if (res.status === 204 || res.status === 404) buf = new ArrayBuffer(0);
-	else if (!res.ok) throw new Error(`${url}: ${res.status}`);
-	else buf = await res.arrayBuffer();
+	// url może być funkcją pobierającą (np. kafel z archiwum PMTiles) – ArrayBuffer albo null, gdy kafla nie ma
+	if (typeof url === 'function') buf = (await url(signal)) ?? new ArrayBuffer(0);
+	else {
+		const res = await fetch(url, { signal });
+		if (res.status === 204 || res.status === 404) buf = new ArrayBuffer(0);
+		else if (!res.ok) throw new Error(`${url}: ${res.status}`);
+		else buf = await res.arrayBuffer();
+	}
 	await putTile(key, buf);
 	touch(key, buf.byteLength);
 	return { buf, cached: false };

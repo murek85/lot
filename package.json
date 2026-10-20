@@ -15,6 +15,7 @@
 		"bake:gen": "node tools/bake-gen.js",
 		"bake:labels": "node tools/bake-labels.js",
 		"bake:tiles": "node tools/bake-tiles.js",
+		"pack:tiles": "node tools/pack-tiles.js",
 		"icon": "node tools/make-icon.js",
 		"web": "node tools/web.js",
 		"app": "electron .",

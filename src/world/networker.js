@@ -3,6 +3,7 @@
 // tablic liczbowych (src/traffic/graph.js: packNetwork). Wiadomości: { type: 'net', req, roads: [[x, y]…],
 // rails: [[x, y]…], origin } → { type: 'net', req, cars, trains, stations, ms }.
 import { fetchTile } from '../gen/store.js';
+import { lotSource } from './lotsource.js';
 import { tileKey } from '../gen/tiles.js';
 import { CHUNK_Z, chunkObjects, chunkObjectsLot } from './chunkdata.js';
 import { buildRoadGraph, edgeGrid, packNetwork } from '../traffic/graph.js';
@@ -12,14 +13,6 @@ const OFM = 'https://tiles.openfreemap.org/planet';
 // komórki siatek krawędzi – dzielniki kroku przesunięcia początku układu (14 080 m), siatki przesuwa się w całości
 export const GRID_CARS = 256, GRID_TRAINS = 640;
 let tpl = null, originKey = '';
-const LOT = new URL('../../data/tiles/lot/', import.meta.url).href;
-let lotp = null;
-let lotStamp = '';
-const lotTiles = () => (lotp ??= fetch(`${LOT}tiles.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
-	.then((m) => {
-		lotStamp = `v${m?.version ?? 0}-${Object.values(m?.areas ?? {}).map((a) => a.built).join('.')}`;
-		return new Set(Object.values(m?.areas ?? {}).flatMap((a) => a.z14));
-	}));
 const cache = new Map(); // "x/y" → osm kafla (ostatnio używane)
 
 async function osmOf(x, y, origin) {
@@ -27,8 +20,9 @@ async function osmOf(x, y, origin) {
 	if (cache.has(k)) { const v = cache.get(k); cache.delete(k); cache.set(k, v); return v; }
 	// te same drogi co w scenie: własne kafle w ich obszarze, poza nim – OpenFreeMap (jak src/world/chunkworker.js)
 	let osm;
-	if ((await lotTiles()).has(k)) {
-		const t = await fetchTile(`lot/${lotStamp}/${CHUNK_Z}/${x}/${y}`, `${LOT}${CHUNK_Z}/${x}/${y}.pbf`);
+	const lot = await lotSource();
+	if (lot.own.z14.has(k)) {
+		const t = await lot.file('', CHUNK_Z, x, y);
 		({ osm } = chunkObjectsLot(t.buf, null, x, y, origin));
 	} else {
 		tpl ??= (await (await fetch(OFM)).json()).tiles[0];

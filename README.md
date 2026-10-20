@@ -492,7 +492,18 @@ dochodzą (brak sieci). Regiony działają jak dotąd i zostają trybem główny
   margines) i `height/11/…` dla dalekiego terenu (67²; poza Polską znacznik braku danych – gra bierze tam Terrarium) z numerycznego modelu terenu GUGiK (usługa WCS, zapytanie w EPSG:3857 o obszar kafla tak, by środki
   pikseli wypadły w wierzchołkach siatki; ~1,5 s na kafel, 6 naraz – Śląskie ~25 minut, przerwane wypiekanie
   dokańcza tylko brakujące). Pokrycie 256²: drzewa z WorldCover w zabudowie OSM (warstwy landuse i wood) – zabudowa.
-  Hosting kafli (wersja przeglądarkowa) – do ustalenia; teraz serwer gry podaje je z dysku.
+  **Plik na województwo dla serwera – `data/tiles/lot/<województwo>.pmtiles`** (`npm run pack:tiles [-- <województwo…>]`,
+  `tools/pack-tiles.js`; `bake:tiles` pakuje sam wypieczone województwa): format PMTiles v3 (`src/gen/pmtiles.js` –
+  zapis i odczyt bez bibliotek): nagłówek, katalog kafli (katalog główny + liście po 4096 wpisów, gzip) i dane – kafle,
+  które według `tiles.json` należą do województwa: wektorowe z14, pokrycie i wysokości z14 i z11, pod numerami
+  przesuniętymi o 2^32 według rodzaju (`lotTileId`), wszystko w gzip, powtórzone kafle zapisane raz. Na serwer:
+  `tiles.json` i pliki `.pmtiles`; po nowym województwie – tylko jego plik i nowy `tiles.json` (kafle na granicy
+  przechodzą do nowego województwa; w starszym archiwum zostają, ale gra bierze je z nowego). Gra
+  (`src/world/lotsource.js`, wspólne dla wątków kafli, sieci ruchu i menu): z `tiles.json` – właściciel kafla
+  (`area14` / `area11` w `readManifest`), archiwum województwa otwierane przy jego pierwszym kaflu (nagłówek i katalog
+  główny – jedno zapytanie 16 KB, liście katalogu – raz na wątek), kafle – zapytaniami HTTP Range o fragment pliku;
+  pobrane trafiają do tej samej pamięci kafli co z luźnych plików. Wymaga serwera z obsługą Range (Apache, nginx,
+  GitHub Pages, Cloudflare R2/S3 – tak; `server.js` też). Bez archiwum albo bez Range – luźne pliki `data/tiles/lot/`.
 - **Pomiar wydajności**: `http://localhost:4190/?prof` – znaczniki czasu GPU (`await __lot.gpuTime(20)`); koszt
   warstwy najlepiej mierzyć na przemian z nią i bez niej, z wstrzymaną pętlą gry (`__lot.renderer.setAnimationLoop(null)`,
   potem `__lot.post.render()` i `device.queue.onSubmittedWorkDone()`), bo pojedyncze pomiary wahają się o kilka ms.

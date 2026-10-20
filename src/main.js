@@ -50,6 +50,7 @@ import { DEFAULT_REGION, REGIONS } from './regions.js';
 import { isGenerated, generate as generateRegion, cancel as cancelGenerate, deleteRegion, getRegionMeta, geocode } from './gen/client.js';
 import { parseCoords, pushRecent, coordName, distDir } from './ui/jump.js';
 import { ownAreasOf, inOwnArea } from './world/start.js';
+import { lotSource } from './world/lotsource.js';
 import { TIME_SPEEDS, advanceClock, PLACES, TIMES, SEASONS, WEATHER, DEFAULT_PLAN, DEFAULT_SETTINGS, describePosition, headingDeg, load, loadRaw, save } from './ui/places.js';
 
 const $ = (id) => document.getElementById(id);
@@ -669,7 +670,7 @@ async function start() {
 		},
 	};
 	// obszary własnych kafli gry (pełna jakość mapy) – do znaczków w menu i podpowiedzi w locie
-	const ownAreas = fetch('data/tiles/lot/tiles.json').then((r) => (r.ok ? r.json() : null)).catch(() => null).then(ownAreasOf);
+	const ownAreas = lotSource().then((s) => ownAreasOf(s.raw)).catch(() => []);
 	let areas = [];
 	ownAreas.then((a) => { areas = a; });
 	const menu = new GameMenu($('menu'), menuApi);

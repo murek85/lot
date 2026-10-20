@@ -38,20 +38,21 @@ export function decodeTiles(enc) {
 const areaZ14 = (a) => (Array.isArray(a.z14) ? a.z14 : decodeTiles(a.z14));
 
 /**
- * Opis → { areas: [{ id, bounds, built, z14: Set }], z14: Map „x/y” → znacznik, z11: Map „x/y” → znacznik, heights,
+ * Opis → { areas: [{ id, bounds, built, z14: Set }], z14 / z11: Map „x/y” → znacznik, area14 / area11: Map „x/y” →
+ * obszar (archiwum <obszar>.pmtiles), heights,
  * farHeights }. Znacznik (wersja, obszar, czas wypieczenia) trafia do kluczy pamięci kafli – po ponownym wypieczeniu
  * obszaru gra nie bierze jego starych kafli z IndexedDB, a kafle innych obszarów zostają.
  */
 export function readManifest(m) {
-	const z14 = new Map(), z11 = new Map(), areas = [];
+	const z14 = new Map(), z11 = new Map(), area14 = new Map(), area11 = new Map(), areas = [];
 	for (const [id, a] of Object.entries(m?.areas ?? {})) {
 		const stamp = `v${m.version ?? 0}-${id}-${a.built}`;
 		const keys = areaZ14(a);
-		for (const k of keys) z14.set(k, stamp);
-		for (const k of a.z11 ?? []) z11.set(k, stamp);
+		for (const k of keys) { z14.set(k, stamp); area14.set(k, id); }
+		for (const k of a.z11 ?? []) { z11.set(k, stamp); area11.set(k, id); }
 		if (Array.isArray(a.bounds)) areas.push({ id, bounds: a.bounds, built: a.built, z14: new Set(keys) });
 	}
-	return { areas, z14, z11, heights: !!m?.heightRes, farHeights: !!m?.farHeightRes };
+	return { areas, z14, z11, area14, area11, heights: !!m?.heightRes, farHeights: !!m?.farHeightRes };
 }
 
 /**

@@ -333,3 +333,34 @@ test('Obiekty w tablicach (wątek kafli): rzeka, tor z mostem, peron ze zdegener
 	assert.deepEqual([...a.trees.slice(0, 16)], [...b.trees.slice(0, 16)], 'ten sam los – te same drzewa');
 	assert.ok(a.pylons.count > 0 && a.wires.length > 0);
 });
+
+test('PMTiles: zapis i odczyt archiwum kafli (katalog główny i liście, powtórzone dane)', async () => {
+	const zlib = await import('node:zlib');
+	const { writePmtiles, PmtilesReader, lotTileId, zxyToTileId, parseHeader } = await import('../src/gen/pmtiles.js');
+	// numery kafli jak w specyfikacji
+	assert.equal(zxyToTileId(0, 0, 0), 0);
+	assert.equal(zxyToTileId(1, 0, 0), 1);
+	assert.equal(zxyToTileId(1, 1, 0), 4);
+	assert.equal(zxyToTileId(2, 0, 0), 5);
+	const tiles = [];
+	for (let x = 0; x < 120; x++) for (let y = 0; y < 50; y++) {
+		tiles.push({ id: lotTileId('', 14, 9000 + x, 5400 + y), data: new Uint8Array([x, y, 1]) });
+		tiles.push({ id: lotTileId('height', 14, 9000 + x, 5400 + y), data: new Uint8Array(y % 2 ? [7, 7] : [x, y, 2, 2]) });
+	}
+	for (const leafSize of [4096, 500]) {
+		const file = writePmtiles(tiles, { areas: { test: { built: 'x' } } }, { compress: (d) => zlib.gzipSync(d), leafSize, minZoom: 14, maxZoom: 14 });
+		const h = parseHeader(file.buffer);
+		assert.equal(h.addressed, tiles.length);
+		assert.ok(h.contents < tiles.length); // powtórzone [7, 7] zapisane raz
+		let reads = 0;
+		const read = async (o, n) => { reads++; return file.slice(o, o + n).buffer; };
+		const r = await new PmtilesReader(read, (b) => new Uint8Array(zlib.gunzipSync(b))).open();
+		assert.deepEqual(r.metadata, { areas: { test: { built: 'x' } } });
+		assert.deepEqual([...new Uint8Array(await r.get(lotTileId('', 14, 9007, 5433)))], [7, 33, 1]);
+		assert.deepEqual([...new Uint8Array(await r.get(lotTileId('height', 14, 9119, 5449)))], [7, 7]);
+		assert.deepEqual([...new Uint8Array(await r.get(lotTileId('height', 14, 9118, 5448)))], [118, 48, 2, 2]);
+		assert.equal(await r.get(lotTileId('cover', 14, 9007, 5433)), null);
+		assert.equal(await r.get(lotTileId('', 14, 9200, 5433)), null);
+		if (leafSize === 500) assert.ok(h.leafLength > 0 && reads > 3);
+	}
+});

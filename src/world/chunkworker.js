@@ -3,7 +3,7 @@
 // { type: 'chunk', req, x, y, origin } → { type: 'chunk', req, key, … } z buforami przekazanymi bez kopiowania.
 import { fetchTile, gunzipBlob } from '../gen/store.js';
 import { tileKey } from '../gen/tiles.js';
-import { readManifest } from '../gen/lotmanifest.js';
+import { lotSource } from './lotsource.js';
 import { buildBuildingTiles } from '../buildgeo.js';
 import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
 import { COVER } from '../gen/terrain.js';
@@ -14,19 +14,12 @@ import { CHUNK_Z, HEIGHT_Z, GRID, LOT_GRID, COVER_RES, lotHeights, fillHeights, 
 const OFM = 'https://tiles.openfreemap.org/planet';
 const TERRARIUM = (z, x, y) => `https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${z}/${x}/${y}.png`;
 let tpl = null;
-// własne kafle gry (tools/bake-tiles.js) – opis z listą kafli; bez niego (albo poza obszarami) – OpenFreeMap
-const LOT = new URL('../../data/tiles/lot/', import.meta.url).href;
-let lotp = null;
-// opis (src/gen/lotmanifest.js): kafel → znacznik wypieczenia jego obszaru – w kluczach pamięci kafli, więc po ponownym
-// wypieczeniu obszaru nie wracają jego stare kafle z IndexedDB, a kafle pozostałych obszarów zostają
-const lotTiles = () => (lotp ??= fetch(`${LOT}tiles.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null).then(readManifest));
-/** Raster pokrycia własnych kafli (gzip) albo null. */
-async function lotFile(kind, z, x, y) {
-	const own = await lotTiles();
-	const stamp = (z === 14 ? own.z14 : own.z11).get(`${x}/${y}`) ?? 'v0';
-	const t = await fetchTile(`lot${kind}/${stamp}/${z}/${x}/${y}`, `${LOT}${kind ? `${kind}/` : ''}${z}/${x}/${y}.${kind ? 'bin.gz' : 'pbf'}`);
-	return t;
-}
+// własne kafle gry (tools/bake-tiles.js): archiwa województw data/tiles/lot/<obszar>.pmtiles albo luźne pliki (src/world/lotsource.js);
+// kafel → znacznik wypieczenia jego obszaru w kluczach pamięci kafli – po ponownym wypieczeniu obszaru nie wracają
+// jego stare kafle z IndexedDB, a kafle pozostałych obszarów zostają
+const lotTiles = () => lotSource().then((s) => s.own);
+/** Kafel własny: wektorowy (pbf), pokrycie albo wysokości (gzip) – { buf, cached }. */
+const lotFile = async (kind, z, x, y) => (await lotSource()).file(kind, z, x, y);
 async function lotCover(z, x, y) {
 	const t = await lotFile('cover', z, x, y);
 	return t.buf.byteLength ? gunzipBlob(new Blob([t.buf])) : null;

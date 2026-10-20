@@ -16,6 +16,17 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
   maskami po kaflach z11 (Śląskie 5 kB zamiast 64 kB), osobny znacznik wypieczenia każdego województwa w kluczach
   pamięci kafli – nowe województwo nie unieważnia pobranych kafli pozostałych. Stary opis (v3) nadal czytany;
   przy pierwszym uruchomieniu Śląsk raz pobierze się na nowo (nowy klucz pamięci).
+- **Kafle województwa w jednym pliku – `data/tiles/lot/<województwo>.pmtiles`** (PMTiles v3): kafle wektorowe
+  z14 (gzip), pokrycie i wysokości z14 i z11 obszaru. Na serwer gry: `tiles.json` (spis – który kafel należy do
+  którego województwa) i pliki `.pmtiles` zamiast dziesiątek tysięcy plików (Śląsk: 15 602 kafle, 157 MB;
+  Małopolska: 18 855 kafli, 215 MB). Po wypieczeniu kolejnego województwa wgrywa się tylko jego plik i nowy
+  `tiles.json`. Gra otwiera archiwum województwa przy jego pierwszym kaflu i pobiera pojedyncze kafle zapytaniami
+  o fragment pliku (HTTP Range), z tą samą pamięcią kafli w przeglądarce; bez archiwum albo przy serwerze bez Range –
+  luźne pliki `data/tiles/lot/` jak dotąd. `npm run pack:tiles [-- <województwo…>]` pakuje istniejące kafle,
+  `bake:tiles` pakuje sam wypieczone województwa, `npm run web` kopiuje spis i archiwa do `web/lot/`. `server.js`
+  obsługuje zapytania Range i wysyła pliki strumieniem.
+- Poprawka: wątek sieci ruchu czytał opis kafli w starej postaci – w województwach z własnymi kaflami samochody
+  i pociągi jeździły po drogach z OpenFreeMap.
 
 ## 0.35 – zima
 
