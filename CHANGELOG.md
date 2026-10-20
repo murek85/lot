@@ -7,7 +7,8 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 - **`npm run bake:tiles` dla wielu województw**: `-- malopolskie opolskie` albo `-- polska`; kafle wektorowe z
   wyciągu całej Polski (`--osm=poland`, domyślnie) w osobnym katalogu `tools/.cache/tiles-src/vector-poland/` –
-  Planetiler nie nadpisuje już `data/tiles/lot/`, kolejne województwo nie usuwa poprzednich. Brakujące wyciągi i
+  Planetiler nie nadpisuje już `data/tiles/lot/`, kolejne województwo nie usuwa poprzednich; Planetiler tylko
+  w prostokącie wypiekanych województw (`--bounds`) – kilkaset MB zamiast kilku GB na dysku. Brakujące wyciągi i
   pliki `.poly` pobierane z Geofabrik.
 - **Bez pasa OpenFreeMap na granicach województw**: obszar bierze kafle z14, które go dotykają i leżą w całości
   w wyciągu kraju – kafle przecięte granicą mają dane z obu stron; należą do województwa wypieczonego ostatnio.

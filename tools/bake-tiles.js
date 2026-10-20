@@ -8,7 +8,7 @@
 //                              modelu terenu GUGiK (LIDAR, usługa WCS w układzie Web Mercator);
 //   tiles.json               – opis (src/gen/lotmanifest.js): obszary z czasem wypieczenia i kaflami, których gra używa.
 // Kafle wektorowe powstają z jednego wyciągu OSM (domyślnie cała Polska – --osm=poland) w osobnym katalogu
-// tools/.cache/tiles-src/vector-<wyciąg>/ (Planetiler raz na wyciąg); do data/tiles/lot/ trafiają tylko kafle obszarów.
+// tools/.cache/tiles-src/vector-<wyciąg>/ (Planetiler w prostokącie obszarów); do data/tiles/lot/ – tylko kafle obszarów.
 // Obszar bierze kafle z14, które go dotykają i leżą w całości wewnątrz wyciągu – kafle na granicy województw są więc
 // pełne z obu stron (bez pasa OpenFreeMap między województwami) i należą do obszaru wypieczonego ostatnio. Poza
 // wyciągiem (granica Polski) zostaje OpenFreeMap. --osm=<obszar> – jak dawniej: wyciąg samego obszaru, tylko kafle
@@ -70,22 +70,7 @@ async function ensureFile(name) {
 }
 const polyOf = async (name) => readPoly(fs.readFileSync(await ensureFile(`${name}.poly`), 'utf8'));
 
-// --- 1. kafle wektorowe wyciągu (Planetiler do osobnego katalogu – nigdy wprost do data/tiles/lot/) ---
-const VEC = path.join(SRC, `vector-${osm}`);
-if (!flag('skip-vector')) {
-	const pbf = await ensureFile(`${osm}-latest.osm.pbf`);
-	const done = path.join(VEC, 'metadata.json');
-	if (flag('rebuild-vector') || !fs.existsSync(done) || fs.statSync(done).mtimeMs < fs.statSync(pbf).mtimeMs) {
-		log(`Planetiler: ${path.basename(pbf)} → ${VEC}`);
-		const r = spawnSync('java', [`-Xmx${process.env.PLANETILER_XMX ?? '6g'}`, '-jar', path.join(SRC, 'planetiler.jar'), 'generate-custom',
-			`--schema=${path.join(import.meta.dirname, 'tiles', 'lot-schema.yml')}`, `--pbf=${pbf}`,
-			`--output=${VEC}/?format=files`, '--tile_compression=none', '--minzoom=11', '--maxzoom=14', '--force', `--tmpdir=${path.join(SRC, 'tmp')}`],
-		{ stdio: ['ignore', 'ignore', 'inherit'] });
-		if (r.status !== 0) throw new Error(`Planetiler zakończył się kodem ${r.status}`);
-	} else log(`Kafle wektorowe ${osm} aktualne (${VEC}) – bez Planetilera (--rebuild-vector wymusza)`);
-}
-
-// --- 2. obszary: kafle z14 dotykające obszaru i w całości wewnątrz wyciągu, z11 – dotykające obszaru ---
+// --- 1. obszary: kafle z14 dotykające obszaru i w całości wewnątrz wyciągu, z11 – dotykające obszaru ---
 const srcRings = await polyOf(osm);
 const plan = [];
 for (const area of areas) {
@@ -97,6 +82,28 @@ for (const area of areas) {
 	const mid = [12, 13].map((z) => [z, tilesInPoly(rings, z, 'touch')]);
 	plan.push({ area, z14, z11, mid });
 	log(`Obszar ${area}: ${z14.length} kafli z14, ${z11.length} kafli z11`);
+}
+
+// --- 2. kafle wektorowe wyciągu (Planetiler do osobnego katalogu – nigdy wprost do data/tiles/lot/) ---
+// tylko w prostokącie kafli z11 obszarów (--bounds; obejmuje też ich kafle z12–z14): cała Polska to kilka GB plików
+// tymczasowych i kafli, obszar – kilkaset MB. Katalog zostaje, dopóki wyciąg się nie zmieni i prostokąt wystarcza.
+const VEC = path.join(SRC, `vector-${osm}`);
+if (!flag('skip-vector')) {
+	const pbf = await ensureFile(`${osm}-latest.osm.pbf`);
+	const need = tilesBounds(plan.flatMap((p) => p.z11), 11);
+	const stampFile = path.join(VEC, 'lot-bounds.json');
+	const prev = fs.existsSync(stampFile) && fs.existsSync(path.join(VEC, 'metadata.json')) ? JSON.parse(fs.readFileSync(stampFile, 'utf8')) : null;
+	const fresh = prev && prev.pbf === fs.statSync(pbf).mtimeMs
+		&& prev.bounds[0] <= need[0] && prev.bounds[1] <= need[1] && prev.bounds[2] >= need[2] && prev.bounds[3] >= need[3];
+	if (flag('rebuild-vector') || !fresh) {
+		log(`Planetiler: ${path.basename(pbf)} → ${VEC}, prostokąt ${need.join(', ')}`);
+		const r = spawnSync('java', [`-Xmx${process.env.PLANETILER_XMX ?? '6g'}`, '-jar', path.join(SRC, 'planetiler.jar'), 'generate-custom',
+			`--schema=${path.join(import.meta.dirname, 'tiles', 'lot-schema.yml')}`, `--pbf=${pbf}`, `--bounds=${need.join(',')}`,
+			`--output=${VEC}/?format=files`, '--tile_compression=none', '--minzoom=11', '--maxzoom=14', '--force', `--tmpdir=${path.join(SRC, 'tmp')}`],
+		{ stdio: ['ignore', 'ignore', 'inherit'] });
+		if (r.status !== 0) throw new Error(`Planetiler zakończył się kodem ${r.status}`);
+		fs.writeFileSync(stampFile, JSON.stringify({ pbf: fs.statSync(pbf).mtimeMs, bounds: need }));
+	} else log(`Kafle wektorowe ${osm} aktualne (${VEC}) – bez Planetilera (--rebuild-vector wymusza)`);
 }
 
 // kafle wektorowe obszarów z katalogu wyciągu do data/tiles/lot/

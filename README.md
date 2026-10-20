@@ -471,8 +471,10 @@ dochodzą (brak sieci). Regiony działają jak dotąd i zostają trybem główny
   `tools/.cache/tiles-src/` musi być `planetiler.jar` (github.com/onthegomap/planetiler); wyciąg OSM
   `<wyciąg>-latest.osm.pbf` (domyślnie `--osm=poland` – cała Polska, ok. 2 GB) i pliki `.poly` wyciągu i obszarów
   narzędzie pobiera z Geofabrik samo, jeśli ich nie ma (`--no-download` – bez pobierania). Planetiler ze schematem
-  `tools/tiles/lot-schema.yml` zapisuje kafle wyciągu raz do `tools/.cache/tiles-src/vector-<wyciąg>/` (ponownie
-  dopiero po nowszym wyciągu albo z `--rebuild-vector`; pamięć Javy – `PLANETILER_XMX`, domyślnie 6g), a do
+  `tools/tiles/lot-schema.yml` zapisuje kafle wyciągu w prostokącie kafli z11 obszarów (`--bounds` – cały kraj to kilka GB
+  plików tymczasowych i kafli, województwo – kilkaset MB) do `tools/.cache/tiles-src/vector-<wyciąg>/` (ponownie
+  dopiero po nowszym wyciągu, większym prostokącie albo z `--rebuild-vector`; pamięć Javy – `PLANETILER_XMX`,
+  domyślnie 6g), a do
   `data/tiles/lot/{z}/{x}/{y}.pbf` trafiają tylko kafle obszarów (warstwy: roads, rails, platforms, buildings,
   waterways, water, power, tree_rows, stations, crossings – z14; places – od z11) z surowymi znacznikami OSM; inne
   obszary zostają nietknięte. Narzędzie dokłada rastry pokrycia z ESA WorldCover (zapytania Range do COG,

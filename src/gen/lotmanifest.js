@@ -71,15 +71,15 @@ export function mergeArea(manifest, id, area, info = {}) {
 	return { ...info, version: MANIFEST_VERSION, areas };
 }
 
-/** Prostokąt [w, s, e, n] (stopnie) obejmujący kafle z14 albo null. */
-export function tilesBounds(keys) {
+/** Prostokąt [w, s, e, n] (stopnie) obejmujący kafle „x/y” poziomu z (domyślnie z14) albo null. */
+export function tilesBounds(keys, z = 14) {
 	let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
 	for (const k of keys) {
 		const [x, y] = k.split('/').map(Number);
 		x0 = Math.min(x0, x); x1 = Math.max(x1, x + 1); y0 = Math.min(y0, y); y1 = Math.max(y1, y + 1);
 	}
 	if (x0 === Infinity) return null;
-	const n = 2 ** 14, lon = (x) => (x / n) * 360 - 180;
+	const n = 2 ** z, lon = (x) => (x / n) * 360 - 180;
 	const lat = (y) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
 	const r = (v) => Math.round(v * 1e5) / 1e5;
 	return [r(lon(x0)), r(lat(y1)), r(lon(x1)), r(lat(y0))];
