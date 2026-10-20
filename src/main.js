@@ -1,5 +1,5 @@
 // Start gry: sprawdzenie WebGPU, wczytanie regionu, atmosfera, teren, kamera i pętla klatek.
-import { WebGPURenderer, Scene, PerspectiveCamera, ACESFilmicToneMapping, Vector3, Matrix3, Timer } from 'three/webgpu';
+import { WebGPURenderer, Scene, PerspectiveCamera, ACESFilmicToneMapping, Vector3, Matrix3, Timer, FloatType } from 'three/webgpu';
 import { loadRegion } from './region.js';
 import { Atmosphere } from './atmosphere/gpu.js';
 import { createTerrain } from './terrain.js';
@@ -954,6 +954,49 @@ async function start() {
 	$('jump-go').onclick = jumpQuery;
 	renderJumps();
 
+	/**
+	 * Kompilacja shaderów i potoków obiektów sceny z góry (jak w Maszyniście) – ekran wczytywania żyje i pokazuje postęp:
+	 * progress('shaders' | 'pipes', gotowe, wszystkie). compileAsync Three buduje shadery obiekt po obiekcie z oddaniem
+	 * sterowania przeglądarce, ale na każdy potok karty czeka osobno (szeregowo, kilka razy dłużej niż pierwsza klatka) –
+	 * obietnice potoków zbieramy tu i czekamy na komplet na końcu (karta kompiluje je równolegle). Ten sam bufor (format
+	 * jak po pierwszym rysowaniu) i te same wyjścia (kolor, wektory ruchu) co przebieg sceny w efektach końcowych –
+	 * inaczej powstałyby inne warianty, a pierwsza klatka i tak kompilowałaby swoje. Zwraca { shaders, pipes }.
+	 */
+	const precompile = async (progress) => {
+		const sp = post.scenePass, t = sp.renderTarget, rt = renderer.getRenderTarget(), m = renderer.getMRT();
+		// to, co PassNode.setup ustawia przy pierwszym rysowaniu (format koloru i głębi, próbki)
+		t.samples = sp.options?.samples ?? renderer.samples;
+		t.texture.type = renderer.getOutputBufferType();
+		if (renderer.reversedDepthBuffer && t.depthTexture) t.depthTexture.type = FloatType;
+		const P = renderer._pipelines, get = P.getForRender, pipes = [];
+		let pipesDone = 0, shaders = 0;
+		P.getForRender = function (ro, promises) {
+			if (!promises) return get.call(this, ro, promises);
+			const q = [], r = get.call(this, ro, q);
+			for (const p of q) pipes.push(p.finally(() => { pipesDone++; progress?.('pipes', pipesDone, pipes.length); }));
+			return r; // compileAsync dostaje pustą listę – nie czeka na ten potok
+		};
+		// compileAsync oddaje sterowanie (scheduler.yield) po każdym kroku budowy shadera i po każdym obiekcie – setki
+		// przerw kilka razy wydłużały kompilację; na jej czas przerwa najwyżej co 100 ms (postęp na ekranie odświeżany 10 razy na sekundę)
+		const S = globalThis.scheduler, yieldReal = S?.yield;
+		let lastYield = performance.now();
+		if (yieldReal) S.yield = () => (performance.now() - lastYield < 100 ? Promise.resolve() : yieldReal.call(S).then(() => { lastYield = performance.now(); }));
+		renderer.setRenderTarget(t);
+		renderer.setMRT(sp.getMRT());
+		try {
+			await renderer.compileAsync(scene, camera, null, (e) => { shaders = e.total; progress?.('shaders', e.loaded, e.total); });
+		} catch (e) {
+			console.warn('Lot: kompilacja shaderów z góry –', e);
+		} finally {
+			if (yieldReal) S.yield = yieldReal;
+			P.getForRender = get;
+			renderer.setRenderTarget(rt);
+			renderer.setMRT(m);
+		}
+		if (pipes.length) progress?.('pipes', pipesDone, pipes.length);
+		await Promise.allSettled(pipes);
+		return { shaders, pipes: pipes.length };
+	};
 	const frame = () => {
 		timer.update();
 		const dt = Math.min(0.1, timer.getDelta());
@@ -1266,13 +1309,21 @@ async function start() {
 		}
 	};
 
-	// pierwsza klatka kompiluje shadery – dopiero potem zdejmujemy ekran ładowania
+	// shadery obiektów sceny z góry, z postępem „X z Y” (jak w Maszyniście); resztę (efekty końcowe, cienie, chmury)
+	// kompiluje pierwsza klatka – dopiero potem zdejmujemy ekran ładowania
 	$('boot-bar').style.width = '85%';
 	$('boot-stage').textContent = 'Kompilacja shaderów…';
 	await new Promise((r) => setTimeout(r, 0));
 	const tc = performance.now();
+	const pc = await precompile((stage, done, total) => {
+		$('boot-stage').textContent = stage === 'shaders' ? `Kompilacja shaderów… ${done} z ${total}` : `Kompilacja potoków karty graficznej… ${done} z ${total}`;
+		$('boot-bar').style.width = `${85 + (stage === 'shaders' ? 0 : 6) + (done / total) * 6}%`;
+	});
+	const tf = performance.now();
+	$('boot-stage').textContent = 'Kompilacja efektów obrazu…';
+	await new Promise((r) => setTimeout(r, 0));
 	frame();
-	console.info(`Lot: pierwsza klatka i shadery ${Math.round(performance.now() - tc)} ms`);
+	console.info(`Lot: shadery ${pc.shaders} obiektów, ${pc.pipes} potoków – ${Math.round(tf - tc)} ms, pierwsza klatka ${Math.round(performance.now() - tf)} ms`);
 	$('boot-bar').style.width = '100%';
 	$('boot-stage').textContent = 'Gotowy do startu';
 	renderer.setAnimationLoop(frame);

@@ -29,6 +29,11 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
   `app.asar`), a protokół `app://` odpowiada na zapytania o fragment pliku – kafle województw z dysku, bez pobierania
   (daleki teren i mapa poza województwami – nadal z sieci). `npm run app:check` sprawdza archiwum. Wersja web –
   spis i archiwa w `web/lot/data/tiles/lot/` (bez ZIP).
+- **Ekran startowy – postęp kompilacji shaderów** (jak w Maszyniście): „Kompilacja shaderów… X z Y” (obiekty sceny),
+  potem „Kompilacja potoków karty graficznej… X z Y” i „Kompilacja efektów obrazu…” – shadery sceny kompilowane
+  z góry przez `compileAsync` (ten sam bufor i wyjścia co przebieg sceny, potoki karty równolegle, przerwy dla
+  ekranu co 100 ms), resztę (efekty końcowe, cienie, chmury) kompiluje pierwsza klatka. Ekran nie stoi już kilku
+  sekund bez zmian (zamrożenie ok. 3 s → 1,5–2 s), ale całe przygotowanie trwa ok. 1,5–2 s dłużej.
 - Poprawka: wątek sieci ruchu czytał opis kafli w starej postaci – w województwach z własnymi kaflami samochody
   i pociągi jeździły po drogach z OpenFreeMap.
 
