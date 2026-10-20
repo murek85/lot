@@ -34,8 +34,19 @@ function resolveAsset(root, pathname) {
 	return file.startsWith(base + path.sep) ? file : null;
 }
 
+// zakres z nagłówka Range („bytes=a-b”, „bytes=a-”, „bytes=-n”) dla pliku o rozmiarze size: { start, end } (włącznie),
+// 'invalid' – poza plikiem (odpowiedź 416), null – bez nagłówka albo inna postać (cały plik). Archiwa kafli
+// województw (data/tiles/lot/*.pmtiles) gra czyta wyłącznie fragmentami.
+function parseRange(header, size) {
+	const m = /^bytes=(\d*)-(\d*)$/.exec(String(header ?? '').trim());
+	if (!m || (!m[1] && !m[2])) return null;
+	const start = m[1] ? +m[1] : Math.max(0, size - +m[2]);
+	const end = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
+	return start > end || start >= size ? 'invalid' : { start, end };
+}
+
 function mimeOf(file) {
 	return MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
 }
 
-module.exports = { resolveAsset, mimeOf, MIME };
+module.exports = { resolveAsset, mimeOf, parseRange, MIME };

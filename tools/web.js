@@ -56,5 +56,7 @@ const mb = (n) => (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
 console.log(`Wersja przeglądarkowa ${version}: ${list.length} plików, ${mb(size)}`);
 console.log(`  folder:   web/${NAME}/  (zawartość wgraj do katalogu strony, np. public_html)`);
 console.log(`  archiwum: web/${zipName}  (${mb(zsize)} – to samo w jednym pliku)`);
-if (tileFiles.length > 1) console.log(`  kafle:    web/${NAME}/${TILES}/ (${tileFiles.length - 1} województw, ${mb(tileFiles.reduce((a, rel) => a + fs.statSync(path.join(ROOT, rel)).size, 0))} – bez archiwum ZIP; wgraj osobno, serwer musi obsługiwać HTTP Range)`);
+// liczba województw po polsku: 1 województwo, 2–4 województwa, 5–21 województw, 22–24 województwa…
+const voiv = (n) => (n === 1 ? 'województwo' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'województwa' : 'województw');
+if (tileFiles.length > 1) console.log(`  kafle:    web/${NAME}/${TILES}/ (${tileFiles.length - 1} ${voiv(tileFiles.length - 1)}, ${mb(tileFiles.reduce((a, rel) => a + fs.statSync(path.join(ROOT, rel)).size, 0))} – bez archiwum ZIP; wgraj osobno, serwer musi obsługiwać HTTP Range)`);
 console.log('WebGPU działa tylko na stronach HTTPS (albo z localhost) – serwer musi podawać stronę przez https://.');

@@ -25,6 +25,10 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
   luźne pliki `data/tiles/lot/` jak dotąd. `npm run pack:tiles [-- <województwo…>]` pakuje istniejące kafle,
   `bake:tiles` pakuje sam wypieczone województwa, `npm run web` kopiuje spis i archiwa do `web/lot/`. `server.js`
   obsługuje zapytania Range i wysyła pliki strumieniem.
+- **Archiwa kafli w wersjach gry**: aplikacja desktopowa (`npm run dist`) zawiera spis i archiwa województw (poza
+  `app.asar`), a protokół `app://` odpowiada na zapytania o fragment pliku – kafle województw z dysku, bez pobierania
+  (daleki teren i mapa poza województwami – nadal z sieci). `npm run app:check` sprawdza archiwum. Wersja web –
+  spis i archiwa w `web/lot/data/tiles/lot/` (bez ZIP).
 - Poprawka: wątek sieci ruchu czytał opis kafli w starej postaci – w województwach z własnymi kaflami samochody
   i pociągi jeździły po drogach z OpenFreeMap.
 

@@ -54,7 +54,19 @@ test('pakowanie: główny plik aplikacji, ikona, pliki gry bez narzędzi i test�
 	assert.equal(pkg.main, 'electron/main.cjs');
 	for (const f of [pkg.main, 'electron/preload.cjs', 'favicon.ico', 'build/icon.png', 'icons/icon-256.png']) assert.ok(fs.existsSync(path.join(ROOT, f)), f);
 	const files = pkg.build.files;
-	for (const need of ['index.html', 'src/**', 'vendor/three/**', 'data/regions/**', 'electron/**']) assert.ok(files.includes(need), need);
+	for (const need of ['index.html', 'src/**', 'vendor/three/**', 'data/regions/**', 'electron/**', 'data/tiles/lot/tiles.json', 'data/tiles/lot/*.pmtiles']) assert.ok(files.includes(need), need);
+	assert.ok(pkg.build.asarUnpack.includes('data/tiles/lot/*.pmtiles')); // duże archiwa poza app.asar
 	assert.ok(!files.some((f) => /^(tools|tests|server)/.test(f)));
 	for (const s of ['web', 'app', 'app:check', 'dist', 'dist:dir', 'icon']) assert.ok(pkg.scripts[s], s);
+});
+
+test('aplikacja: zakres z nagłówka Range (archiwa kafli województw)', () => {
+	const { parseRange } = require('../electron/assets.cjs');
+	assert.deepEqual(parseRange('bytes=0-16383', 1000000), { start: 0, end: 16383 });
+	assert.deepEqual(parseRange('bytes=999990-', 1000000), { start: 999990, end: 999999 });
+	assert.deepEqual(parseRange('bytes=-10', 1000000), { start: 999990, end: 999999 });
+	assert.deepEqual(parseRange('bytes=10-5000000', 1000000), { start: 10, end: 999999 });
+	assert.equal(parseRange('bytes=2000000-2000010', 1000000), 'invalid');
+	assert.equal(parseRange(null, 1000000), null);
+	assert.equal(parseRange('bytes=0-1,5-9', 1000000), null);
 });

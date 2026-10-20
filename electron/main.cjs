@@ -13,7 +13,7 @@
 const { app, BrowserWindow, protocol, shell, ipcMain, Menu, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
-const { resolveAsset, mimeOf } = require('./assets.cjs');
+const { resolveAsset, mimeOf, parseRange } = require('./assets.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const ORIGIN = 'app://game';
@@ -135,6 +135,14 @@ function selfCheck(w) {
 					speed: Math.round(f.speed * 3.6),
 					frame: Math.round(await window.__lot.bench(10) * 10) / 10,
 					storage: (() => { try { localStorage.setItem('lot-check', '1'); localStorage.removeItem('lot-check'); return true; } catch { return false; } })(),
+					// własne kafle: spis i nagłówek archiwum pierwszego województwa zapytaniem o fragment pliku
+					tiles: await (async () => {
+						const m = await fetch('data/tiles/lot/tiles.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+						const id = m && Object.keys(m.areas ?? {})[0];
+						if (!id) return null;
+						const r = await fetch('data/tiles/lot/' + id + '.pmtiles', { headers: { Range: 'bytes=0-6' } });
+						return { areas: Object.keys(m.areas), archive: id, status: r.status, magic: r.ok ? new TextDecoder().decode(await r.arrayBuffer()) : null };
+					})(),
 				};
 			})()`);
 		} catch (err) {
@@ -152,6 +160,8 @@ function selfCheck(w) {
 			try {
 				fs.writeFileSync(process.env.LOT_CHECK, out);
 			} catch {}
+		const tilesBad = report?.tiles && !(report.tiles.status === 206 && report.tiles.magic === 'PMTiles');
+		if (tilesBad) errors.push(`archiwum kafli ${report.tiles.archive}.pmtiles: ${report.tiles.status}`);
 		app.exit(errors.length || !report || report.game !== 'flying' || !(report.moved > 0) ? 1 : 0);
 	});
 }
@@ -176,7 +186,26 @@ app.whenReady().then(() => {
 		const file = resolveAsset(ROOT, url.pathname);
 		if (!file) return new Response('Nie znaleziono', { status: 404 });
 		try {
-			return new Response(await fs.promises.readFile(file), { headers: { 'content-type': mimeOf(file) } });
+			// fragment pliku (HTTP Range) – archiwa kafli województw: czytane tylko potrzebne bajty, nie cały plik
+			const range = request.headers.get('range');
+			if (range) {
+				const size = (await fs.promises.stat(file)).size, r = parseRange(range, size);
+				if (r === 'invalid') return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
+				if (r) {
+					const fh = await fs.promises.open(file, 'r');
+					try {
+						const buf = Buffer.alloc(r.end - r.start + 1);
+						await fh.read(buf, 0, buf.length, r.start);
+						return new Response(buf, {
+							status: 206,
+							headers: { 'content-type': mimeOf(file), 'content-range': `bytes ${r.start}-${r.end}/${size}`, 'content-length': String(buf.length), 'accept-ranges': 'bytes' },
+						});
+					} finally {
+						await fh.close();
+					}
+				}
+			}
+			return new Response(await fs.promises.readFile(file), { headers: { 'content-type': mimeOf(file), 'accept-ranges': 'bytes' } });
 		} catch {
 			return new Response('Nie znaleziono', { status: 404 });
 		}

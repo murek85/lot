@@ -46,10 +46,15 @@
 			"vendor/three/**",
 			"data/regions/**",
 			"!data/regions/*/preview.png",
+			"data/tiles/lot/tiles.json",
+			"data/tiles/lot/*.pmtiles",
 			"electron/**",
 			"package.json"
 		],
 		"asar": true,
+		"asarUnpack": [
+			"data/tiles/lot/*.pmtiles"
+		],
 		"win": {
 			"target": [
 				{
