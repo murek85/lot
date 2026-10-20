@@ -458,6 +458,7 @@ async function start() {
 		try {
 			const view = await work(ls);
 			await warmUp(ls, 0.6, 0.97, 30, 'Kompilacja shaderów, chmury i światło…');
+			await pipelinesReady(15000); // nowa maszyna, kabina, obiekty kafli – potoki karty gotowe przed startem
 			ls.done('Gotowe do startu', () => { busy = false; });
 			audio.ui('done');
 			enterFlight(view);
@@ -955,6 +956,33 @@ async function start() {
 	renderJumps();
 
 	/**
+	 * Potoki karty graficznej zawsze asynchronicznie (createRenderPipelineAsync): potok tworzony zwykłą drogą Three
+	 * (createRenderPipeline) proces GPU kompiluje od razu i wstrzymuje na ten czas całą kolejkę – pierwsza klatka
+	 * (cień świata, cienie, chmury, efekty obrazu: kilkadziesiąt potoków) stawała na 6–9 s, a nowy materiał w locie
+	 * zatrzymywał obraz. Asynchronicznie karta kompiluje je równolegle w tle, a obiekt bez gotowego potoku Three
+	 * po prostu pomija (pojawia się klatkę czy kilka później). Na ekranach wczytywania czekamy na komplet (pipelinesReady).
+	 */
+	const pipesPending = new Set();
+	{
+		const P = renderer._pipelines, get = P.getForRender;
+		P.getForRender = function (ro, promises) {
+			if (promises) return get.call(this, ro, promises);
+			const q = [], r = get.call(this, ro, q);
+			for (const p of q) { pipesPending.add(p); p.finally(() => pipesPending.delete(p)); }
+			return r;
+		};
+	}
+	/** Czeka, aż karta skończy kompilować zlecone potoki (najwyżej timeout ms); progress(gotowe, wszystkie). */
+	const pipelinesReady = async (timeout = 30000, progress) => {
+		const t0 = performance.now(), seen = new Set();
+		while (pipesPending.size && performance.now() - t0 < timeout) {
+			for (const p of pipesPending) if (!seen.has(p)) { seen.add(p); p.finally(() => progress?.(seen.size - pipesPending.size, seen.size)); }
+			progress?.(seen.size - pipesPending.size, seen.size);
+			await Promise.race([Promise.allSettled([...pipesPending]), new Promise((r) => setTimeout(r, 250))]);
+		}
+		return seen.size;
+	};
+	/**
 	 * Kompilacja shaderów i potoków obiektów sceny z góry (jak w Maszyniście) – ekran wczytywania żyje i pokazuje postęp:
 	 * progress('shaders' | 'pipes', gotowe, wszystkie). compileAsync Three buduje shadery obiekt po obiekcie z oddaniem
 	 * sterowania przeglądarce, ale na każdy potok karty czeka osobno (szeregowo, kilka razy dłużej niż pierwsza klatka) –
@@ -1323,7 +1351,18 @@ async function start() {
 	$('boot-stage').textContent = 'Kompilacja efektów obrazu…';
 	await new Promise((r) => setTimeout(r, 0));
 	frame();
-	console.info(`Lot: shadery ${pc.shaders} obiektów, ${pc.pipes} potoków – ${Math.round(tf - tc)} ms, pierwsza klatka ${Math.round(performance.now() - tf)} ms`);
+	const t1 = performance.now();
+	// potoki zlecone przez pierwszą klatkę (cienie, chmury, efekty obrazu); klatka po gotowych potokach może zlecić
+	// kolejne (przebiegi rysowane dopiero, gdy poprzednie mają wynik) – powtarzamy, aż nic nie dochodzi
+	let more = 0;
+	for (let i = 0; i < 5 && pipesPending.size; i++) {
+		more += await pipelinesReady(30000, (done, total) => {
+			$('boot-stage').textContent = `Kompilacja efektów obrazu… ${done} z ${total}`;
+			$('boot-bar').style.width = `${97 + (done / total) * 3}%`;
+		});
+		frame();
+	}
+	console.info(`Lot: shadery ${pc.shaders} obiektów, ${pc.pipes} potoków – ${Math.round(tf - tc)} ms, pierwsza klatka ${Math.round(t1 - tf)} ms, potoki efektów ${more} – ${Math.round(performance.now() - t1)} ms`);
 	$('boot-bar').style.width = '100%';
 	$('boot-stage').textContent = 'Gotowy do startu';
 	renderer.setAnimationLoop(frame);
