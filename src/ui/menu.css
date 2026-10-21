@@ -332,9 +332,9 @@ kbd.k { display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 
 .menu-footer button:hover { color: var(--m-accent); }
 .menu-footer .grow { flex: 1; }
 
-/* w trakcie gry: wskazówka Esc */
+/* w trakcie gry: wskazówka Esc i komunikaty (skok, mapa, sieć) – pod paskiem kursu (#compass: 12 px + 44 px) */
 #esc-hint {
-	position: fixed; left: 50%; top: 14px; transform: translateX(-50%); padding: 4px 12px; font: 10px var(--m-mono); letter-spacing: 2px;
+	position: fixed; left: 50%; top: 64px; transform: translateX(-50%); max-width: calc(100vw - 32px); text-align: center; padding: 4px 12px; font: 10px var(--m-mono); letter-spacing: 2px;
 	color: #c3cfd8; background: rgba(8, 14, 20, 0.55); border: 1px solid rgba(170, 205, 230, 0.15); text-transform: uppercase;
 	transition: opacity 0.6s; pointer-events: none;
 }
