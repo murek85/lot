@@ -364,3 +364,9 @@ test('PMTiles: zapis i odczyt archiwum kafli (katalog główny i liście, powtó
 		if (leafSize === 500) assert.ok(h.leafLength > 0 && reads > 3);
 	}
 });
+
+test('PMTiles: zły nagłówek – komunikat z początkiem odpowiedzi', async () => {
+	const { parseHeader } = await import('../src/gen/pmtiles.js');
+	const html = new TextEncoder().encode('<!DOCTYPE html><html>');
+	assert.throws(() => parseHeader(html.buffer), /PMTiles v3 \(21 B, początek: 3c 21 44 .*„<!DOCTYPE html><”\)/);
+});

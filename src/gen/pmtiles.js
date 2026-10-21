@@ -92,7 +92,11 @@ export function findEntry(entries, id) {
 export function parseHeader(buf) {
 	const dv = new DataView(buf instanceof ArrayBuffer ? buf : buf.buffer, buf.byteOffset ?? 0);
 	const magic = String.fromCharCode(...new Uint8Array(dv.buffer, dv.byteOffset, 7));
-	if (magic !== 'PMTiles' || dv.getUint8(7) !== 3) throw new Error('To nie jest plik PMTiles v3');
+	if (magic !== 'PMTiles' || dv.getUint8(7) !== 3) {
+		// do ostrzeżenia w konsoli: co przyszło zamiast nagłówka (strona błędu, dane skompresowane, inny fragment pliku)
+		const head = [...new Uint8Array(dv.buffer, dv.byteOffset, Math.min(16, dv.byteLength))];
+		throw new Error(`To nie jest plik PMTiles v3 (${dv.byteLength} B, początek: ${head.map((c) => c.toString(16).padStart(2, '0')).join(' ')} „${String.fromCharCode(...head).replace(/[^ -~]/g, '.')}”)`);
+	}
 	return {
 		rootOffset: getU64(dv, 8), rootLength: getU64(dv, 16), metadataOffset: getU64(dv, 24), metadataLength: getU64(dv, 32),
 		leafOffset: getU64(dv, 40), leafLength: getU64(dv, 48), dataOffset: getU64(dv, 56), dataLength: getU64(dv, 64),
@@ -228,10 +232,20 @@ export class PmtilesReader {
 
 /** Odczyt fragmentu pliku przez HTTP Range (przeglądarka, wątki); serwer bez Range – błąd. */
 export const rangeReader = (url) => async (offset, length) => {
-	const res = await fetch(url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } });
+	// bez pamięci podręcznej przeglądarki: fragmenty pliku zapamiętane np. w trakcie wgrywania nowej wersji na serwer
+	// przeglądarka potrafiła składać ze świeżymi (zły nagłówek); kafle i tak trafiają do pamięci kafli gry (IndexedDB)
+	const range = `bytes=${offset}-${offset + length - 1}`;
+	const res = await fetch(url, { cache: 'no-store', headers: { Range: range } });
 	if (res.status !== 206) {
 		res.body?.cancel(); // serwer bez Range odsyła cały plik – bez pobierania setek MB
 		throw new Error(res.status === 200 ? `${url}: serwer nie obsługuje zapytań o fragment pliku (HTTP Range)` : `${url}: ${res.status}`);
+	}
+	// serwer albo pośrednik (CDN, kompresja) odesłał inny fragment niż zamówiony
+	const cr = res.headers.get('content-range') ?? '', enc = res.headers.get('content-encoding');
+	const m = /^bytes (\d+)-(\d+)\//.exec(cr);
+	if ((m && +m[1] !== offset) || (enc && enc !== 'identity')) {
+		res.body?.cancel();
+		throw new Error(`${url}: zamówiony ${range}, odesłany ${cr || 'bez Content-Range'}${enc ? `, Content-Encoding: ${enc}` : ''}`);
 	}
 	return res.arrayBuffer();
 };
