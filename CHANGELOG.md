@@ -5,6 +5,23 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Ostrzejsze cienie z bliska – dwie kaskady mapy cieni** (`src/shadows.js`): do dalekiej (±1,4 km, 4096², ~0,7 m
+  na teksel, wszystkie rzucające cień) doszła bliska (±250 m wokół samolotu, 2048², ~0,24 m) – tylko warstwa
+  `CASTER_NEAR` (budynki, mosty, aleje, słupy, bliskie drzewa), bez 360 tys. dalszych drzew. Cienie domów, koron
+  i dachów z prostymi, ostrymi krawędziami zamiast rozmytych schodków; przy brzegu bliskiej kaskady płynne przejście
+  w daleką. Koszt ~0,6 ms karty na klatkę.
+- **Trawniki i łąki bez „kropek”** (`src/terrain.js`): malowane korony drzew w ogrodach zabudowy w układzie
+  zniekształconym szumem, z poszarpanym brzegiem, a z bliska tylko jako lekki cień (wcześniej okrągłe ciemne plamy);
+  pasy po koszeniu na trawnikach (co ~1,2 m, kierunek z działki, z bliska); wydeptane ścieżki – cienkie, kręte linie
+  gołej ziemi w części łąk.
+- **Piętra roślinności w górach** (`aboveTreeline` w `src/gfx/stand.js`, wspólne dla terenu i drzew): górna granica
+  lasu ~1450 m (falująca ±80 m), wyżej kosodrzewina w płatach z murawą (drzewa 3D i odległe maleją do ~2–3 m),
+  od ~1750 m hale (płowa murawa, bez drzew), od ~2050 m i na bardzo stromych stokach skała z warstwami i porostami,
+  na stromych – piargi; nagi teren (WorldCover) w górach to skała, nie piasek; nad granicą lasu niższa „ściana lasu”
+  w cieniach rzeźby.
+- Poprawka: kafle przy granicy kraju (Tatry, Beskidy, Sudety) z częściowymi danymi GUGiK – braki uzupełniane
+  z Terrarium na siatce kafla (129²) zamiast na siatce 65²; wcześniej odczyty poza tablicą dawały NaN: pionowe ściany
+  na krawędziach kafli i czarny obraz, gdy kamera stała nad takim kafelkiem.
 - **Las do 5 km**: drzewa 3D do 1,5 km (dotąd 1,1 km; okno gruntu 3,5 km zamiast 2,8 km, ta sama rozdzielczość
   5,5 m), dalej odległe drzewa (`src/forest.js`: `makeDistant`) – czworokąty zwrócone do kamery z eliptyczną koroną
   i normalną kuli (te same barwy pór roku, śnieg, cień rzeźby i chmur): 1,5–2,6 km jedno na 10 × 10 m, 2,6–5 km jedno

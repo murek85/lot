@@ -88,9 +88,9 @@ async function chunkMsg(e) {
 		let H = lotH;
 		if (!H) H = chunkHeights(x, y, new Map(await heightsP), Z, HZ);
 		else if (needTerrarium) {
-			// braki danych GUGiK (poza Polską) – z Terrarium (ta sama siatka tylko dla dalekiego terenu; bliski jest w Polsce)
-			const T = chunkHeights(x, y, new Map(await heightsP), Z, HZ);
-			if (T.length === H.length) fillHeights(H, T); else H = T;
+			// braki danych GUGiK (poza Polską: kafle przy granicy – Tatry, Beskidy, Sudety) – z Terrarium na tej samej siatce
+			// co kafel (bliski – 129², daleki – 65²); inna siatka dawała odczyty poza tablicą (NaN: ściany, czarny obraz)
+			fillHeights(H, chunkHeights(x, y, new Map(await heightsP), Z, HZ, n));
 		}
 		const g = gridNormals(H, F.w / (n - 1), F.h / (n - 1), n);
 		// odległość od brzegu dla wody (głębia, piana); daleki teren – bez brzegów (głęboko)

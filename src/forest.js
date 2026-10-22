@@ -9,9 +9,9 @@ import {
 	normalize, dot, select, cos, sin, pow, cameraPosition, Discard, If, screenCoordinate, interleavedGradientNoise, mrt, texture, abs, positionLocal,
 } from 'three/tsl';
 import { hash12, hash22, valueNoise } from './gfx/noise.js';
-import { forestStand, forestCover } from './gfx/stand.js';
+import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
-import { CASTER_LAYER } from './shadows.js';
+import { CASTER_LAYER, CASTER_NEAR } from './shadows.js';
 import { reliefShadow } from './world/reliefshade.js';
 import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset } from './gfx/ground.js';
 
@@ -149,7 +149,11 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			// typ i wielkość
 			const r1 = hash12(gcell.add(11.1)), r2 = hash12(gcell.add(23.3));
 			const young = st.young, leafy = st.leafy.mul(young.oneMinus()).max(step(0.93, r1).mul(young.oneMinus()));
-			const H = select(young.greaterThan(0.5), mix(float(6), float(11), r2), select(leafy.greaterThan(0.5), mix(float(16), float(22), r2), mix(float(18), float(25), r2)));
+			// nad górną granicą lasu (src/gfx/stand.js) kosodrzewina: drzewa maleją do ~2–3 m, powyżej ~1750 m – brak
+			const ab = aboveTreeline(pxz, gh);
+			const dwarfK = smoothstep(-60, 40, ab), alpineGap = float(1).sub(smoothstep(250, 330, ab));
+			const H = select(young.greaterThan(0.5), mix(float(6), float(11), r2), select(leafy.greaterThan(0.5), mix(float(16), float(22), r2), mix(float(18), float(25), r2)))
+				.mul(mix(float(1), float(0.13), dwarfK));
 			const shape = mix(mix(attribute('position', 'vec3'), attribute('aCone', 'vec3'), young), attribute('aRound', 'vec3'), leafy);
 			// lekki obrót i nieregularność korony
 			const a = r1.mul(6.283);
@@ -176,7 +180,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			vNormal.assign(mix(nTrunk, nCrown, part));
 			vWorld.assign(world);
 			vInfo.assign(vec4(part, attribute('aRel', 'float'), young.add(leafy.mul(2)), r2));
-			const scale = keep.mul(band);
+			const scale = keep.mul(band).mul(alpineGap);
 			// odrzucone drzewo zapada się do punktu (zdegenerowane trójkąty nie dają pikseli)
 			return mix(vec3(xz.x, ground, xz.y), curved, scale);
 		})();
@@ -243,6 +247,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 		const shadowMesh = new InstancedMesh(geo, smat, n * n);
 		shadowMesh.frustumCulled = false;
 		shadowMesh.layers.set(CASTER_LAYER);
+		if (isNear) shadowMesh.layers.enable(CASTER_NEAR); // bliska kaskada – tylko bliskie drzewa
 		mesh.userData.shadowMesh = shadowMesh;
 		return mesh;
 	};
@@ -295,7 +300,11 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const fade = smoothstep(from.mul(0.86), from, d).mul(float(1).sub(smoothstep(to.mul(0.86), to, d)));
 			const r1 = hash12(gcell.add(11.1)), r2 = hash12(gcell.add(23.3));
 			const young = st.young, leafy = st.leafy.mul(young.oneMinus()).max(step(0.93, r1).mul(young.oneMinus()));
-			const H = select(young.greaterThan(0.5), mix(float(6), float(11), r2), select(leafy.greaterThan(0.5), mix(float(16), float(22), r2), mix(float(18), float(25), r2)));
+			// nad górną granicą lasu (src/gfx/stand.js) kosodrzewina: drzewa maleją do ~2–3 m, powyżej ~1750 m – brak
+			const ab = aboveTreeline(pxz, gh);
+			const dwarfK = smoothstep(-60, 40, ab), alpineGap = float(1).sub(smoothstep(250, 330, ab));
+			const H = select(young.greaterThan(0.5), mix(float(6), float(11), r2), select(leafy.greaterThan(0.5), mix(float(16), float(22), r2), mix(float(18), float(25), r2)))
+				.mul(mix(float(1), float(0.13), dwarfK));
 			// korona: promień ~0,2 wysokości, powiększony o crownMul (jedno drzewo na kilka komórek drzew 3D), od 0,35
 			// wysokości do szczytu
 			const rad = H.mul(select(leafy.greaterThan(0.5), float(0.24), float(0.17))).mul(crownMul);
@@ -314,7 +323,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			vQuad.assign(q);
 			vRight.assign(right);
 			vInfo.assign(vec4(fade, young.add(leafy.mul(2)), r2, relief));
-			return mix(center.add(vec3(0, ground, 0)), curved, keep.mul(band));
+			return mix(center.add(vec3(0, ground, 0)), curved, keep.mul(band).mul(alpineGap));
 		})();
 		const sunDir = atmo.u.lightDir;
 		mat.colorNode = Fn(() => {

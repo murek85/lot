@@ -14,7 +14,7 @@ import {
 import { valueNoise, fbm, voronoi, hash12, hash22 } from './gfx/noise.js';
 import { waveMap } from './gfx/waves.js';
 import { COL } from './gfx/palette.js';
-import { forestStand, forestCover } from './gfx/stand.js';
+import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
 
 const EARTH_R = 6371000;
 
@@ -163,6 +163,12 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const bushZone = smoothstep(0.55, 0.75, valueNoise(xz.div(300).add(1.7)));
 			const isBush = step(0.82, bush.z).mul(bushZone).mul(smoothstep(mix(float(0.12), float(0.38), bush.z.sub(0.82).mul(5.5)), float(0.45), bush.x).oneMinus());
 			g.assign(mix(g, COL.pineYoung.mul(1.1), isBush.mul(float(1).sub(smoothstep(3, 10, footprint)).mul(0.7).add(0.05))));
+			// wydeptane ścieżki: cienkie, kręte linie gołej ziemi (grzbiety szumu) w części łąk i trawników – z bliska
+			const pathZone = smoothstep(0.58, 0.7, valueNoise(xz.div(450).add(3.9)));
+			const ridge = abs(fbm(xz.div(95), 2).sub(0.5));
+			const pathW = max(float(0.0035), footprint.mul(0.004));
+			const path = smoothstep(pathW, pathW.mul(0.4), ridge).mul(pathZone).mul(float(1).sub(smoothstep(0.5, 2.5, footprint)));
+			g.assign(mix(g, COL.soil.mul(1.35), path.mul(0.75)));
 			g.mulAssign(SEASON.grass); // pora roku: świeża wiosną, przyżółkła jesienią, zżółkła zimą
 			const shrub = mix(g, COL.pineYoung, 0.5);
 			albedo.addAssign(g.mul(wGrass).add(shrub.mul(wShrub)));
@@ -281,9 +287,18 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const roofLit = roof.mul(float(1).add(slope));
 			// ulice co 4–5 działek, ogrody z koronami drzew
 			const street = src.hasOsm ? float(0) : smoothstep(aa.negate().add(3), aa.add(3), min(fract(r.y.div(160)), float(1).sub(fract(r.y.div(160)))).mul(160)).oneMinus();
-			const tv = voronoi(xz.div(6));
-			const tree = smoothstep(0.25, 0.6, tv.x).oneMinus().mul(step(0.45, tv.z));
-			const yard = mix(mix(COL.garden, COL.meadowB, valueNoise(xz.div(8))).mul(SEASON.grass), COL.pineYoung.mul(1.1), tree);
+			// korony drzew w ogrodach: układ zniekształcony szumem, poszarpane brzegi; z bliska (piksel < ~0,5 m) tylko lekki
+			// cień – zamiast okrągłych ciemnych plam
+			const tw = vec2(valueNoise(xz.div(9)), valueNoise(xz.div(9).add(4.4))).sub(0.5).mul(1.6);
+			const tv = voronoi(xz.div(6).add(tw));
+			const ragged = valueNoise(xz.div(1.3)).sub(0.5).mul(0.3);
+			const tree = smoothstep(0.2, 0.62, tv.x.add(ragged)).oneMinus().mul(step(0.45, tv.z)).mul(mix(float(0.3), float(1), smoothstep(0.15, 0.9, footprint)));
+			// trawnik: pasy po koszeniu (co ~1,2 m, kierunek z działki) – tylko z bliska
+			const mow = hash12(floor(xz.div(34)).add(2.7)).mul(3.1416);
+			const mowA = xz.x.mul(cos(mow)).add(xz.y.mul(sin(mow)));
+			const stripes = mix(float(1), mix(float(0.93), float(1.07), step(0.5, fract(mowA.div(2.4)))), float(1).sub(smoothstep(0.08, 0.35, footprint)).mul(step(0.35, hash12(floor(xz.div(34)).add(8.1)))));
+			const lawn = mix(COL.garden, COL.meadowB, valueNoise(xz.div(8))).mul(SEASON.grass).mul(stripes);
+			const yard = mix(lawn, COL.pineYoung.mul(1.1), tree);
 			const near = mix(mix(mix(yard, COL.roofGrey.mul(0.8), inShed), roofLit, inHouse), COL.asphalt, street);
 			const far = (src.hasOsm ? mix(COL.garden, COL.meadowB, 0.4).mul(SEASON.grass) : mix(mix(COL.roofRed, COL.roofBrown, 0.5), COL.garden, 0.6)).mul(mix(float(0.85), float(1.1), valueNoise(xz.div(40))));
 			albedo.addAssign(mix(far, near, float(1).sub(smoothstep(2, 8, footprint))).mul(wBuilt));
@@ -303,6 +318,32 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			});
 		}
 
+		// --- piętra roślinności w górach (src/gfx/stand.js: aboveTreeline): od górnej granicy lasu kosodrzewina w płatach
+		// z murawą, wyżej hale (płowa murawa), od ~2050 m i na bardzo stromych stokach skała, na stromych – piargi;
+		// nagi teren w górach to skała, nie piasek ---
+		const above = aboveTreeline(xz, h);
+		const krumm = smoothstep(-40, 60, above);
+		{
+			const veg = wForest.add(wGrass).add(wShrub).add(wCrop);
+			const q = valueNoise(xz.div(18)).mul(0.55).add(valueNoise(xz.div(70)).mul(0.45));
+			const alpine = smoothstep(260, 420, above);
+			// kosodrzewina: ciemne, zwarte płaty – im wyżej, tym rzadsze między murawą
+			const meadow = vec3(0.112, 0.128, 0.058).mul(SEASON.grass).mul(mix(float(0.85), float(1.12), valueNoise(xz.div(9))));
+			const dwarf = COL.pineOld.mul(1.25).mul(mix(float(0.8), float(1.15), valueNoise(xz.div(3.5)).mul(mfade).add(float(0.5).mul(mfade.oneMinus()))));
+			const dwarfShare = smoothstep(0.2, 0.75, wForest.add(wShrub).mul(0.6).add(0.45).sub(alpine.mul(0.7)));
+			const zone = mix(meadow, dwarf, step(q, dwarfShare));
+			albedo.assign(mix(albedo, zone, krumm.mul(veg)));
+			// skała: turnie wysoko, bardzo strome stoki (od ~45°) w górach także niżej; piargi – umiarkowanie strome wysoko
+			const steep = float(1).sub(smoothstep(0.62, 0.74, N.y));
+			const rockAmt = clamp(smoothstep(520, 720, above).mul(float(1).sub(smoothstep(0.88, 0.97, N.y).mul(0.6))).max(steep.mul(smoothstep(-450, -150, above))).add(wBare.mul(smoothstep(800, 1100, h))), 0, 1);
+			const strata = valueNoise(xz.div(vec2(2.5, 9))).mul(0.5).add(valueNoise(xz.div(40)).mul(0.5));
+			const rock = vec3(0.17, 0.168, 0.16).mul(mix(float(0.65), float(1.15), strata)).mul(mix(float(1), float(0.8), step(0.7, valueNoise(xz.div(6))).mul(mfade)));
+			const scree = vec3(0.23, 0.225, 0.21).mul(mix(float(0.8), float(1.1), valueNoise(xz.div(1.8)).mul(mfade).add(float(0.5).mul(mfade.oneMinus()))));
+			const screeAmt = smoothstep(200, 420, above).mul(smoothstep(0.6, 0.7, N.y)).mul(float(1).sub(smoothstep(0.84, 0.93, N.y))).mul(smoothstep(0.45, 0.6, valueNoise(xz.div(120))));
+			albedo.assign(mix(albedo, scree, screeAmt.mul(float(1).sub(wWater))));
+			albedo.assign(mix(albedo, rock, rockAmt.mul(float(1).sub(wWater))));
+		}
+
 		// --- śnieg (pogoda): biel na płaskim, w plamach przy małej pokrywie; las – tylko prześwity między koronami ---
 		{
 			const patch = valueNoise(xz.div(40)).mul(0.6).add(valueNoise(xz.div(7)).mul(0.4));
@@ -316,7 +357,8 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 		const skyE = atmo.skyIrradiance();
 		// cienie: rzeźba terenu + ściany lasu (las jako 17-metrowa warstwa nad gruntem)
 		const shadow = float(1).toVar();
-		if (src.rayShadow) shadow.assign(src.rayShadow(xz, h, wForest, footprint));
+		// nad granicą lasu – kosodrzewina zamiast ściany lasu (niższa warstwa nad gruntem)
+		if (src.rayShadow) shadow.assign(src.rayShadow(xz, h, wForest.mul(float(1).sub(krumm.mul(0.88))), footprint));
 		const sunVis = smoothstep(-0.02, 0.02, sun.y);
 		const ndl = max(0, dot(N, sun)).mul(sunVis);
 		const cavity = src.cavity ? src.cavity(xz, h) : float(1);

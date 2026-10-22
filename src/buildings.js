@@ -11,7 +11,7 @@ import { onGround, cityLight, cityUniforms, worldOffset } from './gfx/ground.js'
 import { hash12 } from './gfx/noise.js';
 import { valueNoise } from './gfx/noise.js';
 import { rng } from './clouds/noise3d.js';
-import { CASTER_LAYER } from './shadows.js';
+import { CASTER_LAYER, CASTER_NEAR } from './shadows.js';
 import { coolingProfile } from './gfx/structures.js';
 import { buildBuildingTiles, minRect, polygonArea2, addBuilding, addCoolingTower } from './buildgeo.js';
 
@@ -53,6 +53,7 @@ export function buildingMeshes(tiles, info, atmo, clouds, plane, worldShadow = n
 		meshes.push(m);
 		const s = new Mesh(g, shadowMaterial);
 		s.layers.set(CASTER_LAYER);
+		s.layers.enable(CASTER_NEAR);
 		shadowCasters.push(s);
 	}
 	return {

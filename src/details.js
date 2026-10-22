@@ -7,7 +7,7 @@ import { treeGeometry } from './forest.js';
 import { makeLitMaterial, litGeometry } from './gfx/lit.js';
 import { alongLine, detailArrays } from './objgeo.js';
 import { COL } from './gfx/palette.js';
-import { CASTER_LAYER } from './shadows.js';
+import { CASTER_LAYER, CASTER_NEAR } from './shadows.js';
 
 const EARTH_R = 6371000;
 
@@ -54,6 +54,7 @@ export function detailsFromArrays(a, atmo, clouds, plane, worldShadow, shared = 
 		smesh.instanceMatrix.array.set(a.trees);
 		mesh.frustumCulled = smesh.frustumCulled = false;
 		smesh.layers.set(CASTER_LAYER);
+		smesh.layers.enable(CASTER_NEAR);
 		objects.push(mesh);
 		shadowCasters.push(smesh);
 		updatable.push(mat);
@@ -68,6 +69,7 @@ export function detailsFromArrays(a, atmo, clouds, plane, worldShadow, shared = 
 		const smat = (sh.pylonShadow ??= makeLitMaterial({ atmo, clouds, plane, worldShadow: null }));
 		const s = new Mesh(geo, smat);
 		s.layers.set(CASTER_LAYER);
+		s.layers.enable(CASTER_NEAR);
 		s.frustumCulled = false;
 		shadowCasters.push(s);
 		updatable.push(smat);

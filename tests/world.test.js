@@ -423,3 +423,19 @@ test('przyciemnienie gruntu przy budynkach i na skraju lasu', async () => {
 	assert.equal(at(1300, 2300), 0); // w lesie – bez (dno lasu ma własne cieniowanie)
 	assert.equal(at(1200, 2300), 0); // z dala od wszystkiego
 });
+
+test('kafel przy granicy: braki GUGiK uzupełnione z Terrarium na tej samej siatce (bez NaN)', async () => {
+	const { LOT_GRID, fillHeights } = await import('../src/world/chunkdata.js');
+	const tiles = new Map();
+	for (const [x, y] of heightTilesFor(TX, TY)) tiles.set(`${x}/${y}`, new Float32Array(256 * 256).fill(800));
+	// wysokości GUGiK: połowa kafla poza Polską (NaN)
+	const n = LOT_GRID + 2, H = new Float32Array(n * n).fill(900);
+	for (let j = 0; j < n; j++) for (let i = 0; i < n / 2; i++) H[j * n + i] = NaN;
+	const T = chunkHeights(TX, TY, tiles, CHUNK_Z, 12, LOT_GRID);
+	assert.equal(T.length, H.length);
+	fillHeights(H, T);
+	const g = gridNormals(H, 12, 12, LOT_GRID);
+	assert.ok(g.heights.every(Number.isFinite));
+	assert.equal(g.heights[0], 800); // z Terrarium
+	assert.equal(g.heights[LOT_GRID - 1], 900); // z GUGiK
+});

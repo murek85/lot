@@ -55,8 +55,8 @@ export function decodeTerrarium(rgba) {
  * Siatka wysokości kafla (GRID+2)² z marginesem jednej komórki: tiles – Map "x/y" → Float32 256² (z12).
  * Zwraca { heights (GRID², środek), normals (GRID² × 3), min, max }.
  */
-export function chunkHeights(x, y, tiles, Z = CHUNK_Z, HZ = HEIGHT_Z) {
-	const n = GRID + 2, cell = 1 / (GRID - 1);
+export function chunkHeights(x, y, tiles, Z = CHUNK_Z, HZ = HEIGHT_Z, G = GRID) {
+	const n = G + 2, cell = 1 / (G - 1);
 	const px = (gx, gy) => tiles.get(`${Math.floor(gx / 256)}/${Math.floor(gy / 256)}`)?.[(gy & 255) * 256 + (gx & 255)] ?? 0;
 	const H = new Float32Array(n * n);
 	for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {

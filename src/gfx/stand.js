@@ -37,6 +37,16 @@ export function forestStand(xz, h = null) {
 	return { cid, local, toEdge, sid, age, clear, young, leafy };
 }
 
+/**
+ * Piętra roślinności w górach – wspólne dla terenu i drzew (granica lasu w tym samym miejscu): górna granica lasu
+ * ~1450 m n.p.m. (Tatry ~1500, Beskidy ~1350–1400), falująca ±80 m w skali kilometra. Zwraca wysokość ponad nią (m;
+ * ujemna – w piętrze lasu): od 0 – kosodrzewina, od ~300 m – hale i murawy, od ~600 m – turnie i skały.
+ */
+export const TREELINE = 1450;
+export function aboveTreeline(xz, h) {
+	return h.sub(float(TREELINE).add(valueNoise(xz.div(900)).sub(0.5).mul(160)));
+}
+
 /** Udział lasu 0..1 z mapy gęstości, z poszarpanym (szumem) brzegiem. */
 export function forestCover(forestTex, uvR, xz) {
 	const dens = forestTex.sample(uvR).level(0).r;

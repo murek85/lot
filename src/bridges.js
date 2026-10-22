@@ -4,7 +4,7 @@
 import { Mesh } from 'three/webgpu';
 import { makeLitMaterial, litGeometry } from './gfx/lit.js';
 import { bridgeArrays } from './objgeo.js';
-import { CASTER_LAYER } from './shadows.js';
+import { CASTER_LAYER, CASTER_NEAR } from './shadows.js';
 
 /** shared – { material, shadowMaterial } wspólne dla wielu wywołań (kafle otwartego świata). */
 export function createBridges(osm, region, terrain, atmo, clouds, plane, worldShadow, shared = null) {
@@ -25,6 +25,7 @@ export function bridgesFromArrays(a, atmo, clouds, plane, worldShadow, shared = 
 		objects.push(mesh);
 		const s = new Mesh(geo, shadowMaterial);
 		s.layers.set(CASTER_LAYER);
+		s.layers.enable(CASTER_NEAR);
 		s.frustumCulled = false;
 		shadowCasters.push(s);
 	}
