@@ -6,7 +6,7 @@ import { uniform } from 'three/tsl';
 import { createForest } from '../forest.js';
 import { unpackNetwork, shiftGraph, shiftGrid } from '../traffic/graph.js';
 import { worldOffset } from '../gfx/ground.js';
-import { GroundWindow, SIZE as WINDOW_SIZE } from './window.js';
+import { GroundWindow, SIZE as WINDOW_SIZE, RES as WINDOW_RES } from './window.js';
 import { ReliefWindow, SIZE as RELIEF_SIZE, REACH as RELIEF_REACH } from './relief.js';
 import { WorldMap } from './maptiles.js';
 import { COVER } from '../gen/terrain.js';
@@ -94,11 +94,11 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 	// cienie rzeźby terenu: okno gruntu (z bliska) i zgrubne okno rzeźby (do ~14 km) – tekstury do materiałów kafli
 	relief = new ReliefWindow(streamer, farStreamer);
 	const R = view.U.relief;
-	R.fine.value = win.tex; R.fineSize.value = WINDOW_SIZE; R.fineReach.value = WINDOW_SIZE / 2 - 128 - WINDOW_SIZE / 512;
+	R.fine.value = win.tex; R.fineSize.value = WINDOW_SIZE; R.fineReach.value = WINDOW_SIZE / 2 - 128 - WINDOW_SIZE / WINDOW_RES;
 	R.coarse.value = relief.tex; R.coarseSize.value = RELIEF_SIZE; R.coarseReach.value = RELIEF_REACH;
 	const base = uniform(0);
 	const forest = createForest(region, atmo, clouds, terrain, null, worldShadow, plane, { tex: win.tex, size: WINDOW_SIZE, base, relief: R });
-	view.U.treesFar.value = forest.uniforms.far.value; // teren w zasięgu drzew 3D pokazuje dno lasu
+	view.U.treesFar.value = forest.uniforms.dist.value; // teren w zasięgu drzew (3D i odległych) pokazuje dno lasu
 	// sieć ruchu (drogi, tory, chodniki) z kafli wokół samolotu – przebudowa w osobnym wątku co ~2 km lotu
 	let hold = null; // punkt doczytywania na czas wczytywania nowego miejsca
 	const vel = { vx: 0, vz: 0 }; // prędkość punktu doczytywania (m/s) – kafle wyprzedzająco przed samolotem

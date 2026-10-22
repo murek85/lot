@@ -208,7 +208,7 @@ async function start() {
 	}
 	const forest = world ? world.forest : createForest(region, atmo, clouds, terrain, roads?.maskTex, worldShadow, plane);
 	if (forest.objects.length) scene.add(...forest.shadowCasters, ...forest.objects);
-	terrain.uniforms.treesFar.value = forest.uniforms.far.value;
+	terrain.uniforms.treesFar.value = forest.uniforms.dist.value; // dno lasu pod drzewami 3D i odległymi
 	// opady i błyskawice: osobna scena dodawana po wygładzaniu (src/weather/precip.js)
 	const precip = new Precipitation(atmo.u.pixelAngle);
 	// odległe ptaki jako punkty – nakładka po wygładzaniu

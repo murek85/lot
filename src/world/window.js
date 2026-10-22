@@ -8,8 +8,8 @@ import { COVER } from '../gen/terrain.js';
 import { COVER_RES, MASK_RES } from './chunkdata.js';
 import { gridHeightAt } from './streamer.js';
 
-export const SIZE = 2816; // m: zasięg drzew 3D (1100 m) + zapas na krok przesunięcia
-export const RES = 512; // ≈ 5,5 m na piksel
+export const SIZE = 3520; // m: zasięg drzew 3D (1500 m) + zapas na krok przesunięcia; dzielnik kroku początku układu (14 080 m)
+export const RES = 640; // 5,5 m na piksel
 const CELL = SIZE / RES;
 const STEP = 128; // m – okno przesuwa się skokami (wielokrotność CELL)
 const toHalf = DataUtils.toHalfFloat;

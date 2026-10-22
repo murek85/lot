@@ -5,6 +5,12 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Las do 5 km**: drzewa 3D do 1,5 km (dotąd 1,1 km; okno gruntu 3,5 km zamiast 2,8 km, ta sama rozdzielczość
+  5,5 m), dalej odległe drzewa (`src/forest.js`: `makeDistant`) – czworokąty zwrócone do kamery z eliptyczną koroną
+  i normalną kuli (te same barwy pór roku, śnieg, cień rzeźby i chmur): 1,5–2,6 km jedno na 10 × 10 m, 2,6–5 km jedno
+  na 20 × 20 m, korony odpowiednio większe (las tak samo zwarty); gęstość lasu i wysokość z okna gruntu, a dalej ze
+  zgrubnego okna rzeźby (w regionach – z ich tekstur). Na każdej granicy pasm łagodne przenikanie, teren pokazuje dno
+  lasu do 5 km, dalej korony z tekstury. Koszt odległych drzew ~1,4 ms karty na klatkę (widok nisko nad Zakopanem).
 - **Drzewa kołyszą się na wietrze** (`src/forest.js`): pochylenie z wiatrem i kołysanie (faza i częstotliwość
   z losu drzewa), fale porywów przesuwające się przez las z wiatrem; ugięcie rośnie z kwadratem wysokości (pień
   u podstawy stoi), przy silnym wietrze wierzchołek 20-metrowego drzewa wychyla się o ~0,3 m. Cienie drzew kołyszą się

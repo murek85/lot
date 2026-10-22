@@ -6,7 +6,7 @@
 import { InstancedMesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, Matrix4 } from 'three/webgpu';
 import {
 	Fn, float, int, vec2, vec3, vec4, uniform, attribute, varying, instanceIndex, floor, max, min, mix, smoothstep, step, fract, length,
-	normalize, dot, select, cos, sin, pow, cameraPosition, Discard, If, screenCoordinate, interleavedGradientNoise, mrt, texture,
+	normalize, dot, select, cos, sin, pow, cameraPosition, Discard, If, screenCoordinate, interleavedGradientNoise, mrt, texture, abs, positionLocal,
 } from 'three/tsl';
 import { hash12, hash22, valueNoise } from './gfx/noise.js';
 import { forestStand, forestCover } from './gfx/stand.js';
@@ -104,7 +104,9 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 		curVP: uniform(new Matrix4()),
 		prevVP: uniform(new Matrix4()),
 		near: uniform(380), // granica bliskiego poziomu szczegółów
-		far: uniform(1100), // zasięg drzew 3D
+		far: uniform(1500), // zasięg drzew 3D
+		mid: uniform(2600), // granica pasm odległych drzew (co 10 m – bliżej, co 20 m – dalej)
+		dist: uniform(5000), // zasięg odległych drzew (czworokąty zwrócone do kamery); dalej – korony w terenie
 	};
 	const regionUv = win ? (xz) => xz.div(win.size) : (xz) => xz.div(size).add(0.5);
 	const heightAt = win ? (xz) => forestTex.sample(regionUv(xz)).level(0).g.add(win.base) : (xz) => {
@@ -245,15 +247,122 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 		return mesh;
 	};
 
+	/**
+	 * Odległe drzewa w paśmie [from, to] (uniformy, m): jedno na komórkę spacing (m; korony powiększone tak, by las był
+	 * tak samo zwarty jak z drzew 3D co 5 m), korona jako czworokąt zwrócony do kamery
+	 * (pionowa oś) z eliptyczną sylwetką i normalną kuli – kilka razy mniej wierzchołków niż drzewo 3D. Te same barwy
+	 * (pora roku, nagie zimą, śnieg) i światło (cień rzeźby, chmur); bez cieni w mapie (poza jej zasięgiem). Na obu
+	 * brzegach pasma – łagodne przenikanie (rozproszone znikanie jak u drzew 3D). Dane: w regionie – tekstury regionu,
+	 * w otwartym świecie – okno gruntu, a dalej zgrubne okno rzeźby (gęstość lasu i wysokość co ~55 m).
+	 */
+	const makeDistant = (spacing, from, to) => {
+		const DIST_SPACING = spacing;
+		const crownMul = Math.sqrt(spacing / SPACING) * 1.2; // 10 m – ×1,7, 20 m – ×2,4
+		const n = Math.ceil((2 * to.value) / DIST_SPACING);
+		const g = new BufferGeometry();
+		g.setAttribute('position', new Float32BufferAttribute([-1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 1, 0], 3));
+		g.setIndex([0, 1, 2, 0, 2, 3]);
+		const vWorld = varying(vec3(0), 'vDTreeWorld');
+		const vQuad = varying(vec2(0), 'vDTreeQuad');
+		const vInfo = varying(vec4(0), 'vDTreeInfo'); // przenikanie, typ (0 sosna, 1 młoda, 2 liściaste), odcień, cień rzeźby
+		const vRight = varying(vec3(0), 'vDTreeRight');
+		const R = win?.relief;
+		const mat = new MeshBasicNodeMaterial();
+		mat.positionNode = Fn(() => {
+			const i = int(instanceIndex);
+			const cell = floor(U.cam.div(DIST_SPACING)).sub(n / 2).add(vec2(float(i.mod(n)), float(i.div(n))));
+			const gcell = cell.add(worldOffset.div(DIST_SPACING));
+			const xz = cell.add(0.2).add(hash22(gcell.add(5.3)).mul(0.6)).mul(DIST_SPACING);
+			const pxz = xz.add(worldOffset);
+			const uvR = regionUv(xz);
+			// gęstość lasu i wysokość: okno gruntu (blisko) albo zgrubne okno rzeźby (dalej); w regionie – jego tekstury
+			let fw = forestCover(forestTex, uvR, pxz), gh = heightAt(xz), ok = float(1);
+			if (R) {
+				const inFine = max(abs(xz.x.sub(R.fineC.x)), abs(xz.y.sub(R.fineC.y))).lessThan(R.fineReach);
+				const c = R.coarse.sample(xz.div(R.coarseSize)).level(0);
+				fw = select(inFine, fw, smoothstep(0.35, 0.65, c.r));
+				gh = select(inFine, gh, c.g.add(R.coarseBase));
+				ok = select(inFine, float(1), c.b.mul(R.on));
+			} else {
+				ok = step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
+			}
+			const st = forestStand(pxz, gh);
+			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(ok);
+			const d = length(xz.sub(U.cam));
+			// pasmo: od 0,86 jego początku (przenikanie z bliższymi drzewami) do końca (przenikanie z dalszymi albo z koronami
+			// terenu)
+			const band = step(from.mul(0.86), d).mul(step(d, to));
+			const fade = smoothstep(from.mul(0.86), from, d).mul(float(1).sub(smoothstep(to.mul(0.86), to, d)));
+			const r1 = hash12(gcell.add(11.1)), r2 = hash12(gcell.add(23.3));
+			const young = st.young, leafy = st.leafy.mul(young.oneMinus()).max(step(0.93, r1).mul(young.oneMinus()));
+			const H = select(young.greaterThan(0.5), mix(float(6), float(11), r2), select(leafy.greaterThan(0.5), mix(float(16), float(22), r2), mix(float(18), float(25), r2)));
+			// korona: promień ~0,2 wysokości, powiększony o crownMul (jedno drzewo na kilka komórek drzew 3D), od 0,35
+			// wysokości do szczytu
+			const rad = H.mul(select(leafy.greaterThan(0.5), float(0.24), float(0.17))).mul(crownMul);
+			const ground = gh.sub(H.mul(0.22));
+			const y0 = ground.add(H.mul(0.35)), y1 = ground.add(H);
+			// czworokąt zwrócony do kamery wokół pionowej osi
+			const toCam = vec3(cameraPosition.x.sub(xz.x), 0, cameraPosition.z.sub(xz.y));
+			const right = normalize(vec3(toCam.z, 0, toCam.x.negate()).add(vec3(1e-4, 0, 0)));
+			const q = positionLocal.xy;
+			const center = vec3(xz.x, 0, xz.y);
+			const world = center.add(right.mul(q.x.mul(rad))).add(vec3(0, mix(y0, y1, q.y), 0));
+			const dc = world.xz.sub(U.cam);
+			const curved = world.sub(vec3(0, dot(dc, dc).div(2 * EARTH_R), 0));
+			const relief = R ? reliefShadow(R, atmo, float(17), xz, gh, float(1), float(100), true) : float(1);
+			vWorld.assign(world);
+			vQuad.assign(q);
+			vRight.assign(right);
+			vInfo.assign(vec4(fade, young.add(leafy.mul(2)), r2, relief));
+			return mix(center.add(vec3(0, ground, 0)), curved, keep.mul(band));
+		})();
+		const sunDir = atmo.u.lightDir;
+		mat.colorNode = Fn(() => {
+			const fade = vInfo.x, type = vInfo.y, tint = vInfo.z;
+			// sylwetka: elipsa (szersza nieco poniżej środka), poza nią i przy przenikaniu – rozproszone odrzucenie
+			const qx = vQuad.x, qy = vQuad.y.mul(2).sub(1.1).div(0.9);
+			const r2d = qx.mul(qx).add(qy.mul(qy));
+			If(r2d.greaterThan(1).or(interleavedGradientNoise(screenCoordinate.xy).greaterThan(fade)), () => { Discard(); });
+			const leaves = mix(SEASON.leaf, SEASON.autumnLeaf, step(fract(tint.mul(7.31)), SEASON.autumn));
+			const crown = select(type.greaterThan(1.5), mix(leaves.mul(1.6), vec3(...BARE).mul(1.6), bareTrees), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
+				.mul(mix(float(0.8), float(1.2), tint));
+			// normalna kuli: z boku czworokąta, z góry i ku kamerze
+			const toCam = normalize(cameraPosition.sub(vWorld).mul(vec3(1, 0, 1)));
+			const N = normalize(vRight.mul(qx).add(vec3(0, qy.mul(0.7).add(0.35), 0)).add(toCam.mul(float(1).sub(r2d).max(0).sqrt())));
+			const snowy = snowCover.mul(smoothstep(0.25, 0.75, N.y)).mul(mix(float(0.55), float(0.95), tint));
+			const albedo = mix(crown, vec3(0.8, 0.82, 0.86), snowy);
+			const sunE = atmo.sunLight(vWorld.y);
+			const skyE = atmo.skyIrradiance();
+			const ndl = max(0, dot(N, sunDir).mul(0.7).add(0.3)).mul(smoothstep(-0.02, 0.02, sunDir.y));
+			const shadow = clouds.groundShadow(vWorld).mul(vInfo.w);
+			// dół korony ciemniejszy (zasłaniają go sąsiednie drzewa) – jak przesłanianie w drzewach 3D
+			const ao = mix(float(0.5), float(1), vQuad.y);
+			return albedo.div(Math.PI).mul(sunE.mul(ndl).mul(shadow).mul(mix(float(0.75), float(1), vQuad.y)).add(skyE.mul(N.y.mul(0.5).add(0.5)).mul(ao)).add(cityLight(vWorld).mul(0.6)));
+		})();
+		// wektory ruchu dla TAA: drzewa stoją w miejscu świata
+		mat.mrtNode = mrt({
+			velocity: Fn(() => {
+				const c = U.curVP.mul(vec4(vWorld, 1)), p = U.prevVP.mul(vec4(vWorld, 1));
+				return c.xy.div(c.w).sub(p.xy.div(p.w));
+			})(),
+		});
+		mat.fog = false;
+		const mesh = new InstancedMesh(g, mat, n * n);
+		mesh.frustumCulled = false;
+		return mesh;
+	};
+
 	const nearN = Math.ceil((2 * 380) / SPACING);
-	const farN = Math.ceil((2 * 1100) / SPACING);
+	const farN = Math.ceil((2 * U.far.value) / SPACING);
 	const nearMesh = makeMesh(7, nearN, true);
 	const farMesh = makeMesh(4, farN, false);
+	const distMesh = makeDistant(10, U.far, U.mid);
+	const distMesh2 = makeDistant(20, U.mid, U.dist);
 	const prev = new Matrix4();
 	let first = true;
 
 	return {
-		objects: [nearMesh, farMesh],
+		objects: [nearMesh, farMesh, distMesh, distMesh2],
 		shadowCasters: [nearMesh.userData.shadowMesh, farMesh.userData.shadowMesh],
 		uniforms: U,
 		/** Przesunięcie początku układu o (dx, dz): poprzednia macierz kamery w nowym układzie (wektory ruchu bez skoku). */
