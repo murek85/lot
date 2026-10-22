@@ -5,6 +5,49 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Drzewa kołyszą się na wietrze** (`src/forest.js`): pochylenie z wiatrem i kołysanie (faza i częstotliwość
+  z losu drzewa), fale porywów przesuwające się przez las z wiatrem; ugięcie rośnie z kwadratem wysokości (pień
+  u podstawy stoi), przy silnym wietrze wierzchołek 20-metrowego drzewa wychyla się o ~0,3 m. Cienie drzew kołyszą się
+  razem z nimi (ta sama siatka w mapie cieni), wektory ruchu TAA znają położenie z poprzedniej klatki (bez smug).
+- **Oznakowanie dróg** (`src/roads.js`): pasy ruchu z szerokości jezdni (~3,4 m na pas) – na jezdniach
+  jednokierunkowych (autostrady, ekspresówki, drogi dwujezdniowe; nowy atrybut `aWay`) przerywane linie między pasami
+  bez osi, na dwukierunkowych od 4 pasów podwójna ciągła oś i linie pasów, węższe – przerywana oś; farba starta
+  w plamach. **Przejścia dla pieszych** (`src/gen/crossings.js`): zebry na wylotach skrzyżowań z drogą krajową,
+  wojewódzką albo powiatową w zabudowie, za krawędzią najszerszej drogi w węźle; bez styków odcinków tej samej
+  ulicy, bez nakładania się i nie w poprzek arterii szerszych niż 14 m – w otwartym świecie i w regionach.
+- **Dachy** (`src/buildings.js`, `src/buildgeo.js`): dachówka z rzędami (cień pod krawędzią rzędu), stykami
+  przesuniętymi co drugi rząd i różnym odcieniem pojedynczych dachówek; blacha (szare i zielone dachy)
+  z przetłoczeniami co 0,5 m; ciemniejsze gąsiory na kalenicy, rynna przy okapie, zabrudzenia i mech nisko na połaci;
+  dachy płaskie – pasy papy i łaty. Szczegóły wygaszane z odległością (z wysokości lotu – średnia jasność). Położenie
+  na połaci w atrybucie rodzaju (okap 1 → kalenica 1,4), v – długość wzdłuż spadku. Kominy z cegły na ~85% domów
+  jednorodzinnych (przy kalenicy, 0,9 m ponad nią).
+- **Przyciemnienie gruntu przy budynkach i na skraju lasu** (otwarty świat): budynki i las „siedzą” w terenie –
+  ciemniejszy pas przy ścianach (do ~15 m) i, słabiej, przed ścianą lasu (do ~14 m). Liczone raz w wątku kafla
+  (`chunkOcclusion` w `src/world/chunkdata.js`: obrysy budynków i piksele lasu, transformata odległości) i zapisane
+  w górnych 4 bitach klasy pokrycia w teksturze kafla – bez dodatkowej pamięci i bez kosztu na karcie; w shaderze
+  głównie światło nieba i odbite, słońce słabiej.
+- **Poranna mgła w dolinach** (otwarty świat, `src/post.js`): od świtu do ~10:00 przy słabym wietrze i niezbyt
+  pochmurnym niebie (najwięcej jesienią, mniej latem; w deszczu i burzy – nie; `valleyFog` w `src/weather/weather.js`)
+  mgła wypełnia dna dolin, koryta rzek i żleby – tam, gdzie grunt leży pod poziomem okolicy (wysokość wygładzona
+  w promieniu ~500 m: kanał A okna rzeźby, liczony w tle po 48 wierszy na klatkę); jęzory i plamy z szumu, grzbiety
+  i korony drzew wystają ponad warstwę; oświetlona słońcem i niebem. Koszt karty w granicach szumu pomiaru.
+- **Wyostrzenie obrazu i poświata jasnych świateł** (`src/post.js`): po wygładzaniu TRAA wyostrzenie z adaptacją
+  do kontrastu (RCAS, `SharpenNode`) – ostrzejsze krawędzie budynków, korony drzew i linie pól; poświata (`BloomNode`)
+  tylko tego, co po ekspozycji jaśniejsze od bieli – światła miast i reflektory nocą, odblask słońca, błyskawice;
+  obraz do poświaty mnożony przez bieżącą ekspozycję, więc próg działa tak samo w dzień i w nocy. Ustawienia → Obraz:
+  „Poświata jasnych świateł” (0–2) i „Wyostrzenie obrazu” (0–1). Koszt karty graficznej w granicach szumu pomiaru.
+- **Cienie rzeźby terenu w otwartym świecie** (dotąd tylko w regionach): przy niskim słońcu grzbiety rzucają cienie
+  przez doliny (promień do słońca do ~4,4 km), polany i drogi w lesie ciemnieją przy ścianach drzewostanu, doliny
+  i wąwozy ciemniejsze w świetle nieba. Dane: zgrubne okno rzeźby wokół kamery (`src/world/relief.js`, 28 km,
+  ~55 m na piksel, z kafli bliskich i dalekiego terenu) i okno gruntu drzew 3D z bliska; shader wspólny
+  (`src/world/reliefshade.js`) – teren kafli i daleki teren, drzewa 3D (raz na drzewo) oraz przez
+  `plane.groundShadow` budynki, drogi, aleje, mosty, rzeki, tory i pojazdy. Koszt karty graficznej w granicach
+  szumu pomiaru (Beskid Śląski, 2,6–8,3 ms na klatkę bez zmian).
+- **Barwy pór roku** (`src/weather/seasons.js`, uniformy `SEASON` w `src/gfx/ground.js`): wiosną kwitnący rzepak,
+  młode zboża, goła ziemia pod kukurydzę, świeża jasna zieleń łąk i liści; latem jak dotąd; wczesną jesienią
+  ścierniska, orka i wschody ozimin, sucha kukurydza, przyżółkła trawa i pierwsze żółknące liściaste (ok. 1/5
+  drzew); zimą – oziminy i ziemia pod śniegiem, zżółkła trawa. Pola, łąki, polany, ogrody, drzewa 3D, aleje
+  i korony dalekiego lasu – w regionach i w otwartym świecie; zmiana pory roku w locie od razu.
 - **`npm run bake:tiles` dla wielu województw**: `-- malopolskie opolskie` albo `-- polska`; kafle wektorowe z
   wyciągu całej Polski (`--osm=poland`, domyślnie) w osobnym katalogu `tools/.cache/tiles-src/vector-poland/` –
   Planetiler nie nadpisuje już `data/tiles/lot/`, kolejne województwo nie usuwa poprzednich; Planetiler tylko

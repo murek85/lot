@@ -8,8 +8,9 @@ import { buildBuildingTiles } from '../buildgeo.js';
 import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
 import { COVER } from '../gen/terrain.js';
 import { densify, ribbon } from '../gfx/ribbon.js';
+import { roadCrossings, CROSSING } from '../gen/crossings.js';
 import { gridHeightAt } from './streamer.js';
-import { CHUNK_Z, HEIGHT_Z, GRID, LOT_GRID, COVER_RES, lotHeights, fillHeights, shoreDistance, heightTilesFor, decodeTerrarium, chunkHeights, gridNormals, chunkObjects, chunkObjectsLot, chunkFrame, chunkMask } from './chunkdata.js';
+import { CHUNK_Z, HEIGHT_Z, GRID, LOT_GRID, COVER_RES, lotHeights, fillHeights, shoreDistance, heightTilesFor, decodeTerrarium, chunkHeights, gridNormals, chunkObjects, chunkObjectsLot, chunkFrame, chunkMask, chunkOcclusion } from './chunkdata.js';
 
 const OFM = 'https://tiles.openfreemap.org/planet';
 const TERRARIUM = (z, x, y) => `https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${z}/${x}/${y}.png`;
@@ -95,8 +96,10 @@ async function chunkMsg(e) {
 		// odległość od brzegu dla wody (głębia, piana); daleki teren – bez brzegów (głęboko)
 		const shore = far ? new Uint8Array(cover.length).fill(255) : shoreDistance(cover, COVER_RES, F.w / COVER_RES);
 		const mask = far ? new Uint8Array(0) : chunkMask(osm, F);
+		// przyciemnienie gruntu przy budynkach i skraju lasu (daleki teren – bez)
+		const occ = far ? new Uint8Array(0) : chunkOcclusion(osm, cover, F);
 		const msg = {
-			type: 'chunk', req, key: `${x}/${y}`, x, y, z: Z, n, shore,
+			type: 'chunk', req, key: `${x}/${y}`, x, y, z: Z, n, shore, occ,
 			frame: { x0: F.x0, z0: F.z0, w: F.w, h: F.h },
 			heights: g.heights, normals: g.normals, min: g.min, max: g.max, cover, mask,
 			// daleki kafel: bez obiektów, tylko miejscowości (mapy, miejsca startu)
@@ -106,7 +109,7 @@ async function chunkMsg(e) {
 		// dane do późniejszej budowy obiektów (wysokości – kopia, oryginał odchodzi do wątku głównego)
 		if (!far) remember(msg.key, { origin, osm, frame: msg.frame, n, heights: g.heights.slice(), cover: cover.slice() });
 		// quiet – wczytanie tylko na potrzeby obiektów (bez odpowiedzi do wątku głównego)
-		if (!e.quiet) self.postMessage(msg, [g.heights.buffer, g.normals.buffer, cover.buffer, mask.buffer, shore.buffer]);
+		if (!e.quiet) self.postMessage(msg, [g.heights.buffer, g.normals.buffer, cover.buffer, mask.buffer, shore.buffer, occ.buffer]);
 	} catch (err) {
 		if (e.quiet) throw err;
 		self.postMessage({ type: 'error', req, key: `${x}/${y}`, message: String(err?.message ?? err) });
@@ -122,10 +125,19 @@ function remember(key, v) {
 }
 const sameOrigin = (a, b) => a.lon === b.lon && a.lat === b.lat;
 
-/** Wstęgi dróg kafla w jednej siatce (kolejność rysowania od polnych do głównych – kolejność indeksów). */
+/**
+ * Wstęgi dróg kafla w jednej siatce (kolejność rysowania od polnych do głównych – kolejność indeksów), na końcu
+ * przejścia dla pieszych (src/gen/crossings.js) – na wierzchu jezdni. way – jezdnia jednokierunkowa (pasy ruchu bez osi).
+ */
 function roadArrays(osm, hAt) {
-	const g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], cls: [], count: 0 };
-	for (const [cls, w10, surface, bridge, , c] of [...osm.roads].sort((a, b) => b[0] - a[0])) {
+	const g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], cls: [], way: [], count: 0 };
+	const add = (rb, width, surface, cls, way) => {
+		for (const v of rb.pos) g.pos.push(v);
+		for (let i = 0; i < rb.side.length; i++) { g.side.push(rb.side[i]); g.dist.push(rb.dist[i]); g.width.push(width); g.surf.push(surface); g.cls.push(cls); g.way.push(way); }
+		for (const v of rb.idx) g.idx.push(v);
+		g.count += rb.side.length;
+	};
+	for (const [cls, w10, surface, bridge, , c, oneway] of [...osm.roads].sort((a, b) => b[0] - a[0])) {
 		let pts = [];
 		for (let i = 0; i < c.length; i += 2) pts.push(c[i] / 10, c[i + 1] / 10);
 		if (pts.length < 4) continue;
@@ -133,14 +145,12 @@ function roadArrays(osm, hAt) {
 		const width = w10 / 10, n = pts.length / 2;
 		let hFn = (x, z) => hAt(x, z) + 0.25;
 		if (bridge) { const h0 = hAt(pts[0], pts[1]), h1 = hAt(pts[(n - 1) * 2], pts[(n - 1) * 2 + 1]); let i = 0; hFn = () => h0 + (h1 - h0) * (n > 1 ? i++ / (n - 1) : 0) + 0.6; }
-		const rb = ribbon(pts, width / 2, hFn, g.count);
-		for (const v of rb.pos) g.pos.push(v);
-		for (let i = 0; i < rb.side.length; i++) { g.side.push(rb.side[i]); g.dist.push(rb.dist[i]); g.width.push(width); g.surf.push(surface); g.cls.push(cls); }
-		for (const v of rb.idx) g.idx.push(v);
-		g.count += rb.side.length;
+		add(ribbon(pts, width / 2, hFn, g.count), width, surface, cls, oneway || cls === 0 ? 1 : 0);
 	}
+	// zebry: 2 cm nad jezdnią
+	for (const z of roadCrossings(osm.roads, osm.buildings)) add(ribbon(z.pts, z.width / 2, (x, zz) => hAt(x, zz) + 0.27, g.count), z.width, 0, CROSSING, 0);
 	const F = (a) => new Float32Array(a);
-	return { pos: F(g.pos), side: F(g.side), dist: F(g.dist), width: F(g.width), surf: F(g.surf), cls: F(g.cls), idx: new Uint32Array(g.idx), count: g.count };
+	return { pos: F(g.pos), side: F(g.side), dist: F(g.dist), width: F(g.width), surf: F(g.surf), cls: F(g.cls), way: F(g.way), idx: new Uint32Array(g.idx), count: g.count };
 }
 
 async function objectsMsg(e) {

@@ -2,7 +2,7 @@
 // (pola w pasach z koleinami, bory z koronami drzew i duktami, zabudowa, woda z odbiciem nieba), oświetlone
 // fizycznie: światło słońca po przejściu przez atmosferę, światło nieba, cienie rzeźby i ścian lasu.
 // Poza regionem ciągnie się płaski „świat zastępczy” z tym samym materiałem – zakrzywiony jak Ziemia aż po horyzont.
-import { cityLight, snowCover, bareTrees, BARE, worldOffset } from './gfx/ground.js';
+import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset } from './gfx/ground.js';
 import {
 	Mesh, Group, PlaneGeometry, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DataTexture, RGBAFormat,
 	UnsignedByteType, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter,
@@ -163,6 +163,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const bushZone = smoothstep(0.55, 0.75, valueNoise(xz.div(300).add(1.7)));
 			const isBush = step(0.82, bush.z).mul(bushZone).mul(smoothstep(mix(float(0.12), float(0.38), bush.z.sub(0.82).mul(5.5)), float(0.45), bush.x).oneMinus());
 			g.assign(mix(g, COL.pineYoung.mul(1.1), isBush.mul(float(1).sub(smoothstep(3, 10, footprint)).mul(0.7).add(0.05))));
+			g.mulAssign(SEASON.grass); // pora roku: świeża wiosną, przyżółkła jesienią, zżółkła zimą
 			const shrub = mix(g, COL.pineYoung, 0.5);
 			albedo.addAssign(g.mul(wGrass).add(shrub.mul(wShrub)));
 		});
@@ -181,14 +182,16 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const border = smoothstep(1.2, 2.6, edgeM.add(footprint.mul(0.5)));
 			const headland = smoothstep(10, 14, edgeM).oneMinus().mul(float(1).sub(smoothstep(1.5, 6, footprint)));
 			const crop = vec3(0).toVar();
-			// koniec czerwca: przewaga zbóż, rzepak w łuszczynach, jęczmień żółknie, mało gołej ziemi
-			If(id.lessThan(0.14), () => { crop.assign(COL.rapeseed); })
-				.ElseIf(id.lessThan(0.48), () => { crop.assign(COL.cerealGreen); })
-				.ElseIf(id.lessThan(0.66), () => { crop.assign(COL.wheatBlue); })
-				.ElseIf(id.lessThan(0.78), () => { crop.assign(COL.ripening); })
-				.ElseIf(id.lessThan(0.87), () => { crop.assign(COL.maize); })
-				.ElseIf(id.lessThan(0.90), () => { crop.assign(COL.soil); })
-				.Else(() => { crop.assign(COL.meadowB); });
+			// uprawy w barwach pory roku (src/weather/seasons.js): latem przewaga zbóż, rzepak w łuszczynach; wiosną
+			// kwitnący rzepak i młode zboża; jesienią ścierniska i orka; zimą oziminy i ziemia (pod śniegiem)
+			const C = SEASON.crops;
+			If(id.lessThan(0.14), () => { crop.assign(C.rapeseed); })
+				.ElseIf(id.lessThan(0.48), () => { crop.assign(C.cereal); })
+				.ElseIf(id.lessThan(0.66), () => { crop.assign(C.wheat); })
+				.ElseIf(id.lessThan(0.78), () => { crop.assign(C.ripening); })
+				.ElseIf(id.lessThan(0.87), () => { crop.assign(C.maize); })
+				.ElseIf(id.lessThan(0.90), () => { crop.assign(C.soil); })
+				.Else(() => { crop.assign(COL.meadowB.mul(SEASON.grass)); });
 			// odcień pola, wilgotność gleby i niejednorodność łanu w kilku skalach
 			crop.mulAssign(mix(float(0.85), float(1.15), hash12(vec2(id.mul(91), 7))));
 			const moist = src.lite ? valueNoise(xz.div(90).add(id.mul(50))) : fbm(xz.div(90).add(id.mul(50)), 3);
@@ -201,13 +204,13 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const tram = smoothstep(0.08, 0.32, abs(toLine.sub(0.9))).oneMinus().mul(float(1).sub(smoothstep(0.4, 2.0, footprint)));
 			const isMaize = step(0.78, id).mul(step(id, 0.87));
 			const rows = sin(across.mul(2 * Math.PI / 0.75)).mul(0.5).add(0.5).mul(float(1).sub(smoothstep(0.1, 0.6, footprint)));
-			crop.assign(mix(crop, COL.soil.mul(0.9), tram.mul(0.55)));
-			crop.assign(mix(crop, mix(COL.soil, COL.cerealGreen, rows), isMaize.mul(0.55).mul(float(1).sub(smoothstep(0.1, 0.6, footprint)))));
+			crop.assign(mix(crop, C.soil.mul(0.9), tram.mul(0.55)));
+			crop.assign(mix(crop, mix(C.soil, C.maize.mul(1.6), rows), isMaize.mul(0.55).mul(float(1).sub(smoothstep(0.1, 0.6, footprint)))));
 			// uwrocia: pas przy granicy, gdzie zawraca ciągnik – łan rzadszy i jaśniejszy
-			crop.assign(mix(crop, crop.mul(1.12).add(COL.soil.mul(0.12)), headland.mul(0.6)));
+			crop.assign(mix(crop, crop.mul(1.12).add(C.soil.mul(0.12)), headland.mul(0.6)));
 			// miedze: wąski pas trawy, gdzieniegdzie zadrzewienia
 			const hedge = step(0.75, valueNoise(r.div(28).add(id.mul(13))));
-			const margin = mix(COL.meadowB, COL.pineYoung, hedge.mul(0.8));
+			const margin = mix(COL.meadowB.mul(SEASON.grass), COL.pineYoung, hedge.mul(0.8));
 			albedo.addAssign(mix(margin, crop, border).mul(wCrop));
 		});
 
@@ -218,7 +221,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			// dukt: pas ~4 m na granicy oddziału, z pokryciem zależnym od wielkości piksela (bez migotania z daleka)
 			const laneW = float(2.0);
 			const lane = src.hasOsm ? float(0) : smoothstep(laneW.sub(footprint.mul(0.5)), laneW.add(footprint.mul(0.5)), toEdge).oneMinus().mul(min(1, laneW.mul(2).div(footprint)));
-			const crown = mix(mix(COL.pineOld, COL.pineYoung, young), mix(COL.leafy, vec3(...BARE), bareTrees), leafy).mul(mix(float(0.85), float(1.15), hash12(sid.add(7.7))));
+			const crown = mix(mix(COL.pineOld, COL.pineYoung, young), mix(mix(SEASON.leaf, SEASON.autumnLeaf, step(hash12(sid.add(31.7)), SEASON.autumn)), vec3(...BARE), bareTrees), leafy).mul(mix(float(0.85), float(1.15), hash12(sid.add(7.7))));
 			const size = mix(float(4.2), float(7.5), leafy).mul(mix(float(1), float(0.55), young));
 			const detail = float(1).sub(smoothstep(size.mul(0.25), size.mul(0.9), footprint));
 			// z daleka: zwarty łan koron z niejednorodnością (luki, kępy) zamiast płaskiego koloru
@@ -241,7 +244,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			// poza zasięgiem drzew 3D korony z tekstury – przyciemnione do jasności lasu z drzew (bez jasnego pierścienia)
 			forest.mulAssign(mix(float(1), farForest, step(1, src.U.treesFar).mul(trees3d.oneMinus())));
 			forest.assign(mix(forest, floorCol, trees3d.mul(mix(float(0.85), float(0.3), young))));
-			const cutting = mix(mix(COL.sand.mul(0.55), COL.meadowB, valueNoise(xz.div(12))), COL.pineYoung, valueNoise(xz.div(5)).mul(0.5));
+			const cutting = mix(mix(COL.sand.mul(0.55), COL.meadowB.mul(SEASON.grass), valueNoise(xz.div(12))), COL.pineYoung, valueNoise(xz.div(5)).mul(0.5));
 			forest.assign(mix(forest, cutting, clear));
 			forest.assign(mix(forest, COL.sand.mul(0.5), lane.mul(float(1).sub(clear))));
 			// pod niskim słońcem korony cienią się nawzajem
@@ -280,9 +283,9 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const street = src.hasOsm ? float(0) : smoothstep(aa.negate().add(3), aa.add(3), min(fract(r.y.div(160)), float(1).sub(fract(r.y.div(160)))).mul(160)).oneMinus();
 			const tv = voronoi(xz.div(6));
 			const tree = smoothstep(0.25, 0.6, tv.x).oneMinus().mul(step(0.45, tv.z));
-			const yard = mix(mix(COL.garden, COL.meadowB, valueNoise(xz.div(8))), COL.pineYoung.mul(1.1), tree);
+			const yard = mix(mix(COL.garden, COL.meadowB, valueNoise(xz.div(8))).mul(SEASON.grass), COL.pineYoung.mul(1.1), tree);
 			const near = mix(mix(mix(yard, COL.roofGrey.mul(0.8), inShed), roofLit, inHouse), COL.asphalt, street);
-			const far = (src.hasOsm ? mix(COL.garden, COL.meadowB, 0.4) : mix(mix(COL.roofRed, COL.roofBrown, 0.5), COL.garden, 0.6)).mul(mix(float(0.85), float(1.1), valueNoise(xz.div(40))));
+			const far = (src.hasOsm ? mix(COL.garden, COL.meadowB, 0.4).mul(SEASON.grass) : mix(mix(COL.roofRed, COL.roofBrown, 0.5), COL.garden, 0.6)).mul(mix(float(0.85), float(1.1), valueNoise(xz.div(40))));
 			albedo.addAssign(mix(far, near, float(1).sub(smoothstep(2, 8, footprint))).mul(wBuilt));
 		});
 
@@ -321,11 +324,15 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 		// światło odbite od okolicy (ciepłe, ~15% albedo krajobrazu) – rozjaśnia cienie, które inaczej byłyby tylko niebieskie
 		const bounce = sunE.mul(max(0, sun.y)).mul(vec3(0.13, 0.14, 0.09)).mul(cavity);
 		shadow.mulAssign(clouds.groundShadow(p));
-		if (!src.isRing) shadow.mulAssign(plane.groundShadow(p));
+		if (!src.isRing) shadow.mulAssign(plane.groundShadow(p, false)); // cień rzeźby – rayShadow wyżej
 		if (!src.isRing && worldShadow) shadow.mulAssign(worldShadow.visibility(p, 0.3));
 		// reflektory samolotu (nocne lądowanie)
 		const landing = src.isRing ? vec3(0) : plane.lights.landingLight(p, N).add(cityLight(p));
-		const diffuse = albedo.div(Math.PI).mul(sunE.mul(ndl).mul(shadow).mul(lit).add(skyTerm.add(bounce).mul(mix(float(1), float(0.8), wForest))).add(landing));
+		// przyciemnienie przy budynkach i na skraju lasu (otwarty świat – src/world/chunkdata.js: chunkOcclusion): głównie
+		// światło nieba i odbite (zasłonięte przez ściany i korony), słońce słabiej
+		const occ = src.occlusion ? src.occlusion() : float(0);
+		const diffuse = albedo.div(Math.PI).mul(sunE.mul(ndl).mul(shadow).mul(lit).mul(float(1).sub(occ.mul(0.3)))
+			.add(skyTerm.add(bounce).mul(mix(float(1), float(0.8), wForest)).mul(float(1).sub(occ.mul(0.65)))).add(landing));
 
 		// --- woda: fale z mapy nachyleń (trzy skale, wiatr w plamach), Fresnel, odblask GGX, odbicie nieba i drzew
 		// z brzegu, głębia z odległości od brzegu (pochłanianie czerwieni), piana na linii brzegu ---

@@ -370,3 +370,56 @@ test('PMTiles: zły nagłówek – komunikat z początkiem odpowiedzi', async ()
 	const html = new TextEncoder().encode('<!DOCTYPE html><html>');
 	assert.throws(() => parseHeader(html.buffer), /PMTiles v3 \(21 B, początek: 3c 21 44 .*„<!DOCTYPE html><”\)/);
 });
+
+test('okno rzeźby: wysokości i las z kafli bliskich, dalej z dalekich, piksele bez danych oznaczone', async () => {
+	const { ReliefWindow, SIZE, RES } = await import('../src/world/relief.js');
+	const { DataUtils } = await import('three/webgpu');
+	const { COVER } = await import('../src/gen/terrain.js');
+	// kafel: płaska płyta o stałej wysokości, cały las albo bez lasu (siatka 2×2, raster pokrycia 4×4)
+	const chunk = (x0, z0, size, elev, forest) => ({ frame: { x0, z0, w: size, h: size }, n: 2, heights: new Float32Array([elev, elev, elev, elev]), cover: new Uint8Array(16).fill(forest ? COVER.forest : COVER.grass) });
+	const near = [chunk(-1000, -1000, 2000, 500, true)];
+	const far = [chunk(-20000, -20000, 40000, 100, false)];
+	const at = (list) => ({ chunkAt: (x, z) => list.find((c) => x >= c.frame.x0 && x < c.frame.x0 + c.frame.w && z >= c.frame.z0 && z < c.frame.z0 + c.frame.h) ?? null, heightAt: () => 500 });
+	const w = new ReliefWindow(at(near), at(far));
+	for (let i = 0; i < 400 && (w.ox === null || w.dirty.length); i++) w.update(0, 0);
+	assert.equal(w.base, 500);
+	const px = (x, z) => {
+		const C = SIZE / RES, i = ((Math.floor(x / C) % RES) + RES) % RES, j = ((Math.floor(z / C) % RES) + RES) % RES, k = (j * RES + i) * 4;
+		return [0, 1, 2].map((c) => DataUtils.fromHalfFloat(w.data[k + c]));
+	};
+	assert.deepEqual(px(10, 10), [1, 0, 1]); // kafel bliski: las, wysokość 500 − base, dane
+	assert.deepEqual(px(5000, 5000), [0, -400, 1]); // daleki: 100 − 500
+	// wysokość wygładzona (A): w środku płyty kafla bliskiego – jej wysokość, daleko od niej – wysokość dalekiego terenu
+	for (let i = 0; i < 100 && !w.smoothed; i++) w.update(0, 0);
+	assert.ok(w.smoothed);
+	const smooth = (x, z) => { const C = SIZE / RES, i = ((Math.floor(x / C) % RES) + RES) % RES, j = ((Math.floor(z / C) % RES) + RES) % RES; return DataUtils.fromHalfFloat(w.data[(j * RES + i) * 4 + 3]); };
+	assert.ok(Math.abs(smooth(10, 10)) < 1);
+	assert.ok(Math.abs(smooth(8000, 8000) + 400) < 1);
+	// przy brzegu płyty (500 m nad okolicą) – pośrodku: dno „doliny” poza płytą leży pod poziomem okolicy
+	assert.ok(smooth(-1100, 0) > -400 && smooth(-1100, 0) < 0);
+	// przesunięcie początku układu – okno od nowa
+	w.shift();
+	assert.equal(w.ox, null);
+	// bez kafli – piksel bez danych (B = 0)
+	const empty = new ReliefWindow(at([]), at([]));
+	for (let i = 0; i < 400 && (empty.ox === null || empty.dirty.length); i++) empty.update(0, 0);
+	assert.equal(DataUtils.fromHalfFloat(empty.data[2]), 0);
+});
+
+test('przyciemnienie gruntu przy budynkach i na skraju lasu', async () => {
+	const { chunkOcclusion } = await import('../src/world/chunkdata.js');
+	const { COVER } = await import('../src/gen/terrain.js');
+	const R = 64, frame = { x0: 1000, z0: 2000, w: 384, h: 384 }; // 6 m na piksel
+	const cover = new Uint8Array(R * R).fill(COVER.grass);
+	for (let j = 0; j < R; j++) for (let i = 48; i < R; i++) cover[j * R + i] = COVER.forest; // las na wschodzie
+	// budynek 12 × 12 m w (x 1100–1112, z 2100–2112) – współrzędne w decymetrach
+	const ring = [11000, 21000, 11120, 21000, 11120, 21120, 11000, 21120];
+	const occ = chunkOcclusion({ buildings: [[1, 60, 0, 1, ring]] }, cover, frame, R);
+	const at = (x, z) => occ[Math.floor((z - frame.z0) / 6) * R + Math.floor((x - frame.x0) / 6)];
+	assert.equal(at(1106, 2106), 15); // w obrysie
+	assert.ok(at(1116, 2106) > at(1124, 2106)); // im dalej od ściany, tym jaśniej
+	assert.equal(at(1150, 2106), 0); // 40 m dalej – bez przyciemnienia
+	assert.ok(at(1284, 2300) > 0 && at(1284, 2300) < 15); // piksel przed lasem (las od x = 1288), słabiej niż przy ścianie
+	assert.equal(at(1300, 2300), 0); // w lesie – bez (dno lasu ma własne cieniowanie)
+	assert.equal(at(1200, 2300), 0); // z dala od wszystkiego
+});

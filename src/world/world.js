@@ -7,6 +7,7 @@ import { createForest } from '../forest.js';
 import { unpackNetwork, shiftGraph, shiftGrid } from '../traffic/graph.js';
 import { worldOffset } from '../gfx/ground.js';
 import { GroundWindow, SIZE as WINDOW_SIZE } from './window.js';
+import { ReliefWindow, SIZE as RELIEF_SIZE, REACH as RELIEF_REACH } from './relief.js';
 import { WorldMap } from './maptiles.js';
 import { COVER } from '../gen/terrain.js';
 import { WorldStreamer, tilesAround } from './streamer.js';
@@ -64,19 +65,19 @@ export function worldRegion(start) {
 export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lights = null) {
 	const view = new ChunkView(scene, atmo, clouds, plane, worldShadow);
 	let lowest = Infinity;
-	let win = null;
+	let win = null, relief = null;
 	// daleki teren (kafle z11 do 50 km) pod maską wczytanych kafli z14
 	const mask = new NearMask();
 	const farView = new FarView(scene, view.U, atmo, clouds, plane, mask);
 	const farStreamer = new WorldStreamer(region.meta.center, {
 		z: FAR_Z, radius: 50000, objectRadius: 0, workers: 2,
-		onLoad: (ch) => { farView.add(ch); map.add(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
+		onLoad: (ch) => { farView.add(ch); map.add(ch); relief?.chunkLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
 		onUnload: (ch) => farView.remove(ch),
 	});
 	const map = new WorldMap();
 	const streamer = new WorldStreamer(region.meta.center, {
 		radius: 9000, objectRadius: 4000,
-		onLoad: (ch) => { view.add(ch); mask.set(ch, true); win?.chunkLoaded(ch); map.add(ch); lights?.chunkLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 40); } },
+		onLoad: (ch) => { view.add(ch); mask.set(ch, true); win?.chunkLoaded(ch); relief?.chunkLoaded(ch); map.add(ch); lights?.chunkLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 40); } },
 		onUnload: (ch) => { view.remove(ch); mask.set(ch, false); lights?.chunkUnloaded(ch); },
 		onObjects: (ch, on) => view.objects(ch, on),
 	});
@@ -90,8 +91,13 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 		update() {},
 	};
 	win = new GroundWindow(streamer);
+	// cienie rzeźby terenu: okno gruntu (z bliska) i zgrubne okno rzeźby (do ~14 km) – tekstury do materiałów kafli
+	relief = new ReliefWindow(streamer, farStreamer);
+	const R = view.U.relief;
+	R.fine.value = win.tex; R.fineSize.value = WINDOW_SIZE; R.fineReach.value = WINDOW_SIZE / 2 - 128 - WINDOW_SIZE / 512;
+	R.coarse.value = relief.tex; R.coarseSize.value = RELIEF_SIZE; R.coarseReach.value = RELIEF_REACH;
 	const base = uniform(0);
-	const forest = createForest(region, atmo, clouds, terrain, null, worldShadow, plane, { tex: win.tex, size: WINDOW_SIZE, base });
+	const forest = createForest(region, atmo, clouds, terrain, null, worldShadow, plane, { tex: win.tex, size: WINDOW_SIZE, base, relief: R });
 	view.U.treesFar.value = forest.uniforms.far.value; // teren w zasięgu drzew 3D pokazuje dno lasu
 	// sieć ruchu (drogi, tory, chodniki) z kafli wokół samolotu – przebudowa w osobnym wątku co ~2 km lotu
 	let hold = null; // punkt doczytywania na czas wczytywania nowego miejsca
@@ -108,7 +114,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 	const within = (x, z, r) => [...streamer.chunks.values()].filter((ch) => Math.hypot(ch.frame.x0 + ch.frame.w / 2 - x, ch.frame.z0 + ch.frame.h / 2 - z) < r);
 	const keys = (x, z, r) => tilesAround(x, z, r, streamer.origin).map((t) => [t.x, t.y]);
 	return {
-		streamer, view, terrain, forest, window: win, net, map, farStreamer, farView, mask,
+		streamer, view, terrain, forest, window: win, relief, net, map, farStreamer, farView, mask,
 		coverAt: (x, z) => streamer.coverAt(x, z),
 		/**
 		 * Sieć dla symulacji ruchu: drogi z kafli do 5 km (pojazdy jeżdżą do 2,5 km), tory i stacje do 12 km (pociągi
@@ -160,6 +166,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 			mask.shift(dx, dz);
 			region.meta.center = streamer.origin;
 			win.shift(dx, dz);
+			relief.shift();
 			lights?.shift(dx, dz);
 			map.shift(dx, dz);
 			worldOffset.value.x += dx;
@@ -201,8 +208,13 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 			farStreamer.update(focus.x, focus.z, vel.vx, vel.vz);
 			view.update(camera, focus, time);
 			win.update(camera.position.x, camera.position.z);
+			relief.update(camera.position.x, camera.position.z);
 			map.update(focus.x, focus.z);
 			base.value = win.base;
+			R.fineBase.value = win.base; R.fineC.value.set(win.ox + WINDOW_SIZE / 2, win.oz + WINDOW_SIZE / 2);
+			R.coarseBase.value = relief.base; R.coarseC.value.set(relief.cx, relief.cz);
+			R.on.value = win.ox === null || relief.ox === null ? 0 : 1;
+			R.smooth.value = relief.smoothed ? 1 : 0;
 		},
 		/** Czekanie na kafle wokół punktu (ekran wczytywania): progress(0..1). */
 		async ready(x, z, r, progress, timeout = 30000) {

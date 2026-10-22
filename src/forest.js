@@ -5,14 +5,15 @@
 // szczegółów (blisko 7 boków, dalej 4). Na skraju zasięgu drzewa znikają rozpraszaniem pikseli (wygładza je TAA).
 import { InstancedMesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, Matrix4 } from 'three/webgpu';
 import {
-	Fn, float, int, vec2, vec3, vec4, uniform, attribute, varying, instanceIndex, floor, max, min, mix, smoothstep, step, length,
+	Fn, float, int, vec2, vec3, vec4, uniform, attribute, varying, instanceIndex, floor, max, min, mix, smoothstep, step, fract, length,
 	normalize, dot, select, cos, sin, pow, cameraPosition, Discard, If, screenCoordinate, interleavedGradientNoise, mrt, texture,
 } from 'three/tsl';
-import { hash12, hash22 } from './gfx/noise.js';
+import { hash12, hash22, valueNoise } from './gfx/noise.js';
 import { forestStand, forestCover } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
 import { CASTER_LAYER } from './shadows.js';
-import { cityLight, snowCover, bareTrees, BARE, worldOffset } from './gfx/ground.js';
+import { reliefShadow } from './world/reliefshade.js';
+import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset } from './gfx/ground.js';
 
 const EARTH_R = 6371000;
 const SPACING = 5;
@@ -72,6 +73,27 @@ export function treeGeometry(sides) {
  * win – zamiast tekstur regionu (otwarty świat): { tex (R – gęstość lasu, G – wysokość − base, B – maska dróg),
  * size (bok okna, adresowanie w kółko), base (uniform) }.
  */
+/**
+ * Wiatr dla drzew 3D (ustawia src/main.js co klatkę): v – wiatr przy ziemi (m/s, x – wschód, y – południe),
+ * t – czas gry (s), dt – długość klatki (s; położenie z poprzedniej klatki do wektorów ruchu TAA).
+ */
+export const TREE_WIND = { v: uniform(new Vector2()), t: uniform(0), dt: uniform(0) };
+
+/**
+ * Wychylenie wierzchołka korony (m, w poziomie) w chwili time: pochylenie z wiatrem i kołysanie (faza i częstotliwość
+ * z losu drzewa), fale porywów przesuwające się z wiatrem; bend – ugięcie (0 u podstawy, 1 na wierzchołku).
+ */
+function sway(pxz, r1, r2, H, time) {
+	const v = TREE_WIND.v, speed = length(v);
+	const dir = v.div(max(speed, 0.01)), cross = vec2(dir.y.negate(), dir.x);
+	const amp = min(float(0.7), speed.mul(0.012).add(speed.mul(speed).mul(0.0022))).mul(H.div(20));
+	const gust = valueNoise(pxz.div(90).sub(v.mul(time).mul(0.06))).mul(0.9).add(0.35);
+	const w = mix(float(1.6), float(2.6), r2), ph = r1.mul(6.283);
+	const along = gust.mul(float(0.55).add(sin(time.mul(w).add(ph)).mul(0.45)));
+	const side = sin(time.mul(w.mul(1.37)).add(ph.mul(1.7))).mul(0.22);
+	return dir.mul(along).add(cross.mul(side)).mul(amp);
+}
+
 export function createForest(region, atmo, clouds, terrain, roadMask = null, worldShadow = null, plane = null, win = null) {
 	const size = region.size;
 	const forestTex = texture(win ? win.tex : region.forestTex);
@@ -93,11 +115,13 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 	};
 
 	/** Rozmieszczenie drzewa (wspólne dla materiału oświetlonego i dla przebiegu cienia). */
-	const placement = (n, isNear) => {
+	const placement = (n, isNear, withRelief = false) => {
 		const vWorld = varying(vec3(0), 'vTreeWorld');
 		const vNormal = varying(vec3(0), 'vTreeNormal');
 		const vInfo = varying(vec4(0), 'vTreeInfo'); // część, wysokość w koronie, typ (0 sosna, 1 młoda, 2 liściaste), odcień
 		const vFade = varying(float(0), 'vTreeFade');
+		const vRelief = varying(float(1), 'vTreeRelief');
+		const vPrev = varying(vec3(0), 'vTreePrev'); // położenie w poprzedniej klatce (kołysanie) – wektory ruchu
 		const position = Fn(() => {
 			const i = int(instanceIndex);
 			const gx = float(i.mod(n)), gz = float(i.div(n));
@@ -131,7 +155,15 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const local = vec3(shape.x.mul(ca).sub(shape.z.mul(sa)), shape.y, shape.x.mul(sa).add(shape.z.mul(ca)))
 				.mul(vec3(mix(float(0.85), float(1.2), r2), 1, mix(float(0.85), float(1.2), r1))).mul(H);
 			const ground = gh.sub(H.mul(0.22)); // DSM ma już część koron w rzeźbie – drzewo „siada” niżej
-			const world = vec3(xz.x, ground, xz.y).add(local);
+			// otwarty świat: cień gór i zboczy (zgrubne okno rzeźby, src/world/reliefshade.js) – raz na drzewo, od wierzchołka
+			// korony lasu; cienie sąsiednich koron drzewo liczy samo (worldShadow)
+			if (withRelief && win?.relief) vRelief.assign(reliefShadow(win.relief, atmo, float(17), xz, gh, float(1), float(100), true));
+			// kołysanie na wietrze: ugięcie rośnie z kwadratem wysokości nad ziemią (pień u podstawy stoi)
+			const bend = max(0, local.y).div(H).pow(2);
+			const s0 = sway(pxz, r1, r2, H, TREE_WIND.t).mul(bend), s1 = sway(pxz, r1, r2, H, TREE_WIND.t.sub(TREE_WIND.dt)).mul(bend);
+			const rest = vec3(xz.x, ground, xz.y).add(local);
+			const world = rest.add(vec3(s0.x, 0, s0.y));
+			vPrev.assign(rest.add(vec3(s1.x, 0, s1.y)));
 			const dc = world.xz.sub(U.cam);
 			const curved = world.sub(vec3(0, dot(dc, dc).div(2 * EARTH_R), 0));
 			// normalna korony: elipsoida wokół środka korony (miękkie światło), pień – promieniowo
@@ -146,13 +178,13 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			// odrzucone drzewo zapada się do punktu (zdegenerowane trójkąty nie dają pikseli)
 			return mix(vec3(xz.x, ground, xz.y), curved, scale);
 		})();
-		return { position, vWorld, vNormal, vInfo, vFade };
+		return { position, vWorld, vNormal, vInfo, vFade, vRelief, vPrev };
 	};
 
 	const makeMesh = (sides, n, isNear) => {
 		const geo = treeGeometry(sides);
 		const mat = new MeshBasicNodeMaterial();
-		const { position, vWorld, vNormal, vInfo, vFade } = placement(n, isNear);
+		const { position, vWorld, vNormal, vInfo, vFade, vRelief, vPrev } = placement(n, isNear, true);
 		mat.positionNode = position;
 		const sunDir = atmo.u.lightDir;
 		mat.colorNode = Fn(() => {
@@ -164,7 +196,9 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const twig = hash12(floor(vWorld.xz.add(worldOffset).mul(1.7)).add(floor(vWorld.y.mul(1.7)).mul(17.31)));
 			If(type.greaterThan(1.5).and(part.greaterThan(0.5)).and(twig.lessThan(bareTrees.mul(0.55))), () => { Discard(); });
 			// sosny ciemniejsze i chłodniejsze, liściaste jaśniejsze – ale bez jaskrawości
-			const crown = select(type.greaterThan(1.5), mix(COL.leafy.mul(1.6), vec3(...BARE).mul(1.6), bareTrees), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
+			// liściaste: liście pory roku, jesienią część drzew (los niezależny od jasności) żółknie, zimą nagie
+			const leaves = mix(SEASON.leaf, SEASON.autumnLeaf, step(fract(tint.mul(7.31)), SEASON.autumn));
+			const crown = select(type.greaterThan(1.5), mix(leaves.mul(1.6), vec3(...BARE).mul(1.6), bareTrees), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
 				.mul(mix(float(0.8), float(1.2), tint));
 			const bark = vec3(0.09, 0.055, 0.035);
 			const N = normalize(vNormal);
@@ -176,7 +210,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			// listowie przepuszcza i rozprasza światło – miękkie „owinięcie” zamiast twardego cosinusa
 			const ndl = max(0, dot(N, sunDir).mul(0.7).add(0.3)).mul(smoothstep(-0.02, 0.02, sunDir.y));
 			const ao = mix(float(0.45), float(1.0), rel).mul(mix(float(0.7), float(1), part));
-			let shadow = clouds.groundShadow(vWorld);
+			let shadow = clouds.groundShadow(vWorld).mul(vRelief);
 			// cień od sąsiednich drzew i budynków; przesunięcie w stronę słońca – korona nie cieniuje sama siebie
 			if (worldShadow) shadow = shadow.mul(mix(float(0.35), float(1), worldShadow.visibility(vWorld.add(sunDir.mul(2.5)), 1.5)));
 			const bounce = sunE.mul(max(0, sunDir.y)).mul(vec3(0.1, 0.12, 0.07));
@@ -186,10 +220,10 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const landing = (plane ? plane.lights.landingLight(vWorld, N).mul(0.8).add(plane.lights.landingLight(vWorld, N.negate()).mul(0.2)) : vec3(0)).add(cityLight(vWorld).mul(0.6));
 			return albedo.div(Math.PI).mul(sunE.mul(ndl.add(back)).mul(shadow).mul(mix(float(0.75), float(1), rel)).add(skyE.mul(N.y.mul(0.5).add(0.5)).add(bounce).mul(ao)).add(landing));
 		})();
-		// wektory ruchu dla TAA: drzewa stoją w miejscu świata, więc liczymy je z pozycji świata i macierzy kamery
+		// wektory ruchu dla TAA: z pozycji świata i macierzy kamery – teraz i w poprzedniej klatce (kołysanie korony)
 		mat.mrtNode = mrt({
 			velocity: Fn(() => {
-				const c = U.curVP.mul(vec4(vWorld, 1)), p = U.prevVP.mul(vec4(vWorld, 1));
+				const c = U.curVP.mul(vec4(vWorld, 1)), p = U.prevVP.mul(vec4(vPrev, 1));
 				return c.xy.div(c.w).sub(p.xy.div(p.w));
 			})(),
 		});

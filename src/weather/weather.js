@@ -111,3 +111,18 @@ export function flashAt(t, flickers, distance) {
 	for (const s of flickers) if (t >= s) f = Math.max(f, Math.exp(-(t - s) * 14));
 	return f * Math.min(1, 3500 / distance);
 }
+
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const FOG_WEATHER = { clear: 1, few: 1, scattered: 0.8, broken: 0.45, haze: 1, rain: 0.2, snow: 0, storm: 0 };
+const FOG_SEASON = { spring: 0.75, summer: 0.55, autumn: 1, winter: 0.6 };
+
+/**
+ * Poranna mgła radiacyjna w dolinach 0..1 (src/post.js): po pogodnej, spokojnej nocy – od świtu (~4:30), rozwiewa się
+ * z nagrzewaniem (do ~10:00); słaby wiatr, mało chmur (pod zachmurzeniem i w deszczu słabsza), najczęściej jesienią.
+ * hour – godzina, season – id pory roku, wind – prędkość wiatru (m/s), weather – id pogody.
+ */
+export function valleyFog(hour, season, wind, weather) {
+	const morning = smooth(4, 5.5, hour) * (1 - smooth(7.5, 10, hour));
+	const calm = 1 - smooth(2.5, 6.5, wind);
+	return Math.min(1, morning * calm * (FOG_WEATHER[weather] ?? 0.6) * (FOG_SEASON[season] ?? 0.6));
+}

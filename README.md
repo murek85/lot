@@ -4,7 +4,7 @@ Historia wersji: [CHANGELOG.md](CHANGELOG.md) (w grze – „Co nowego”).
 
 Prototyp arcade'owej gry lotniczej nad prawdziwą mapą Polski, z widokiem z góry, na **WebGPU** (Three.js 0.186, `WebGPURenderer` i shadery w TSL). Gra nie ma trybu zapasowego WebGL2: bez WebGPU pokazuje okno z informacją.
 
-**Gotowe:** teren regionu, fizyczna atmosfera, chmury wolumetryczne z cieniami na ziemi, Dromader z arcade'owym modelem lotu i kamerą pościgową, wygładzanie czasowe (TAA), efekt miniatury (tilt-shift), jeziora z falami i odbiciami, las z pojedynczych drzew 3D, a z OpenStreetMap: drogi i dukty, budynki 3D, tory z peronami, mosty, aleje, linie energetyczne i cienie budynków oraz drzew. Region: Bory Tucholskie, a w grze generator regionów z dowolnego miejsca w Polsce (kafle wektorowe OpenStreetMap).
+**Gotowe:** teren regionu, fizyczna atmosfera, chmury wolumetryczne z cieniami na ziemi, Dromader z arcade'owym modelem lotu i kamerą pościgową, wygładzanie czasowe (TAA) z wyostrzeniem, poświata jasnych świateł, efekt miniatury (tilt-shift), jeziora z falami i odbiciami, las z pojedynczych drzew 3D, a z OpenStreetMap: drogi i dukty, budynki 3D, tory z peronami, mosty, aleje, linie energetyczne i cienie budynków oraz drzew. Region: Bory Tucholskie, a w grze generator regionów z dowolnego miejsca w Polsce (kafle wektorowe OpenStreetMap).
 
 ## Uruchomienie
 
@@ -309,7 +309,7 @@ klawiszu (ekran startowy), w karcie w tle jest wstrzymany.
   - ekran startowy z logo, paskiem wczytywania i „Kliknij lub naciśnij dowolny klawisz”;
   - menu nad żywą sceną: Dromader krąży na autopilocie, kamera powoli go okrąża, przyciemnienie od lewej; rama z celownikami w rogach i pasem skanu, marka u góry, stopka z wersją;
   - ekran główny: Kontynuuj lot (autozapis), Szybki start, Nowy lot, Wczytaj lot, Ustawienia, Sterowanie; obok karta „Plan lotu”;
-  - plan lotu: miejsce startu (Tuchola, Jezioro Charzykowskie, Chojnice, Rytel, Czersk, Człuchów), pora dnia, pora roku (wiosna, lato, wczesna jesień, zima – śnieg i drzewa bez liści), pogoda i widok – wybór od razu zmienia scenę w tle;
+  - plan lotu: miejsce startu (Tuchola, Jezioro Charzykowskie, Chojnice, Rytel, Czersk, Człuchów), pora dnia, pora roku (wiosna – kwitnący rzepak i świeża zieleń, lato, wczesna jesień – ścierniska, orka i żółknące liście, zima – śnieg i drzewa bez liści; barwy w `src/weather/seasons.js`), pogoda i widok – wybór od razu zmienia scenę w tle;
   - pauza (Esc): Wznów, Pogoda i pora dnia, Zapisz / wczytaj – jeden ekran jak w Maszyniście: przy każdym z 5 slotów i autozapisie przyciski Zapisz (Nadpisz), Wczytaj i ✕ (usuń); nadpisanie, usunięcie i wczytanie w locie wymagają drugiego kliknięcia („NA PEWNO?”); autozapis co 30 s i przy wyjściu do menu; z ekranu głównego i po kraksie ten sam ekran tylko do wczytywania, Ustawienia, Sterowanie, Menu główne, z raportem lotu (położenie „2 km na płd.-wsch. od Tucholi”, prędkość, wysokość, kurs, czas);
   - kraksa jako okno z „Leć ponownie” (Enter), „Wczytaj lot”, „Menu główne”;
   - ustawienia w zakładkach Obraz / Sterowanie / Interfejs (miniatura, ekspozycja, rozdzielczość, przewyższenie, odwrócona oś, czułość myszy, pole widzenia w kabinie, panel lotu, licznik klatek, ograniczenie animacji, panel deweloperski) – zapamiętywane w `localStorage` (klucze `lot-…`);
@@ -362,6 +362,7 @@ klawiszu (ekran startowy), w karcie w tle jest wstrzymany.
   - scena w HDR z wektorami ruchu (MRT), bufor głębi odwrócony (precyzja od 2 m do 1200 km);
   - chmury liczone po scenie: znają jej głębię, więc nie zasłaniają samolotu;
   - TRAA: drgająca kamera, historia klatek i wektory ruchu. Wysokości terenu są w wierzchołkach (liczone na CPU), żeby wektory ruchu były poprawne;
+  - wyostrzenie po TRAA (RCAS, `SharpenNode`) i poświata jasnych świateł (`BloomNode` na obrazie przemnożonym przez bieżącą ekspozycję – próg „jaśniej niż biel” niezależny od pory dnia); ustawienia „Poświata jasnych świateł” i „Wyostrzenie obrazu”;
   - tilt-shift: ostry pas na samolocie, rozmycie dyskiem ku górze i dołowi kadru, silniejsze, gdy kamera jest blisko;
   - gradacja kolorów i tone mapping ACES.
 
@@ -404,6 +405,15 @@ wyszukiwarka miejscowości i ostatni start; przy każdym miejscu jakość mapy (
 własnych z listy z14 w `data/tiles/lot/tiles.json`, podstawowa poza nimi). Dalej też: generator → **Otwarty świat
 stąd** i lista regionów („Otwarty świat · …”). W locie – komunikaty przy granicy pełnej jakości i gdy kafle nie
 dochodzą (brak sieci). Regiony działają jak dotąd i zostają trybem głównym.
+
+Cienie rzeźby (jak `rayShadow` i `cavity` regionów): `src/world/relief.js` – zgrubne okno wysokości i lasu wokół
+kamery (28 km, 512², adresowane w kółko jak okno gruntu, wypełniane z kafli bliskich, a dalej z dalekiego terenu,
+~3 ms na klatkę do wypełnienia, po przesunięciu początku układu od nowa); `src/world/reliefshade.js` – jeden zestaw
+uniformów (`RELIEF`) i promień do słońca z krokiem rosnącym geometrycznie: z bliska okno gruntu (5,5 m – ściany lasu),
+dalej zgrubne okno (do ~4,4 km); daleki teren, drzewa 3D i obiekty (`plane.groundShadow`) – tańszy wariant tylko ze
+zgrubnego okna. Kanał A zgrubnego okna – wysokość wygładzona (~1 km, przesuwna suma po
+wierszach i kolumnach, rozłożona na klatki) – poziom okolicy dla porannej mgły w dolinach (`src/post.js`: grubość
+warstwy z głębokości gruntu pod tym poziomem, przepuszczalność z kąta patrzenia; natężenie – `valleyFog`).
 
 - **Kafel** (`src/world/chunkdata.js`) = kafel Web Mercator z14 (~1,5 km): siatka wysokości 65² z marginesem (normalne
   ze wspólnych punktów – bez szwów światła), raster pokrycia 128² (~12 m), obiekty z `convertTile` w metrach świata.

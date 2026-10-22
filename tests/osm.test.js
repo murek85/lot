@@ -82,8 +82,54 @@ test('budynek: ściany z normalnymi na zewnątrz, dach dwuspadowy nad ścianami'
 	assert.ok(Math.max(...ys) > 104 && Math.min(...ys) === 100);
 });
 
+test('dach dwuspadowy: położenie na połaci w rodzaju (okap 1 → kalenica 1,4), komin z cegły ponad kalenicą', () => {
+	const pts = [0, 0, 10, 0, 10, 6, 0, 6];
+	const fresh = () => ({ pos: [], nrm: [], kind: [], uv: [], wall: [], roof: [], idx: [], count: 0 });
+	const b = fresh();
+	addBuilding(b, pts, 100, 3, 1, [1, 1, 1], [1, 0, 0], 0.3);
+	const roof = b.kind.map((k, i) => [k, b.pos[i * 3 + 1], b.uv[i * 2 + 1]]).filter(([k]) => k >= 1 && k < 1.5);
+	const ridgeY = Math.max(...roof.map(([, y]) => y));
+	for (const [k, y, v] of roof) {
+		if (k === 1) assert.ok(y < 103 && v === 0); // okap: nisko, v = 0
+		else { assert.equal(k, 1.4); assert.equal(y, ridgeY); assert.ok(v > 3); } // kalenica: v – długość połaci (> 3 m w poziomie)
+	}
+	// komin: dodatkowe wierzchołki z cegły, ponad kalenicą, ściany bez okien (v < 0)
+	const c = fresh();
+	addBuilding(c, pts, 100, 3, 1, [1, 1, 1], [1, 0, 0], 0.3, true);
+	assert.equal(c.count - b.count, 20); // 4 ściany i wierzch
+	const brick = [...Array(c.count).keys()].filter((i) => Math.abs(c.wall[i * 3] - 0.26) < 1e-6);
+	assert.equal(brick.length, 20);
+	assert.ok(brick.some((i) => c.pos[i * 3 + 1] > ridgeY + 0.5));
+	assert.ok(brick.filter((i) => c.kind[i] === 0).every((i) => c.uv[i * 2 + 1] < 0));
+});
+
 test('aleja: drzewa co ~step po obu stronach w zadanej odległości', () => {
 	const trees = alongLine([0, 0, 200, 0], 10, 5, [-1, 1], rng(1));
 	assert.ok(trees.length > 30 && trees.length < 50);
 	assert.ok(trees.every(([, z]) => Math.abs(Math.abs(z) - 5) < 0.7));
+});
+
+test('przejścia dla pieszych: skrzyżowania z drogą wyższej klasy w zabudowie, bez styków odcinków i bez arterii', async () => {
+	const { roadCrossings } = await import('../src/gen/crossings.js');
+	const dm = (pts) => pts.map((v) => Math.round(v * 10));
+	// krzyżówka: wojewódzka (klasa 2, 7 m) wschód–zachód przez (0, 0), osiedlówka (klasa 4) z północy do niej
+	const main = [2, 70, 0, 0, 0, dm([-100, 0, 0, 0, 100, 0]), 0];
+	const side = [4, 55, 0, 0, 0, dm([0, -100, 0, 0]), 0];
+	const houses = [[-20, 20], [20, 20], [-20, -20], [20, -30]].map(([x, z]) => [0, 60, 0, 1, dm([x, z, x + 8, z, x + 8, z + 8, x, z + 8])]);
+	const zebras = roadCrossings([main, side], houses);
+	assert.equal(zebras.length, 3); // dwa wyloty wojewódzkiej i jeden osiedlówki
+	for (const z of zebras) {
+		const mx = (z.pts[0] + z.pts[2]) / 2, mz = (z.pts[1] + z.pts[3]) / 2;
+		assert.ok(Math.hypot(mx, mz) > 3.5 + 2.5 && Math.hypot(mx, mz) < 12); // za krawędzią najszerszej drogi
+	}
+	// bez zabudowy – nie ma
+	assert.equal(roadCrossings([main, side], []).length, 0);
+	// same osiedlówki – nie ma
+	assert.equal(roadCrossings([[4, 55, 0, 0, 0, main[5], 0], side], houses).length, 0);
+	// styk dwóch odcinków tej samej ulicy (dwa wyloty) – nie jest skrzyżowaniem
+	const a = [2, 70, 0, 0, 0, dm([-100, 0, 0, 0]), 0], b = [2, 70, 0, 0, 0, dm([0, 0, 100, 0]), 0];
+	assert.equal(roadCrossings([a, b], houses).length, 0);
+	// szeroka arteria (ponad 14 m) – zebry tylko na bocznej ulicy
+	const wide = [1, 180, 0, 0, 0, main[5], 1];
+	assert.equal(roadCrossings([wide, side], houses).length, 1);
 });

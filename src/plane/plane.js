@@ -9,6 +9,7 @@ import { uniform, texture, vec2, vec4, float, clamp, max, smoothstep } from 'thr
 import { aircraftById } from './aircraft.js';
 import { PlaneLights } from './lights.js';
 import { transmittance, ATMOSPHERE } from '../atmosphere/model.js';
+import { reliefObjectShadow } from '../world/reliefshade.js';
 
 const SIL = 30; // bok obszaru sylwetki (m)
 const half = (b) => {
@@ -77,8 +78,11 @@ export class Plane {
 		return spec;
 	}
 
-	/** Cień samolotu na ziemi w punkcie p (świat): 1 – słońce, mniej – cień. Do materiału terenu. */
-	groundShadow(p) {
+	/**
+	 * Cień samolotu na ziemi w punkcie p (świat): 1 – słońce, mniej – cień. Do materiałów terenu i obiektów na ziemi;
+	 * relief – razem z cieniem rzeźby otwartego świata (src/world/reliefshade.js; teren liczy go sam – false).
+	 */
+	groundShadow(p, relief = true) {
 		const sun = this.atmo.u.lightDir;
 		const clip = this.silMatrix.mul(vec4(p, 1));
 		const uvS = vec2(clip.x.mul(0.5).add(0.5), float(0.5).sub(clip.y.mul(0.5)));
@@ -91,7 +95,8 @@ export class Plane {
 		occ = occ.div(taps.length);
 		const inside = smoothstep(0, 0.02, uvS.x).mul(smoothstep(0.98, 1, uvS.x).oneMinus()).mul(smoothstep(0, 0.02, uvS.y)).mul(smoothstep(0.98, 1, uvS.y).oneMinus());
 		// zostaje światło rozproszone wokół tarczy – cień nigdy nie jest całkiem czarny, a wysoko blednie
-		return float(1).sub(clamp(occ.mul(inside), 0, 1).mul(0.85));
+		const own = float(1).sub(clamp(occ.mul(inside), 0, 1).mul(0.85));
+		return relief ? own.mul(reliefObjectShadow(this.atmo, p)) : own;
 	}
 
 	/** Ustawia model według stanu lotu i odświeża światła oraz sylwetkę cienia. */

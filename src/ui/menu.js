@@ -389,6 +389,8 @@ export class GameMenu {
 		const check = (key, label, note = '') => `<label class="setting check"${note ? ` title="${esc(note)}"` : ''}><input type="checkbox" data-set="${key}"${s[key] ? ' checked' : ''}><span>${label}</span>${note ? `<small>${note}</small>` : ''}</label>`;
 		const panels = [
 			range('mini', 'Efekt miniatury', 0, 2, 0.05, FMT.mini, 'rozmycie góry i dołu kadru – krajobraz jak makieta') +
+			range('glow', 'Poświata jasnych świateł', 0, 2, 0.05, FMT.glow, 'odblask słońca na wodzie, światła miast i reflektory nocą') +
+			range('sharp', 'Wyostrzenie obrazu', 0, 1, 0.05, FMT.sharp, 'oddaje detale rozmyte przez wygładzanie krawędzi') +
 			range('exposure', 'Ekspozycja', 0.4, 2.5, 0.01, FMT.exposure, 'mnożnik automatycznej ekspozycji') +
 			range('renderScale', 'Rozdzielczość obrazu', 0.5, 1, 0.05, FMT.renderScale, 'mniej – płynniej na słabszych kartach') +
 			range('relief', 'Przewyższenie rzeźby', 1, 4, 0.1, FMT.relief, 'pagórki morenowe wyraźniejsze z góry') +
@@ -798,6 +800,8 @@ export class GameMenu {
 
 const FMT = {
 	mini: (v) => (v < 0.05 ? 'wyłączony' : v < 0.8 ? 'lekki' : v < 1.5 ? 'makieta' : 'mocny'),
+	glow: (v) => (v < 0.05 ? 'wyłączona' : v < 0.7 ? 'delikatna' : v < 1.4 ? 'zwykła' : 'mocna'),
+	sharp: (v) => (v < 0.05 ? 'wyłączone' : v < 0.35 ? 'lekkie' : v < 0.7 ? 'zwykłe' : 'mocne'),
 	exposure: (v) => `×${(+v).toFixed(2)}`,
 	renderScale: (v) => `${Math.round(v * 100)}%`,
 	relief: (v) => `×${(+v).toFixed(1)}`,

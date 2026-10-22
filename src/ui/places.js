@@ -50,6 +50,8 @@ export const DEFAULT_PLAN = { aircraft: 'dromader', place: 'tuchola', time: 'mor
 
 export const DEFAULT_SETTINGS = {
 	mini: 1, // efekt miniatury (tilt-shift)
+	glow: 1, // poświata jasnych świateł (bloom)
+	sharp: 0.5, // wyostrzenie obrazu po wygładzaniu TAA
 	exposure: 1,
 	relief: 1,
 	renderScale: 1,

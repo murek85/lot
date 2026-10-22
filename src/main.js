@@ -3,7 +3,7 @@ import { WebGPURenderer, Scene, PerspectiveCamera, ACESFilmicToneMapping, Vector
 import { loadRegion } from './region.js';
 import { Atmosphere } from './atmosphere/gpu.js';
 import { createTerrain } from './terrain.js';
-import { createForest } from './forest.js';
+import { createForest, TREE_WIND } from './forest.js';
 import { createRoads } from './roads.js';
 import { createBuildings } from './buildings.js';
 import { WorldShadow } from './shadows.js';
@@ -13,7 +13,8 @@ import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
 import { WORLD_ID, worldStart, worldRegion, createWorld, trimTileCache, REBASE_AT, REBASE_STEP } from './world/world.js';
 import { WorldLights } from './world/lights.js';
-import { setTerrainUniforms, setCityLights, snowCover, bareTrees } from './gfx/ground.js';
+import { setTerrainUniforms, setCityLights, snowCover, bareTrees, setSeason } from './gfx/ground.js';
+import { seasonPalette } from './weather/seasons.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
 import { Clouds } from './clouds/clouds.js';
@@ -34,7 +35,7 @@ import { createBirdView } from './fauna/birdview.js';
 import { BirdDots } from './fauna/birddots.js';
 import { PeopleSim, peopleByHour } from './fauna/people.js';
 import { createPeopleView } from './fauna/peopleview.js';
-import { weatherById, seasonWeather, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt } from './weather/weather.js';
+import { weatherById, seasonWeather, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt, valleyFog } from './weather/weather.js';
 import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
 import { sunPosition, sunDirection, dayOfYear } from './sun.js';
@@ -392,6 +393,7 @@ async function start() {
 		if (kind === 'season') {
 			state.day = (SEASONS.find((t) => t.id === id) ?? SEASONS[1]).day;
 			bareTrees.value = id === 'winter' ? 1 : 0;
+			setSeason(seasonPalette(id)); // uprawy, trawa i liście pory roku
 		}
 		if (kind === 'timeSpeed' && id !== 'stop') lastRunning = id;
 		if (kind === 'weather' || kind === 'season') {
@@ -417,6 +419,7 @@ async function start() {
 		const b = document.body.classList;
 		if (k === 'mini' || k === 'exposure' || k === 'relief') { state[k] = v; syncPanel(); }
 		if (k === 'renderScale') resize();
+		if (k === 'glow' || k === 'sharp') post.setLook({ [k]: v });
 		if (k === 'fps') b.toggle('no-fps', !v);
 		if (k === 'hud') b.toggle('no-hud', !v);
 		if (k === 'minimap') b.toggle('no-minimap', !v);
@@ -1096,6 +1099,8 @@ async function start() {
 		const W = seasonWeather(weatherById(env.weather), env.season); // zimą opady śniegu zamiast deszczu
 		const windNow = windVector(effectiveWind(env.weather, env.wind).speed, t);
 		wx.wind = windNow;
+		post.fog.value = valleyFog(state.hour, env.season, windNow.speed, env.weather); // poranna mgła w dolinach
+		TREE_WIND.v.value.set(windNow.x, windNow.z); TREE_WIND.t.value = t; TREE_WIND.dt.value = dt; // kołysanie drzew
 		clouds.windVelocity.set(1 + windNow.x * 1.2, 0.4 + windNow.z * 1.2);
 		const live = game !== 'paused' && game !== 'loading';
 		if (live && !flight.onGround && !flight.crashed) {

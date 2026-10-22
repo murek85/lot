@@ -2,7 +2,8 @@
 // o tyle, o ile przewyższenie rzeźby (suwak) podniosło teren w tym miejscu – sam obiekt zachowuje wysokość – oraz
 // krzywizna Ziemi względem kamery. Dzięki temu obiekty nie odrywają się od terenu przy zmianie przewyższenia.
 import { vec3, dot, texture, uniform } from 'three/tsl';
-import { Vector2 } from 'three/webgpu';
+import { Vector2, Color } from 'three/webgpu';
+import { seasonPalette } from '../weather/seasons.js';
 
 /**
  * Przesunięcie początku układu (otwarty świat, m): dodawane do współrzędnych wzorów proceduralnych (pola, drzewostany,
@@ -18,6 +19,28 @@ export const bareTrees = uniform(0);
 
 /** Kolor bezlistnej korony (gałązki) – zbliżony jasnością do liściastej, żeby las nie robił się czarny. */
 export const BARE = [0.095, 0.082, 0.068];
+
+/**
+ * Barwy pory roku (src/weather/seasons.js) dla terenu i drzew: uprawy na polach, mnożnik barwy trawy, liście drzew
+ * liściastych i udział drzew przebarwionych jesienią (autumn 0..1 – drzewo z losem poniżej progu żółknie). setSeason
+ * przy zmianie pory roku.
+ */
+export const SEASON = {
+	crops: Object.fromEntries(['rapeseed', 'cereal', 'wheat', 'ripening', 'maize', 'soil'].map((k) => [k, uniform(new Color())])),
+	grass: uniform(new Color(1, 1, 1)),
+	leaf: uniform(new Color()),
+	autumnLeaf: uniform(new Color()),
+	autumn: uniform(0),
+};
+/** Ustawia barwy pory roku z palety { crops, grass, leaf, autumnLeaf, autumn }. */
+export function setSeason(p) {
+	for (const [k, u] of Object.entries(SEASON.crops)) u.value.setRGB(...p.crops[k]);
+	SEASON.grass.value.setRGB(...p.grass);
+	SEASON.leaf.value.setRGB(...p.leaf);
+	SEASON.autumnLeaf.value.setRGB(...p.autumnLeaf);
+	SEASON.autumn.value = p.autumn;
+}
+setSeason(seasonPalette('summer'));
 
 const EARTH_R = 6371000;
 let T = null;

@@ -47,3 +47,31 @@ test('błyskawice: odstępy 4–14 s, odległość 1,5–12 km, grzmot z prędko
 	assert.ok(flashAt(0.5, [0], 2000) < 0.01);
 	assert.ok(flashAt(0.01, [0], 10000) < flashAt(0.01, [0], 2000), 'daleka błyskawica słabiej');
 });
+
+test('pory roku: barwy upraw, trawy i liści', async () => {
+	const { SEASON_PALETTE, seasonPalette } = await import('../src/weather/seasons.js');
+	const { SEASONS } = await import('../src/ui/places.js');
+	const keys = ['rapeseed', 'cereal', 'wheat', 'ripening', 'maize', 'soil'];
+	for (const s of SEASONS) {
+		const p = SEASON_PALETTE[s.id];
+		assert.ok(p, s.id);
+		for (const k of keys) assert.ok(p.crops[k].length === 3 && p.crops[k].every((v) => v >= 0 && v < 0.5), `${s.id} ${k}`);
+		assert.ok(p.autumn >= 0 && p.autumn <= 1);
+	}
+	assert.equal(seasonPalette('nieznana'), SEASON_PALETTE.summer);
+	// wiosną kwitnący rzepak jaśniejszy i bardziej żółty niż latem; jesienią ścierniska jaśniejsze od młodych zbóż
+	assert.ok(SEASON_PALETTE.spring.crops.rapeseed[0] > SEASON_PALETTE.summer.crops.rapeseed[0] * 1.5);
+	assert.ok(SEASON_PALETTE.autumn.crops.cereal[0] > SEASON_PALETTE.summer.crops.cereal[0]);
+	assert.ok(SEASON_PALETTE.autumn.autumn > 0 && SEASON_PALETTE.summer.autumn === 0);
+});
+
+test('poranna mgła w dolinach: świt przy ciszy, jesienią najwięcej, wiatr i deszcz ją rozwiewają', async () => {
+	const { valleyFog } = await import('../src/weather/weather.js');
+	assert.equal(valleyFog(13, 'autumn', 0, 'clear'), 0); // w południe nie ma
+	assert.equal(valleyFog(2, 'autumn', 0, 'clear'), 0); // w nocy przed świtem nie ma
+	assert.ok(valleyFog(6.5, 'autumn', 0, 'clear') > 0.9);
+	assert.ok(valleyFog(6.5, 'summer', 0, 'clear') < valleyFog(6.5, 'autumn', 0, 'clear'));
+	assert.ok(valleyFog(6.5, 'autumn', 9, 'clear') < 0.05); // silny wiatr
+	assert.equal(valleyFog(6.5, 'autumn', 0, 'storm'), 0);
+	assert.ok(valleyFog(9, 'autumn', 0, 'clear') < valleyFog(7, 'autumn', 0, 'clear')); // rozwiewa się z nagrzewaniem
+});

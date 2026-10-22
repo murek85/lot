@@ -11,6 +11,7 @@ import {
 	smoothstep, positionLocal, step, mix, dot, texture, If, Discard,
 } from 'three/tsl';
 import { onGround } from '../gfx/ground.js';
+import { RELIEF, reliefShadow, reliefCavity } from './reliefshade.js';
 import { valueNoise, fbm } from '../gfx/noise.js';
 import { shadeGround } from '../terrain.js';
 import { GRID, COVER_RES } from './chunkdata.js';
@@ -25,6 +26,7 @@ import { detailsFromArrays } from '../details.js';
 import { COVER } from '../gen/terrain.js';
 
 const SLOTS = 256;
+
 
 /**
  * Siatka terenu kafla w metrach świata, uv kafla, numer warstwy pokrycia: ch.n² wierzchołków (65 z Terrarium, 129
@@ -89,8 +91,10 @@ function chunkSphere(ch, extra = 30) {
 
 /** Pokrycie i odległość od brzegu kafla do warstwy tekstury RG (R – klasa, G – metry od brzegu w wodzie). */
 function packCover(tex, ch, layer) {
-	const d = tex.image.data, o = layer * COVER_RES * COVER_RES * 2, c = ch.cover, sh = ch.shore;
-	for (let i = 0; i < c.length; i++) { d[o + i * 2] = c[i]; d[o + i * 2 + 1] = sh ? sh[i] : 255; }
+	// R: klasa pokrycia (dolne 4 bity) i przyciemnienie przy budynkach i lesie 0–15 (górne 4 bity, chunkOcclusion),
+	// G: odległość od brzegu
+	const d = tex.image.data, o = layer * COVER_RES * COVER_RES * 2, c = ch.cover, sh = ch.shore, oc = ch.occ?.length ? ch.occ : null;
+	for (let i = 0; i < c.length; i++) { d[o + i * 2] = (c[i] & 15) | (oc ? oc[i] << 4 : 0); d[o + i * 2 + 1] = sh ? sh[i] : 255; }
 	tex.addLayerUpdate?.(layer); // tylko ta warstwa do karty (cała tekstura to ~33 MB)
 	tex.needsUpdate = true;
 }
@@ -121,6 +125,7 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 		return onGround(positionLocal, U.cam);
 	})();
 	let shore = float(40);
+	let occ = float(0); // przyciemnienie przy budynkach i skraju lasu 0..1 (z rastra pokrycia)
 	const src = {
 		U, isRing: false, hasOsm: true, lite,
 		// pokrycie: cztery sąsiednie piksele rastra kafla dwuliniowo, z poszarpanym szumem brzegiem (jak w regionach)
@@ -130,7 +135,7 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 			const pc = vUv.mul(COVER_RES).sub(0.5).add(jitter);
 			const i0 = floor(pc), f = fract(pc);
 			const layer = int(vLayer.add(0.5));
-			const load0 = (ij) => floor(textureLoad(coverTex, ivec2(clamp(ij, vec2(0), vec2(COVER_RES - 1))), 0).depth(layer).r.mul(255).add(0.5));
+			const load0 = (ij) => floor(textureLoad(coverTex, ivec2(clamp(ij, vec2(0), vec2(COVER_RES - 1))), 0).depth(layer).r.mul(255).add(0.5)).mod(16);
 			const load = (o) => load0(i0.add(o));
 			const c00 = load(vec2(0, 0)), c10 = load(vec2(1, 0)), c01 = load(vec2(0, 1)), c11 = load(vec2(1, 1));
 			const k00 = float(1).sub(f.x).mul(float(1).sub(f.y)), k10 = f.x.mul(float(1).sub(f.y)), k01 = float(1).sub(f.x).mul(f.y), k11 = f.x.mul(f.y);
@@ -143,9 +148,12 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 			// jeden odczyt na piksel: klasa (R) do gęstości lasu i odległość od brzegu (G, metry) do głębi wody i piany
 			const tex = (o) => textureLoad(coverTex, ivec2(clamp(q0.add(o), vec2(0), vec2(COVER_RES - 1))), 0).depth(layer).rg.mul(255);
 			const t00 = tex(vec2(0, 0)), t10 = tex(vec2(1, 0)), t01 = tex(vec2(0, 1)), t11 = tex(vec2(1, 1));
-			const isF = (t) => step(abs(floor(t.x.add(0.5)).sub(1)), 0.5);
+			const cls = (t) => floor(t.x.add(0.5)).mod(16);
+			const isF = (t) => step(abs(cls(t).sub(1)), 0.5);
 			const dens = mix(mix(isF(t00), isF(t10), g.x), mix(isF(t01), isF(t11), g.x), g.y);
 			shore = mix(mix(t00.y, t10.y, g.x), mix(t01.y, t11.y, g.x), g.y);
+			const oc = (t) => floor(floor(t.x.add(0.5)).div(16)).div(15);
+			occ = mix(mix(oc(t00), oc(t10), g.x), mix(oc(t01), oc(t11), g.x), g.y);
 			const edgeNoise = valueNoise(xz.div(23)).mul(0.6).add(valueNoise(xz.div(6.5)).mul(0.4)).sub(0.5).mul(0.42);
 			const fw = smoothstep(0.42, 0.58, dens.add(edgeNoise));
 			const others = max(1e-4, wA.x.add(wA.z).add(wA.w).add(dot(wB, vec4(1))));
@@ -155,6 +163,10 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 			return { wA, wB };
 		},
 		shoreM: () => shore,
+		occlusion: () => occ,
+		// cienie rzeźby i ścian lasu, przyciemnienie zagłębień – z okien rzeźby wokół kamery
+		rayShadow: U.relief ? (xz, h, wForest, footprint) => reliefShadow(U.relief, atmo, U.treeH, xz, h, wForest, footprint, lite) : null,
+		cavity: U.relief ? (xz, h) => reliefCavity(U.relief, xz, h) : null,
 		// wysokość i spadki z siatki kafla (normalne policzone w wątku – wspólne na brzegach kafli)
 		ground() {
 			const N = normalize(vN);
@@ -205,7 +217,7 @@ export class ChunkView {
 		this.scene = scene;
 		this.atmo = atmo; this.clouds = clouds; this.plane = plane; this.worldShadow = worldShadow;
 		this.camXZ = uniform(new Vector2());
-		this.U = { cam: this.camXZ, time: uniform(0), treeH: uniform(17), treesFar: uniform(0) };
+		this.U = { cam: this.camXZ, time: uniform(0), treeH: uniform(17), treesFar: uniform(0), relief: RELIEF };
 		this.coverTex = new DataArrayTexture(new Uint8Array(COVER_RES * COVER_RES * SLOTS * 2), COVER_RES, COVER_RES, SLOTS);
 		this.coverTex.format = RGFormat;
 		this.coverTex.type = UnsignedByteType;
@@ -304,6 +316,7 @@ export class ChunkView {
 			geo.setAttribute('aWidth', new BufferAttribute(r.width, 1));
 			geo.setAttribute('aSurf', new BufferAttribute(r.surf, 1));
 			geo.setAttribute('aCls', new BufferAttribute(r.cls, 1));
+			geo.setAttribute('aWay', new BufferAttribute(r.way, 1));
 			geo.setIndex(new BufferAttribute(r.idx, 1));
 			const m = new Mesh(geo, this.roadMat);
 			m.renderOrder = 10;

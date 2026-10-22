@@ -5,11 +5,12 @@
 import { Mesh, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, DataTexture, RedFormat, UnsignedByteType, LinearFilter, Vector2 } from 'three/webgpu';
 import {
 	Fn, float, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, smoothstep, step, fract,
-	fwidth, dot, select,
+	fwidth, dot, select, floor,
 } from 'three/tsl';
 import { onGround, cityLight, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
 import { densify, ribbon } from './gfx/ribbon.js';
+import { roadCrossings, CROSSING } from './gen/crossings.js';
 
 export { densify, ribbon };
 
@@ -45,7 +46,7 @@ export function createRoads(osm, region, terrain, atmo, clouds, plane, worldShad
 	const size = region.size, half = size / 2 - 30;
 	const groups = new Map(); // klasa → dane geometrii (osobne siatki: kolejność rysowania od dróg polnych do głównych)
 	const maskLines = [];
-	for (const [cls, w10, surface, bridge, , c] of osm.roads) {
+	for (const [cls, w10, surface, bridge, , c, oneway] of osm.roads) {
 		let pts = [];
 		for (let i = 0; i < c.length; i += 2) {
 			const x = c[i] / 10, z = c[i + 1] / 10;
@@ -57,7 +58,7 @@ export function createRoads(osm, region, terrain, atmo, clouds, plane, worldShad
 		const width = w10 / 10;
 		maskLines.push({ pts, half: width / 2 });
 		let g = groups.get(cls);
-		if (!g) groups.set(cls, (g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], count: 0 }));
+		if (!g) groups.set(cls, (g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], way: [], count: 0 }));
 		// most: wstęga po prostej między końcami (nie opada do doliny), dalej – po siatce terenu
 		let hAt = (x, z) => terrain.meshHeightAt(x, z) + LIFT;
 		if (bridge) {
@@ -74,10 +75,22 @@ export function createRoads(osm, region, terrain, atmo, clouds, plane, worldShad
 		g.side.push(...rb.side);
 		g.dist.push(...rb.dist);
 		g.idx.push(...rb.idx);
-		for (let i = 0; i < rb.side.length; i++) { g.width.push(width); g.surf.push(surface); }
+		for (let i = 0; i < rb.side.length; i++) { g.width.push(width); g.surf.push(surface); g.way.push(oneway || cls === 0 ? 1 : 0); }
 		g.count += rb.side.length;
 	}
 
+	// przejścia dla pieszych na skrzyżowaniach w zabudowie (src/gen/crossings.js) – osobna grupa na wierzchu
+	{
+		const g = { pos: [], side: [], dist: [], idx: [], width: [], surf: [], way: [], count: 0 };
+		for (const z of roadCrossings(osm.roads, osm.buildings ?? [])) {
+			if (Math.abs(z.pts[0]) > half || Math.abs(z.pts[1]) > half) continue;
+			const rb = ribbon(z.pts, z.width / 2, (x, zz) => terrain.meshHeightAt(x, zz) + LIFT + 0.02, g.count);
+			g.pos.push(...rb.pos); g.side.push(...rb.side); g.dist.push(...rb.dist); g.idx.push(...rb.idx);
+			for (let i = 0; i < rb.side.length; i++) { g.width.push(z.width); g.surf.push(0); g.way.push(0); }
+			g.count += rb.side.length;
+		}
+		if (g.count) groups.set(CROSSING, g);
+	}
 	const material = makeRoadMaterial(region, atmo, clouds, plane, worldShadow);
 	const meshes = [];
 	for (const [cls, g] of [...groups.entries()].sort((a, b) => b[0] - a[0])) {
@@ -88,9 +101,10 @@ export function createRoads(osm, region, terrain, atmo, clouds, plane, worldShad
 		geo.setAttribute('aWidth', new Float32BufferAttribute(g.width, 1));
 		geo.setAttribute('aSurf', new Float32BufferAttribute(g.surf, 1));
 		geo.setAttribute('aCls', new Float32BufferAttribute(new Array(g.count).fill(cls), 1));
+		geo.setAttribute('aWay', new Float32BufferAttribute(g.way, 1));
 		geo.setIndex(g.idx);
 		const m = new Mesh(geo, material);
-		m.renderOrder = 10 - cls; // polne pod spodem, główne na wierzchu
+		m.renderOrder = cls === CROSSING ? 11 : 10 - cls; // polne pod spodem, główne na wierzchu, zebry na samej górze
 		m.frustumCulled = false;
 		meshes.push(m);
 	}
@@ -121,6 +135,15 @@ export function makeRoadMaterial(region, atmo, clouds, plane, worldShadow) {
 	const width = varying(attribute('aWidth', 'float'), 'vRoadWidth');
 	const surf = varying(attribute('aSurf', 'float'), 'vRoadSurf');
 	const cls = varying(attribute('aCls', 'float'), 'vRoadCls');
+	const way = varying(attribute('aWay', 'float'), 'vRoadWay'); // 1 – jezdnia jednokierunkowa (autostrady, ekspresówki)
+	// zebra (klasa CROSSING): pasy 0,5 m wzdłuż drogi co 1 m w poprzek; z daleka – średnio połowa
+	const zebra = (footprint) => {
+		const s = fract(float(1).add(side).mul(width).mul(0.5));
+		const aa = footprint.mul(0.7);
+		const stripe = smoothstep(0, aa, s).mul(float(1).sub(smoothstep(float(0.5), aa.add(0.5), s)));
+		return mix(stripe, float(0.5), smoothstep(0.25, 1, footprint));
+	};
+	const isZebra = step(CROSSING - 0.5, cls);
 
 	m.colorNode = Fn(() => {
 		const xz = vWorld.xz.add(worldOffset);
@@ -141,15 +164,31 @@ export function makeRoadMaterial(region, atmo, clouds, plane, worldShadow) {
 		const grassMid = smoothstep(0.18, 0.3, abs(u)).oneMinus().mul(step(0.5, valueNoise(xz.div(9)).add(0.25)));
 		albedo.assign(mix(albedo, albedo.mul(0.72), rut.mul(isTrack).mul(0.8)));
 		albedo.assign(mix(albedo, vec3(0.09, 0.14, 0.05), grassMid.mul(isTrack).mul(0.85)));
-		// oznakowanie na drogach publicznych z twardą nawierzchnią: linie krawędziowe i przerywana oś
+		// oznakowanie na drogach publicznych z twardą nawierzchnią: linie krawędziowe; pasy ruchu z szerokości (~3,4 m):
+		// jezdnia jednokierunkowa – przerywane linie między pasami, dwukierunkowa – przerywana oś, a od 4 pasów podwójna
+		// ciągła oś i przerywane linie pasów w obu połówkach (linie 4 m, przerwy 8 m)
 		const paved = step(surf, 0.5).mul(step(cls, 3.5));
 		const lineW = float(0.13);
 		const aa = footprint.mul(0.5);
-		const edgeLine = smoothstep(lineW.sub(aa).max(0), lineW.add(aa), abs(fromEdge.sub(0.35))).oneMinus();
+		const line = (d) => smoothstep(lineW.sub(aa).max(0), lineW.add(aa), d).oneMinus();
+		const edgeLine = line(abs(fromEdge.sub(0.35)));
 		const dash = step(fract(along.div(12)), 0.33);
-		const center = smoothstep(lineW.sub(aa).max(0), lineW.add(aa), abs(u.mul(width).mul(0.5))).oneMinus().mul(dash).mul(step(0.5, cls)).mul(step(6, width));
-		const paint = clamp(edgeLine.add(center), 0, 1).mul(paved).mul(min(1, lineW.mul(2).div(footprint)));
+		const fromLeft = float(1).add(u).mul(width).mul(0.5), centerD = abs(u.mul(width).mul(0.5));
+		const lanes = max(1, floor(width.div(3.4).add(0.5)));
+		const laneW = width.div(lanes);
+		const dLane = abs(fract(fromLeft.div(laneW).add(0.5)).sub(0.5)).mul(laneW);
+		const inner = step(laneW.mul(0.5), min(fromLeft, width.sub(fromLeft))); // bez krawędzi jezdni
+		const wide = step(3.5, lanes), twoWay = float(1).sub(way);
+		const laneLines = line(dLane).mul(inner).mul(dash).mul(max(way, wide)).mul(float(1).sub(twoWay.mul(step(centerD, 0.5))));
+		const doubleAxis = line(abs(centerD.sub(0.15))).mul(wide);
+		const singleAxis = line(centerD).mul(dash).mul(float(1).sub(wide)).mul(step(6, width));
+		const center = doubleAxis.add(singleAxis).mul(twoWay).mul(step(0.5, cls));
+		// farba starta w plamach (koleiny, łaty), z bliska drobne ubytki
+		const wear = mix(float(0.55), float(1), smoothstep(0.25, 0.7, valueNoise(xz.div(2.3)))).mul(mix(float(1), mix(float(0.75), float(1.05), valueNoise(xz.div(0.35))), nearDetail));
+		const paint = clamp(edgeLine.add(laneLines).add(center), 0, 1).mul(paved).mul(min(1, lineW.mul(2).div(footprint))).mul(wear);
 		albedo.assign(mix(albedo, vec3(0.55), paint));
+		// zebra: biała farba (krycie – opacityNode), starta jak linie
+		albedo.assign(mix(albedo, vec3(0.6).mul(wear), isZebra));
 		// światło jak na terenie (płaska powierzchnia)
 		const sun = atmo.u.lightDir;
 		const sunE = atmo.sunLight(vWorld.y);
@@ -161,7 +200,8 @@ export function makeRoadMaterial(region, atmo, clouds, plane, worldShadow) {
 	m.opacityNode = Fn(() => {
 		const footprint = max(fwidth(vWorld.x), fwidth(vWorld.z)).max(0.05);
 		const fromEdge = float(1).sub(abs(side)).mul(width).mul(0.5);
-		return clamp(fromEdge.div(footprint).add(0.5), 0, 1).mul(min(1, width.div(footprint.mul(1.5))));
+		const edge = clamp(fromEdge.div(footprint).add(0.5), 0, 1).mul(min(1, width.div(footprint.mul(1.5))));
+		return edge.mul(mix(float(1), zebra(footprint), isZebra));
 	})();
 	return m;
 }

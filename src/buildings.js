@@ -148,10 +148,38 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const striped = step(light.x, -1.5).mul(step(H.mul(0.55), buv.y));
 		const wallBase = mix(wallC, mix(vec3(0.78, 0.78, 0.76), vec3(0.6, 0.07, 0.04), band), striped);
 		const wallAlb = mix(wallBase.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(2)))), glass, win.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin)));
-		// dachówki: drobne pasy wzdłuż połaci, płaskie dachy – plamy papy
-		const tiles = mix(float(0.88), float(1.08), step(0.5, fract(buv.y.div(0.35))).mul(detail));
-		const roofAlb = roofC.mul(tiles).mul(mix(float(0.85), float(1.1), valueNoise(vWorld.xz.add(worldOffset).div(3))));
-		const flatAlb = roofC.mul(mix(float(0.8), float(1.15), valueNoise(vWorld.xz.add(worldOffset).div(4))));
+		// --- dachy spadziste: u – metry wzdłuż kalenicy, v – metry wzdłuż spadku od okapu; rodzaj 1 (okap) → 1,4 (kalenica)
+		const onSlope = clamp(kind.sub(1).div(0.4), 0, 1);
+		const seed = light.y;
+		// szczegóły znikają z odległością (piksel większy od dachówki) – zostaje średnia jasność wzoru
+		const fine = float(1).sub(smoothstep(0.06, 0.25, footprint));
+		const mid = float(1).sub(smoothstep(0.2, 0.7, footprint));
+		const coarse = float(1).sub(smoothstep(0.6, 2.5, footprint));
+		// dachówka (czerwienie i brązy): rzędy co 0,32 m z cieniem pod krawędzią rzędu wyżej, styki co 0,26 m przesunięte
+		// co drugi rząd, każda dachówka w trochę innym odcieniu
+		const rowF = buv.y.div(0.32), row = floor(rowF), fr = fract(rowF);
+		const course = mix(float(0.72), float(1.06), smoothstep(0.0, 0.3, fr));
+		const colF = buv.x.div(0.26).add(fract(row.mul(0.5)));
+		const cf = fract(colF);
+		const joint = mix(float(0.8), float(1), smoothstep(0.0, 0.07, cf.min(float(1).sub(cf))));
+		const tileVar = mix(float(0.9), float(1.1), hash12(vec2(floor(colF), row).add(seed.mul(173.1))));
+		const clay = mix(float(0.93), course.mul(joint).mul(tileVar), fine);
+		// blacha i papa (szarości, zielenie): przetłoczenia co 0,5 m wzdłuż spadku
+		const sf = fract(buv.x.div(0.5));
+		const sheet = mix(float(0.96), mix(float(0.82), float(1.02), smoothstep(0.0, 0.08, sf.min(float(1).sub(sf)))), mid);
+		const isClay = step(roofC.g.mul(1.6), roofC.r);
+		// kalenica (gąsiory – ciemniejszy pas), rynna przy okapie, zabrudzenia i mech nisko na połaci
+		const ridgeCap = mix(float(1), float(0.72), smoothstep(0.955, 0.985, onSlope).mul(coarse));
+		const gutter = mix(float(1), float(0.55), float(1).sub(smoothstep(0.0, 0.035, onSlope)).mul(coarse));
+		const grime = mix(float(0.84), float(1), smoothstep(0.0, 0.4, onSlope).max(float(1).sub(coarse)));
+		const weather = mix(float(0.85), float(1.1), valueNoise(vWorld.xz.add(worldOffset).div(3)));
+		const moss = valueNoise(vWorld.xz.add(worldOffset).div(1.7)).mul(float(1).sub(onSlope)).mul(isClay).mul(0.35);
+		const roofAlb = mix(roofC.mul(mix(sheet, clay, isClay)).mul(ridgeCap).mul(gutter).mul(grime).mul(weather), vec3(0.06, 0.07, 0.03), moss);
+		// --- dachy płaskie (uv – metry w poziomie): pasy papy co 1 m, łaty i zacieki
+		const pf = fract(buv.x);
+		const strips = mix(float(0.95), mix(float(0.85), float(1.02), smoothstep(0.0, 0.05, pf.min(float(1).sub(pf)))), mid);
+		const patches = mix(float(0.8), float(1.15), valueNoise(vWorld.xz.add(worldOffset).div(4))).mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(13).add(7.1))));
+		const flatAlb = roofC.mul(patches).mul(strips);
 		// tylne ściany (wnętrze chłodni widziane z góry) – ciemne
 		const back = select(dot(N, V).lessThan(0), float(0.12), float(1));
 		const albedo = select(kind.lessThan(0.5), wallAlb, select(kind.lessThan(1.5), roofAlb, flatAlb)).mul(back);

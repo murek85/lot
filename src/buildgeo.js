@@ -48,12 +48,17 @@ export function polygonArea2(pts) {
 	return a / 2;
 }
 
-/** Geometria jednego budynku dopisywana do bufora b. pts – obrys (metry, bez powtórzonego końca), base – wysokość podstawy. */
-export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed) {
+const BRICK = [0.26, 0.09, 0.06], CHIMNEY_TOP = [0.05, 0.045, 0.045];
+
+/**
+ * Geometria jednego budynku dopisywana do bufora b. pts – obrys (metry, bez powtórzonego końca), base – wysokość podstawy;
+ * chimney – komin z cegły przy kalenicy (dach dwuspadowy domów).
+ */
+export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chimney = false) {
 	const n = pts.length / 2;
-	const push = (x, y, z, nx, ny, nz, kind, u, v) => {
+	const push = (x, y, z, nx, ny, nz, kind, u, v, wc = wall, rc = roof) => {
 		b.pos.push(x, y, z); b.nrm.push(nx, ny, nz); b.kind.push(kind); b.uv.push(u, v);
-		b.wall.push(...wall); b.roof.push(...roof);
+		b.wall.push(...wc); b.roof.push(...rc);
 		return b.count++;
 	};
 	// ściany (płaskie cieniowanie – osobne wierzchołki na ścianę), u = metry wzdłuż obwodu, v = metry w górę
@@ -85,11 +90,13 @@ export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed) {
 			const ny = 0.3, k = Math.sqrt(1 - ny * ny);
 			const a = push(pts[i * 2], top, pts[i * 2 + 1], (mx / ml) * k, ny, (mz / ml) * k, 1, 0, 0);
 			const c = push(pts[j * 2], top, pts[j * 2 + 1], (mx / ml) * k, ny, (mz / ml) * k, 1, 1, 0);
-			const e = push(cx, apex, cz, (mx / ml) * k, ny, (mz / ml) * k, 1, 0.5, 1);
+			const e = push(cx, apex, cz, (mx / ml) * k, ny, (mz / ml) * k, 1.4, 0.5, 1);
 			b.idx.push(a, c, e);
 		}
 	} else if (roofKind === 1) {
-		// dach dwuspadowy na najmniejszym prostokącie otaczającym (z okapem 0,4 m), kalenica wzdłuż dłuższego boku
+		// dach dwuspadowy na najmniejszym prostokącie otaczającym (z okapem 0,4 m), kalenica wzdłuż dłuższego boku;
+		// u – metry wzdłuż kalenicy, v – metry wzdłuż spadku od okapu (rzędy dachówek), rodzaj 1 przy okapie → 1,4 przy
+		// kalenicy (shader zna położenie na połaci: rynna, gąsiory)
 		const r = minRect(pts);
 		let ang = r.angle, L = r.w, W = r.h;
 		if (W > L) { ang += Math.PI / 2; [L, W] = [W, L]; }
@@ -106,9 +113,27 @@ export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed) {
 			// normalna połaci
 			const ny = Math.cos(pitch), off = Math.sin(pitch) * side;
 			const nx = -s * off, nz = c * off;
+			const sl = hw / Math.cos(pitch); // długość połaci wzdłuż spadku
 			const i0 = push(ax, ay, az, nx, ny, nz, 1, 0, 0), i1 = push(bx, by, bz, nx, ny, nz, 1, hl * 2, 0);
-			const i2 = push(cx, cy, cz, nx, ny, nz, 1, hl * 2, hw), i3 = push(dx, dy, dz, nx, ny, nz, 1, 0, hw);
+			const i2 = push(cx, cy, cz, nx, ny, nz, 1.4, hl * 2, sl), i3 = push(dx, dy, dz, nx, ny, nz, 1.4, 0, sl);
 			if (side > 0) b.idx.push(i0, i1, i2, i0, i2, i3); else b.idx.push(i0, i2, i1, i0, i3, i2);
+		}
+		// komin: przy kalenicy, w losowym miejscu wzdłuż niej, podstawa wpuszczona w połać, 0,9 m ponad kalenicę;
+		// ściany z v < 0 (shader nie rysuje na nich okien), wierzch – ciemny
+		if (chimney && L > 5) {
+			const cu = (seed * 2 - 1) * (L / 2 - 1.2), cv = (seed < 0.5 ? -1 : 1) * 0.7;
+			const hu = 0.3, hv = 0.38, y0 = ridge - (Math.abs(cv) + hv) * Math.tan(pitch) - 0.2, y1 = ridge + 0.9;
+			const corner = (du, dv, y) => P(cu + du, cv + dv, y);
+			const faces = [[[-hu, -hv], [hu, -hv], 0, -1], [[hu, -hv], [hu, hv], 1, 0], [[hu, hv], [-hu, hv], 0, 1], [[-hu, hv], [-hu, -hv], -1, 0]];
+			for (const [[au, av], [bu, bv], fu, fv] of faces) {
+				const nx = fu * c - fv * s, nz = fu * s + fv * c;
+				const [x0, , z0] = corner(au, av, 0), [x1, , z1] = corner(bu, bv, 0);
+				const i0 = push(x0, y0, z0, nx, 0, nz, 0, 0, -10, BRICK, BRICK), i1 = push(x1, y0, z1, nx, 0, nz, 0, 0.7, -10, BRICK, BRICK);
+				const i2 = push(x1, y1, z1, nx, 0, nz, 0, 0.7, -9, BRICK, BRICK), i3 = push(x0, y1, z0, nx, 0, nz, 0, 0, -9, BRICK, BRICK);
+				b.idx.push(i0, i1, i2, i0, i2, i3);
+			}
+			const top = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([du, dv]) => { const [x, , z] = corner(du, dv, 0); return push(x, y1, z, 0, 1, 0, 2, x, z, BRICK, CHIMNEY_TOP); });
+			b.idx.push(top[0], top[2], top[1], top[0], top[3], top[2]);
 		}
 		// szczyty (trójkąty ścian pod dachem)
 		for (const end of [-1, 1]) {
@@ -241,7 +266,9 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity) {
 		let b = tiles.get(key);
 		if (!b) tiles.set(key, (b = { pos: [], nrm: [], kind: [], uv: [], wall: [], roof: [], idx: [], light: [], count: 0 }));
 		const first = b.count;
-		addBuilding(b, pts, base, wallH, roofKind, wall, roof, r());
+		// komin: domy jednorodzinne, ok. 85% (z tej samej liczby losowej – kolejne losowania bez zmian)
+		const rs = r();
+		addBuilding(b, pts, base, wallH, roofKind, wall, roof, rs, type === 0 && (rs * 9.7) % 1 < 0.85);
 		// okna nocą: domy i bloki często, usługi i urzędy rzadziej, przemysł rzadko, gospodarcze – nigdy
 		const lightP = [1, 1.1, 0, 0.25, 0.6, 0.45, 0.15, 0.7][type];
 		for (let i = first; i < b.count; i++) b.light.push(lightP, seed);

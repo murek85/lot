@@ -140,6 +140,79 @@ export function chunkMask(osm, frame) {
 	return mask;
 }
 
+/**
+ * Przyciemnienie gruntu przy budynkach i na skraju lasu (osadzenie obiektów w terenie – jak AO, ale policzone raz
+ * w wątku kafla): raster R × R (jak pokrycie, ~6 m), wartości 0–15. Budynki: od ściany do ~15 m (najciemniej przy
+ * ścianie), las: do ~14 m poza drzewostanem, słabiej i łagodniej (cień ściany lasu – osobno, rayShadow). Odległość – transformata 3-4 (dwa przebiegi) od obrysów budynków
+ * i pikseli lasu. Teren kafla czyta to z górnych 4 bitów klasy pokrycia (src/world/chunkview.js: packCover).
+ */
+export function chunkOcclusion(osm, cover, frame, R = COVER_RES) {
+	const N = R * R, px = frame.w / R, pz = frame.h / R;
+	const BIG = 1e6;
+	const bld = new Float32Array(N).fill(BIG), fst = new Float32Array(N).fill(BIG);
+	// obrysy budynków: piksele, których środek leży w wielokącie; budynek mniejszy od piksela – piksel środka
+	for (const b of osm.buildings) {
+		const c = b[4];
+		const n = c.length >> 1;
+		if (n < 3) continue;
+		let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, sx = 0, sz = 0;
+		const xs = new Float32Array(n), zs = new Float32Array(n);
+		for (let k = 0; k < n; k++) {
+			const x = c[k * 2] / 10 - frame.x0, z = c[k * 2 + 1] / 10 - frame.z0;
+			xs[k] = x; zs[k] = z; sx += x; sz += z;
+			if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z;
+		}
+		const i0 = Math.max(0, Math.floor(x0 / px)), i1 = Math.min(R - 1, Math.floor(x1 / px)), j0 = Math.max(0, Math.floor(z0 / pz)), j1 = Math.min(R - 1, Math.floor(z1 / pz));
+		let hit = false;
+		for (let j = j0; j <= j1; j++) {
+			const zc = (j + 0.5) * pz;
+			for (let i = i0; i <= i1; i++) {
+				const xc = (i + 0.5) * px;
+				let inside = false;
+				for (let k = 0, m = n - 1; k < n; m = k++) {
+					if ((zs[k] > zc) !== (zs[m] > zc) && xc < ((xs[m] - xs[k]) * (zc - zs[k])) / (zs[m] - zs[k]) + xs[k]) inside = !inside;
+				}
+				if (inside) { bld[j * R + i] = 0; hit = true; }
+			}
+		}
+		if (!hit) {
+			const i = Math.floor(sx / n / px), j = Math.floor(sz / n / pz);
+			if (i >= 0 && j >= 0 && i < R && j < R) bld[j * R + i] = 0;
+		}
+	}
+	for (let k = 0; k < N; k++) if (cover[k] === COVER.forest) fst[k] = 0;
+	// transformata odległości 3-4 (w pikselach × 3)
+	const chamfer = (d) => {
+		for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
+			const k = j * R + i;
+			let v = d[k];
+			if (i > 0) v = Math.min(v, d[k - 1] + 3);
+			if (j > 0) { v = Math.min(v, d[k - R] + 3); if (i > 0) v = Math.min(v, d[k - R - 1] + 4); if (i < R - 1) v = Math.min(v, d[k - R + 1] + 4); }
+			d[k] = v;
+		}
+		for (let j = R - 1; j >= 0; j--) for (let i = R - 1; i >= 0; i--) {
+			const k = j * R + i;
+			let v = d[k];
+			if (i < R - 1) v = Math.min(v, d[k + 1] + 3);
+			if (j < R - 1) { v = Math.min(v, d[k + R] + 3); if (i < R - 1) v = Math.min(v, d[k + R + 1] + 4); if (i > 0) v = Math.min(v, d[k + R - 1] + 4); }
+			d[k] = v;
+		}
+	};
+	chamfer(bld);
+	chamfer(fst);
+	const out = new Uint8Array(N);
+	const step = (px + pz) / 2 / 3; // metry na jednostkę transformaty
+	for (let k = 0; k < N; k++) {
+		const db = bld[k] * step, df = fst[k] * step;
+		// przy budynku: pełne przyciemnienie przy ścianie (w obrysie też – pod dachem i tak nie widać gruntu)
+		const ob = db >= 15 ? 0 : 1 - db / 15;
+		const tf = df === 0 || df >= 14 ? 0 : 1 - df / 14;
+		const of = tf * tf * 0.35; // przy lesie słabiej i łagodniej – cień ściany lasu liczy już rayShadow
+		out[k] = Math.round(Math.max(ob * ob * (3 - 2 * ob), of) * 15);
+	}
+	return out;
+}
+
 /** Przesunięcie obiektów kafla o (−dx, −dz) m (nowy początek układu w punkcie (dx, dz)); dx, dz – wielokrotności 0,1 m. */
 export function shiftOsm(osm, dx, dz) {
 	const ex = Math.round(dx * 10), ez = Math.round(dz * 10);

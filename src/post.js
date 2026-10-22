@@ -1,9 +1,15 @@
 // Obraz końcowy: scena w HDR (kolor + wektory ruchu), chmury liczone po scenie (znają jej głębię), niebo i perspektywa
-// powietrzna z fizycznej atmosfery, gradacja, wygładzanie czasowe TRAA (drgająca kamera + historia klatek),
-// efekt miniatury (tilt-shift), opady i błyskawice (osobna scena, po wygładzaniu) i na końcu tone mapping.
+// powietrzna z fizycznej atmosfery, poranna mgła w dolinach (otwarty świat), gradacja, wygładzanie czasowe TRAA (drgająca kamera + historia klatek),
+// wyostrzenie (RCAS – oddaje detale rozmyte przez TRAA), poświata jasnych świateł (bloom), efekt miniatury
+// (tilt-shift), opady i błyskawice (osobna scena, po wygładzaniu) i na końcu tone mapping.
 import { RenderPipeline, TempNode, NodeUpdateType, Color } from 'three/webgpu';
-import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length } from 'three/tsl';
+import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length, abs, clamp, smoothstep } from 'three/tsl';
+import { RELIEF } from './world/reliefshade.js';
+import { worldOffset } from './gfx/ground.js';
+import { valueNoise } from './gfx/noise.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { sharpen } from 'three/addons/tsl/display/SharpenNode.js';
 import { tiltShift } from './gfx/tiltshift.js';
 
 /** Węzeł, który przed użyciem wyniku liczy chmury – w potoku jest budowany po głębi sceny, więc i liczony po niej. */
@@ -42,6 +48,36 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 	// ulewa: szara zasłona deszczu w oddali (w dodatku do zamglenia powietrza)
 	const veil = uniform(0);
 	const veilColor = uniform(new Color(0.3, 0.32, 0.35));
+	// poranna mgła w dolinach 0..1 (pora dnia, wiatr, pogoda, pora roku – src/weather/weather.js: valleyFog)
+	const fog = uniform(0);
+
+	/**
+	 * Mgła radiacyjna w obniżeniach terenu (otwarty świat): grunt w punkcie p leży `under` metrów pod poziomem okolicy
+	 * (wysokość wygładzona ~1 km – kanał A zgrubnego okna rzeźby); mgła wypełnia obniżenie do kilku metrów pod tym
+	 * poziomem, w plamach. Promień z góry przechodzi przez warstwę tym dłużej, im bardziej ukośnie patrzymy.
+	 * Zwraca kolor gruntu za mgłą.
+	 */
+	const valleyFog = (ground, p, dir) => {
+		const R = RELIEF;
+		const res = ground.toVar();
+		If(fog.greaterThan(0.001).and(R.on.greaterThan(0.5)).and(R.smooth.greaterThan(0.5)), () => {
+			const c = R.coarse.sample(p.xz.div(R.coarseSize)).level(0);
+			const edge = max(abs(p.x.sub(R.coarseC.x)), abs(p.z.sub(R.coarseC.y)));
+			const inside = float(1).sub(smoothstep(R.coarseReach.mul(0.85), R.coarseReach, edge)).mul(c.b);
+			const under = c.a.add(R.coarseBase).sub(p.y);
+			// plamy i jęzory mgły (stałe względem Ziemi – worldOffset)
+			const q = p.xz.add(worldOffset);
+			const patch = valueNoise(q.div(900)).mul(0.6).add(valueNoise(q.div(260)).mul(0.4));
+			const thick = smoothstep(0, 18, under).mul(clamp(under, 0, 120)).mul(smoothstep(0.25, 0.65, patch)).mul(inside).mul(fog);
+			const od = thick.div(max(dir.y.negate(), 0.07)).mul(0.03);
+			const T = exp(od.negate());
+			// mgła jak biała, rozpraszająca powierzchnia w świetle słońca i nieba (bez cieni – warstwa leży nad nimi)
+			const sun = atmo.u.lightDir;
+			const light = atmo.sunLight(p.y.add(thick)).mul(max(0, sun.y)).add(atmo.skyIrradiance()).mul(0.85 / Math.PI);
+			res.assign(ground.mul(T).add(light.mul(float(1).sub(T))));
+		});
+		return res;
+	};
 
 	const composite = Fn(() => {
 		const st = uv();
@@ -55,7 +91,8 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 			out.assign(atmo.skyRadiance(dir).add(atmo.sunDisk(dir)).add(atmo.nightSky(dir)));
 		}).Else(() => {
 			const { inscatter, transmittance } = atmo.aerial(camPos.y, offset);
-			out.assign(color.sample(st).rgb.mul(transmittance).add(inscatter));
+			const ground = valleyFog(color.sample(st).rgb, camPos.add(offset), dir);
+			out.assign(ground.mul(transmittance).add(inscatter));
 		});
 		// chmury (pół rozdzielczości, wygładzone czasowo, przycięte głębią sceny): ich światło + tło przez nie
 		const cloud = new CloudStepNode(clouds, clouds.sample(st));
@@ -70,7 +107,18 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 	});
 
 	const aa = traa(composite(), depth, vel, camera);
-	const ts = tiltShift(aa, depth, camera);
+	// wyostrzenie z adaptacją do kontrastu (0 – najmocniej, 2 – wcale; ustawienie „Wyostrzenie obrazu”)
+	const sharpness = uniform(1);
+	const sharp = sharpen(aa, sharpness);
+	// poświata: tylko to, co po ekspozycji jaśniejsze od bieli (odblask słońca na wodzie, światła miast i reflektory
+	// nocą, błyskawice) – obraz przemnożony przez bieżącą ekspozycję (tone mapping jest na końcu, w rendererze),
+	// więc próg działa tak samo w południe i w nocy; wynik z powrotem w jednostkach sceny
+	const exposure = uniform(1);
+	const glowStrength = uniform(0.3);
+	const glow = bloom(sharp.rgb.mul(exposure), glowStrength, 0.55, 1.0);
+	glow.smoothWidth.value = 0.6;
+	const lit = vec4(sharp.rgb.add(glow.rgb.div(max(exposure, 1e-4))), 1);
+	const ts = tiltShift(lit, depth, camera);
 	const pipeline = new RenderPipeline(renderer);
 	let outNode = ts.node;
 	if (precip) {
@@ -91,5 +139,13 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 	 * TRAA zaczyna od nowa przy zmianie rozmiaru – udajemy ją, psując zapamiętany rozmiar historii.
 	 */
 	const resetHistory = () => { if (aa._historyRenderTarget) aa._historyRenderTarget.width = 0; };
-	return { pipeline, scenePass, saturation, flash, veil, veilColor, tiltShift: ts, resetHistory, render: () => pipeline.render() };
+	/** Ustawienia obrazu: glow 0..2 (poświata, 0 – wyłączona), sharp 0..1 (wyostrzenie, 0 – wyłączone). */
+	const setLook = ({ glow: g, sharp: sh }) => {
+		if (g !== undefined) glowStrength.value = 0.3 * g;
+		if (sh !== undefined) sharpness.value = 2 - 2 * sh;
+	};
+	return {
+		pipeline, scenePass, saturation, flash, veil, veilColor, fog, tiltShift: ts, resetHistory, setLook,
+		render: () => { exposure.value = renderer.toneMappingExposure; pipeline.render(); },
+	};
 }
