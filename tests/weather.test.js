@@ -63,6 +63,10 @@ test('pory roku: barwy upraw, trawy i liści', async () => {
 	assert.ok(SEASON_PALETTE.spring.crops.rapeseed[0] > SEASON_PALETTE.summer.crops.rapeseed[0] * 1.5);
 	assert.ok(SEASON_PALETTE.autumn.crops.cereal[0] > SEASON_PALETTE.summer.crops.cereal[0]);
 	assert.ok(SEASON_PALETTE.autumn.autumn > 0 && SEASON_PALETTE.summer.autumn === 0);
+	// bele słomy na ścierniskach jesienią, siano latem, fale wiatru tylko na rosnących zbożach (wiosna, lato)
+	assert.equal(SEASON_PALETTE.autumn.balesStubble, 1);
+	assert.ok(SEASON_PALETTE.summer.balesHay > 0 && SEASON_PALETTE.summer.balesStubble === 0);
+	assert.ok(SEASON_PALETTE.spring.waves > 0 && SEASON_PALETTE.summer.waves > 0 && SEASON_PALETTE.autumn.waves === 0 && SEASON_PALETTE.winter.waves === 0);
 });
 
 test('poranna mgła w dolinach: świt przy ciszy, jesienią najwięcej, wiatr i deszcz ją rozwiewają', async () => {

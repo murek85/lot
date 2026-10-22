@@ -10,8 +10,8 @@ import {
 	Fn, float, vec2, vec3, vec4, int, ivec2, attribute, varying, uniform, textureLoad, max, abs, clamp, normalize, floor, fract,
 	smoothstep, positionLocal, step, mix, dot, texture, If, Discard,
 } from 'three/tsl';
-import { onGround } from '../gfx/ground.js';
-import { RELIEF, reliefShadow, reliefCavity } from './reliefshade.js';
+import { onGround, worldOffset } from '../gfx/ground.js';
+import { RELIEF, reliefShadow, reliefCavity, reliefReflect } from './reliefshade.js';
 import { valueNoise, fbm } from '../gfx/noise.js';
 import { shadeGround } from '../terrain.js';
 import { GRID, COVER_RES } from './chunkdata.js';
@@ -165,8 +165,11 @@ function terrainMaterial(coverTex, U, atmo, clouds, plane, worldShadow, hole = n
 		shoreM: () => shore,
 		occlusion: () => occ,
 		// cienie rzeźby i ścian lasu, przyciemnienie zagłębień – z okien rzeźby wokół kamery
-		rayShadow: U.relief ? (xz, h, wForest, footprint) => reliefShadow(U.relief, atmo, U.treeH, xz, h, wForest, footprint, lite) : null,
-		cavity: U.relief ? (xz, h) => reliefCavity(U.relief, xz, h) : null,
+		// shadeGround podaje xz z przesunięciem worldOffset (wzory stałe względem Ziemi), a okna rzeźby są w układzie gry
+		rayShadow: U.relief ? (xz, h, wForest, footprint) => reliefShadow(U.relief, atmo, U.treeH, xz.sub(worldOffset), h, wForest, footprint, lite) : null,
+		cavity: U.relief ? (xz, h) => reliefCavity(U.relief, xz.sub(worldOffset), h) : null,
+		// odbicie brzegu (las, zbocza) w jeziorach i rzekach – daleki teren bez (z daleka niewidoczne)
+		reflectOcc: U.relief && !lite ? (xz, h, rh, tanR) => reliefReflect(U.relief, U.treeH, xz.sub(worldOffset), h, rh, tanR) : null,
 		// wysokość i spadki z siatki kafla (normalne policzone w wątku – wspólne na brzegach kafli)
 		ground() {
 			const N = normalize(vN);

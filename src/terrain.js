@@ -15,6 +15,7 @@ import { valueNoise, fbm, voronoi, hash12, hash22 } from './gfx/noise.js';
 import { waveMap } from './gfx/waves.js';
 import { COL } from './gfx/palette.js';
 import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
+import { TREE_WIND } from './forest.js';
 
 const EARTH_R = 6371000;
 
@@ -55,8 +56,8 @@ export function ringGeometry(inner, outer) {
 	return g;
 }
 
-/** Jasność lasu z tekstury koron względem lasu z drzew 3D (pomiar: średnia jasność obrazu w obu strefach). */
-export const farForest = uniform(0.5);
+/** Jasność lasu z tekstury koron względem dalekich drzew (do 5 km) – bez schodka jasności na granicy ich zasięgu. */
+export const farForest = uniform(0.75);
 
 let WAVES = null;
 const wavesTex = () => (WAVES ??= texture(createWaveTexture()));
@@ -212,6 +213,37 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const rows = sin(across.mul(2 * Math.PI / 0.75)).mul(0.5).add(0.5).mul(float(1).sub(smoothstep(0.1, 0.6, footprint)));
 			crop.assign(mix(crop, C.soil.mul(0.9), tram.mul(0.55)));
 			crop.assign(mix(crop, mix(C.soil, C.maize.mul(1.6), rows), isMaize.mul(0.55).mul(float(1).sub(smoothstep(0.1, 0.6, footprint)))));
+			if (!src.lite) {
+				// bruzdy na gołej ziemi (orka, podorywka – barwa uprawy bliska ziemi): z bliska skiby co ~0,35 m, dalej przejazdy
+				// pługa co 3 m
+				const earth = smoothstep(0, 0.012, crop.r.sub(crop.g)).mul(float(1).sub(smoothstep(0.13, 0.17, crop.g)));
+				const skiby = mix(float(1), sin(across.mul(2 * Math.PI / 0.35)).mul(0.5).add(0.5).mul(0.24).add(0.86), float(1).sub(smoothstep(0.04, 0.16, footprint)));
+				const passes = mix(float(1), mix(float(0.92), float(1.06), step(0.5, fract(across.div(3)))), float(1).sub(smoothstep(0.3, 1.4, footprint)));
+				crop.mulAssign(mix(float(1), skiby.mul(passes), earth));
+				// fale wiatru na łanach zbóż (wiosna, lato): jaśniejsze i ciemniejsze pasy przesuwające się z wiatrem
+				const isGrain = step(0.14, id).mul(step(id, 0.78)).mul(float(1).sub(earth));
+				const wv = TREE_WIND.v, ws = length(wv);
+				const wdir = wv.div(max(ws, 0.01));
+				const phase = dot(xz, wdir).sub(TREE_WIND.t.mul(ws.mul(1.3).add(1))).div(9).add(valueNoise(xz.div(40)).mul(3));
+				const waveAmt = min(float(1), ws.div(6)).mul(0.08).mul(isGrain).mul(SEASON.waves).mul(float(1).sub(smoothstep(1, 6, footprint)));
+				crop.mulAssign(float(1).add(sin(phase).mul(waveAmt)));
+				// bele: słoma na ścierniskach zbóż (jesień; nie na podorywce), siano na łąkach kośnych (lato) – co ~22 m w polu,
+				// z cieniem od słońca
+				const baleField = step(0.14, id).mul(step(id, 0.48)).add(step(0.66, id).mul(step(id, 0.78))).mul(SEASON.balesStubble).mul(step(hash12(vec2(id.mul(13), 2)), 0.6))
+					.add(step(0.9, id).mul(SEASON.balesHay).mul(step(hash12(vec2(id.mul(7), 5)), 0.5)));
+				const cellB = floor(r.div(22));
+				const jit = hash22(cellB.add(id.mul(31))).sub(0.5).mul(12);
+				const lb = fract(r.div(22)).mul(22).sub(11).sub(jit);
+				const here = step(hash12(cellB.add(17.3)), 0.45).mul(baleField).mul(float(1).sub(smoothstep(0.6, 1.4, footprint)));
+				const aaB = footprint.mul(0.6);
+				const disc = smoothstep(aaB.add(0.75), float(0.75).sub(aaB), length(lb));
+				const sr = vec2(sunXZ.x.mul(ca).sub(sunXZ.y.mul(sa)), sunXZ.x.mul(sa).add(sunXZ.y.mul(ca)));
+				const L = clamp(float(1.2).div(max(sun.y, 0.05)).mul(length(sun.xz)), 0, 6);
+				const shade = smoothstep(aaB.add(0.85), float(0.85).sub(aaB), length(lb.add(sr.mul(L)))).mul(step(0.02, sun.y));
+				const straw = mix(vec3(0.34, 0.28, 0.13), vec3(0.24, 0.24, 0.12), step(0.5, step(0.9, id)));
+				crop.assign(mix(crop, crop.mul(0.5), shade.mul(float(1).sub(disc)).mul(here)));
+				crop.assign(mix(crop, straw.mul(mix(float(0.8), float(1.1), smoothstep(-0.7, 0.7, lb.dot(sr).negate()))), disc.mul(here)));
+			}
 			// uwrocia: pas przy granicy, gdzie zawraca ciągnik – łan rzadszy i jaśniejszy
 			crop.assign(mix(crop, crop.mul(1.12).add(C.soil.mul(0.12)), headland.mul(0.6)));
 			// miedze: wąski pas trawy, gdzieniegdzie zadrzewienia
@@ -248,7 +280,23 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const trees3d = float(1).sub(smoothstep(src.U.treesFar.mul(0.8), src.U.treesFar, dCam)).mul(step(1, src.U.treesFar));
 			const floorCol = mix(COL.gap.mul(1.5), COL.pineYoung.mul(0.7), valueNoise(xz.div(3.5)).mul(0.6));
 			// poza zasięgiem drzew 3D korony z tekstury – przyciemnione do jasności lasu z drzew (bez jasnego pierścienia)
-			forest.mulAssign(mix(float(1), farForest, step(1, src.U.treesFar).mul(trees3d.oneMinus())));
+			const farF = step(1, src.U.treesFar).mul(trees3d.oneMinus());
+			forest.mulAssign(mix(float(1), farForest, farF));
+			// z daleka (poza drzewami 3D): mozaika wydzieleń – wyraźniejsze różnice barwy i cień wyższego drzewostanu na
+			// niższym (młodnik, zrąb) wzdłuż granicy od strony słońca, jak na zdjęciach lotniczych
+			If(farF.greaterThan(0.01), () => {
+				const standH = (s) => select(s.clear.greaterThan(0.5), float(0), select(s.young.greaterThan(0.5), float(0.4), mix(float(0.8), float(1.1), hash12(s.sid.add(3.3)))));
+				const tanE = sun.y.div(max(1e-3, length(sun.xz)));
+				const reach = clamp(float(9).div(tanE.max(0.05)), 6, 90);
+				const nb = forestStand(xz.add(sunXZ.mul(reach)), h);
+				const shade = smoothstep(0.15, 0.35, standH(nb).sub(standH({ sid, young, clear })));
+				const tint = mix(float(0.8), float(1.2), hash12(sid.add(41.3))).mul(float(1).sub(shade.mul(0.4)));
+				// kępy i luki w skali 50–160 m (drobniejszy wzór z daleka uśrednia się do płaskiej barwy), jaśniejsze –
+				// z domieszką brzóz i olch: cieplejszy, żółtawy odcień
+				const patch = valueNoise(xz.div(160).add(sid.mul(0.37))).mul(0.55).add(valueNoise(xz.div(55)).mul(0.45));
+				const patchy = mix(vec3(0.82), vec3(1.2, 1.24, 1.05), smoothstep(0.25, 0.75, patch));
+				forest.mulAssign(mix(vec3(1), patchy.mul(tint), farF));
+			});
 			forest.assign(mix(forest, floorCol, trees3d.mul(mix(float(0.85), float(0.3), young))));
 			const cutting = mix(mix(COL.sand.mul(0.55), COL.meadowB.mul(SEASON.grass), valueNoise(xz.div(12))), COL.pineYoung, valueNoise(xz.div(5)).mul(0.5));
 			forest.assign(mix(forest, cutting, clear));

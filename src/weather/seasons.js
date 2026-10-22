@@ -17,6 +17,8 @@ const SUMMER = {
 	leaf: [0.058, 0.100, 0.026],
 	autumnLeaf: [0.150, 0.110, 0.030],
 	autumn: 0,
+	// bele słomy na ścierniskach, bele siana na łąkach kośnych, fale wiatru na łanach zbóż (0..1)
+	balesStubble: 0, balesHay: 0.6, waves: 1,
 };
 
 export const SEASON_PALETTE = {
@@ -35,6 +37,7 @@ export const SEASON_PALETTE = {
 		leaf: [0.074, 0.138, 0.030],
 		autumnLeaf: [0.150, 0.110, 0.030],
 		autumn: 0,
+		balesStubble: 0, balesHay: 0, waves: 1,
 	},
 	summer: SUMMER,
 	// 26 września: po żniwach – ścierniska, pola zaorane i wschody ozimin, kukurydza sucha przed zbiorem, trawa
@@ -52,6 +55,7 @@ export const SEASON_PALETTE = {
 		leaf: [0.070, 0.105, 0.030],
 		autumnLeaf: [0.165, 0.118, 0.032],
 		autumn: 0.2,
+		balesStubble: 1, balesHay: 0, waves: 0,
 	},
 	// 3 stycznia: pola pod śniegiem (w plamach – oziminy i zaorana ziemia), trawa zżółkła i przymarznięta;
 	// liście bez znaczenia – drzewa liściaste nagie (bareTrees)
@@ -68,6 +72,7 @@ export const SEASON_PALETTE = {
 		leaf: [0.058, 0.100, 0.026],
 		autumnLeaf: [0.150, 0.110, 0.030],
 		autumn: 0,
+		balesStubble: 0, balesHay: 0, waves: 0,
 	},
 };
 

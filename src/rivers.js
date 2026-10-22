@@ -3,7 +3,7 @@
 // toń, odbicie nieba z Fresnelem, drobne zmarszczki i odblask słońca; brzegi wygładzone przezroczystością.
 // Do tego linie koryt (z pasem nadbrzeżnym) dla maski lasu.
 import { Mesh, BufferGeometry, BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
-import { Fn, float, vec2, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, pow, dot, normalize, reflect, fwidth, cameraPosition } from 'three/tsl';
+import { Fn, float, vec2, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, pow, dot, normalize, reflect, fwidth, cameraPosition, smoothstep } from 'three/tsl';
 import { onGround, worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
 import { COL } from './gfx/palette.js';
@@ -25,6 +25,8 @@ export function riversFromArrays(a, atmo, clouds, plane, worldShadow, shared = n
 		geo.setAttribute('position', new BufferAttribute(g.pos, 3));
 		geo.setAttribute('aSide', new BufferAttribute(g.side, 1));
 		geo.setAttribute('aWidth', new BufferAttribute(g.width, 1));
+		geo.setAttribute('aDist', new BufferAttribute(g.dist, 1));
+		geo.setAttribute('aSlope', new BufferAttribute(g.slope, 1));
 		geo.setIndex(new BufferAttribute(g.idx, 1));
 		const mesh = new Mesh(geo, (mat ??= makeMaterial(atmo, clouds, plane, worldShadow)));
 		mesh.renderOrder = 5; // pod drogami
@@ -57,14 +59,27 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 	})();
 	const side = varying(attribute('aSide', 'float'), 'vRiverSide');
 	const width = varying(attribute('aWidth', 'float'), 'vRiverWidth');
+	const dist = varying(attribute('aDist', 'float'), 'vRiverDist'); // m wzdłuż biegu (z nurtem)
+	const slope = varying(attribute('aSlope', 'float'), 'vRiverSlope'); // spadek koryta
 	m.colorNode = Fn(() => {
 		const xz = vWorld.xz.add(worldOffset);
 		const fp = max(fwidth(xz.x), fwidth(xz.y)).max(0.03);
-		// zmarszczki: dwie warstwy szumu płynące w różnych kierunkach, wygaszane z daleka
+		// nurt: wzór w układzie koryta (w poprzek, wzdłuż biegu) płynie z prędkością zależną od spadku (nizinne rzeki
+		// ~0,5 m/s, potoki górskie do 3 m/s); zmarszczki wygaszane z daleka
 		const fine = float(1).sub(clamp(fp.div(3), 0, 1));
-		const nA = valueNoise(xz.div(2.3).add(vec2(time.mul(0.35), 0)));
-		const nB = valueNoise(xz.div(1.4).sub(vec2(0, time.mul(0.28))));
-		const wn = normalize(vec3(nA.sub(0.5).mul(0.18).mul(fine), 1, nB.sub(0.5).mul(0.18).mul(fine)));
+		const speed = clamp(slope.mul(45).add(0.45), 0.4, 3);
+		const across = side.mul(width).mul(0.5);
+		const flow = dist.sub(time.mul(speed));
+		const nA = valueNoise(vec2(across.div(1.6), flow.div(2.6)));
+		const nB = valueNoise(vec2(across.div(0.9).add(3.1), flow.mul(1.2).div(1.3)));
+		const nC = valueNoise(xz.div(1.4).sub(vec2(0, time.mul(0.28)))); // drobna fala od wiatru
+		const wn = normalize(vec3(nA.sub(0.5).mul(0.2).mul(fine), 1, nB.sub(0.5).mul(0.2).add(nC.sub(0.5).mul(0.08)).mul(fine)));
+		// bystrza na stromych ciekach (spadek ~2–6%) i smugi piany przy brzegach szybkiej wody – płyną z nurtem
+		const rapids = smoothstep(0.02, 0.06, slope);
+		// smugi wydłużone z nurtem (wąskie w poprzek, długie wzdłuż), w dwóch skalach
+		const foamN = valueNoise(vec2(across.div(0.45), flow.div(2.8))).mul(0.6).add(valueNoise(vec2(across.div(1.4).add(7.3), flow.div(7))).mul(0.4));
+		const bankFoam = smoothstep(0.75, 0.95, abs(side)).mul(smoothstep(1, 2, speed)).mul(0.5);
+		const foam = smoothstep(0.6, 0.8, foamN).mul(rapids.add(bankFoam).min(1)).mul(mix(float(0.4), float(1), fine));
 		const V = normalize(cameraPosition.sub(vWorld));
 		const R = reflect(V.negate(), wn);
 		const nv = max(dot(wn, V), 0.02);
@@ -80,7 +95,8 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const sky = atmo.skyRadiance(vec3(R.x, max(0.01, R.y), R.z)).mul(mix(float(1), float(0.45), edge.mul(edge)));
 		const H = normalize(V.add(sun));
 		const glint = pow(max(0, dot(wn, H)), 400).mul(30).mul(shadow);
-		return mix(lit, sky, F).add(sunE.mul(glint).mul(F));
+		const foamC = vec3(0.75, 0.78, 0.8).mul(sunE.mul(max(0, sun.y)).mul(shadow).add(atmo.skyIrradiance())).div(Math.PI);
+		return mix(mix(lit, sky, F).add(sunE.mul(glint).mul(F)), foamC, foam.mul(0.7));
 	})();
 	m.opacityNode = Fn(() => {
 		const fp = max(fwidth(vWorld.x), fwidth(vWorld.z)).max(0.05);

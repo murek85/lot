@@ -80,3 +80,26 @@ export const RELIEF = reliefUniforms();
 
 /** Cień rzeźby dla obiektów na ziemi (budynki, drogi, aleje, pojazdy): tani wariant – tylko zgrubne okno. */
 export const reliefObjectShadow = (atmo, p) => reliefShadow(RELIEF, atmo, float(0), p.xz, p.y, float(0), float(100), true);
+
+/**
+ * Odbicie brzegu w wodzie (jak reflectOcc regionów w src/terrain.js): promień odbity od wody w poziomie (rh) wznosi się
+ * z nachyleniem tanR – jeśli po drodze (do ~420 m) zasłoni go las albo zbocze, w wodzie widać brzeg zamiast nieba.
+ * Z bliska okno gruntu (las i rzeźba co 5,5 m), dalej zgrubne okno rzeźby. Zwraca udział zasłonięcia 0..1.
+ */
+export function reliefReflect(R, treeH, xz, h, rh, tanR) {
+	const reach = min(float(420), float(32).div(tanR));
+	const occ = float(0).toVar();
+	If(R.on.greaterThan(0.5), () => {
+		for (let k = 1; k <= 8; k++) {
+			const x = reach.mul(Math.pow(k / 8, 1.6));
+			const s = xz.add(rh.mul(x));
+			const inFine = max(abs(s.x.sub(R.fineC.x)), abs(s.y.sub(R.fineC.y))).lessThan(R.fineReach);
+			const f = R.fine.sample(s.div(R.fineSize)).level(0), c = R.coarse.sample(s.div(R.coarseSize)).level(0);
+			const dens = select(inFine, f.r, c.r), hh = select(inFine, f.g.add(R.fineBase), c.g.add(R.coarseBase));
+			const ok = select(inFine, float(1), c.b);
+			const surf = hh.sub(h).add(smoothstep(0.3, 0.7, dens).mul(treeH));
+			occ.assign(max(occ, smoothstep(0, 3, surf.sub(x.mul(tanR))).mul(ok)));
+		}
+	});
+	return occ;
+}

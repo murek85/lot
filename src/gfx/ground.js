@@ -31,6 +31,9 @@ export const SEASON = {
 	leaf: uniform(new Color()),
 	autumnLeaf: uniform(new Color()),
 	autumn: uniform(0),
+	balesStubble: uniform(0),
+	balesHay: uniform(0),
+	waves: uniform(0),
 };
 /** Ustawia barwy pory roku z palety { crops, grass, leaf, autumnLeaf, autumn }. */
 export function setSeason(p) {
@@ -39,6 +42,9 @@ export function setSeason(p) {
 	SEASON.leaf.value.setRGB(...p.leaf);
 	SEASON.autumnLeaf.value.setRGB(...p.autumnLeaf);
 	SEASON.autumn.value = p.autumn;
+	SEASON.balesStubble.value = p.balesStubble ?? 0;
+	SEASON.balesHay.value = p.balesHay ?? 0;
+	SEASON.waves.value = p.waves ?? 0;
 }
 setSeason(seasonPalette('summer'));
 

@@ -19,7 +19,7 @@ const MIN_DRAWN = 2; // rowy węższe niż 2 m tylko w masce lasu
  * heightAt(x, z) – wysokość terenu; half – pomijanie poza kwadratem ±half. → { mesh: { pos, side, width, idx, count }, lines }.
  */
 export function riverArrays(waterways, heightAt, half = Infinity) {
-	const g = { pos: [], side: [], width: [], idx: [], count: 0 };
+	const g = { pos: [], side: [], width: [], dist: [], slope: [], idx: [], count: 0 };
 	const lines = [];
 	for (const [w10, c] of waterways ?? []) {
 		let pts = [];
@@ -49,10 +49,17 @@ export function riverArrays(waterways, heightAt, half = Infinity) {
 		for (const v of rb.pos) g.pos.push(v);
 		for (const v of rb.side) g.side.push(v);
 		for (const v of rb.idx) g.idx.push(v);
-		for (let k = 0; k < rb.side.length; k++) g.width.push(width + 2);
+		for (let k = 0; k < rb.side.length; k++) { g.width.push(width + 2); g.dist.push(rb.dist[k]); }
+		// spadek koryta (nurt, bystrza): różnica wysokości terenu ±5 punktów (±50 m) wzdłuż biegu, bez znaku – kierunek
+		// rysowania nie zawsze jest z nurtem; OSM rysuje cieki z nurtem, więc odległość rośnie w dół rzeki
+		for (let k = 0; k < n; k++) {
+			const a = Math.max(0, k - 5), b = Math.min(n - 1, k + 5);
+			const s = b > a ? Math.abs(raw[a] - raw[b]) / ((b - a) * 10) : 0;
+			g.slope.push(s, s);
+		}
 		g.count += rb.side.length;
 	}
-	return { mesh: { pos: F32(g.pos), side: F32(g.side), width: F32(g.width), idx: new Uint32Array(g.idx), count: g.count }, lines };
+	return { mesh: { pos: F32(g.pos), side: F32(g.side), width: F32(g.width), dist: F32(g.dist), slope: F32(g.slope), idx: new Uint32Array(g.idx), count: g.count }, lines };
 }
 
 // --- tory ---

@@ -5,6 +5,27 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Daleki las** (`src/terrain.js`, poza zasięgiem dalekich drzew – 5 km): mozaika wydzieleń jak na zdjęciach lotniczych –
+  wyraźniejsze różnice barwy między wydzieleniami, cień wyższego drzewostanu na młodniku i zrębie wzdłuż granicy od
+  strony słońca, kępy i luki w skali 50–160 m (z domieszką liściastych – cieplejszy odcień). Jaśniejszy (`farForest`
+  0,5 → 0,75) – bez ciemnego pasa za granicą dalekich drzew. Koszt pomijalny (całość klatki ~5,4 ms GPU).
+- **Rzeki z nurtem** (`src/rivers.js`, `riverArrays` w `src/objgeo.js`): zmarszczki w układzie koryta płyną z biegiem
+  rzeki (atrybuty `aDist` – metry wzdłuż biegu – i `aSlope` – spadek koryta z wysokości terenu ±50 m); prędkość od
+  ~0,5 m/s na nizinnych rzekach do 3 m/s na potokach. Na stromych ciekach (spadek ~2–6%) bystrza – smugi piany
+  wydłużone z nurtem, przy szybkiej wodzie także przy brzegach; z daleka wygaszane.
+- **Pola z bliska** (`src/terrain.js`): bruzdy na gołej ziemi (orka, podorywka – z bliska skiby co ~0,35 m, dalej
+  przejazdy pługa co 3 m), fale wiatru przesuwające się po łanach zbóż (wiosną i latem, z siłą wiatru), bele słomy
+  na ścierniskach zbóż (wczesna jesień) i siana na łąkach kośnych (lato) – co ~22 m, z cieniem od słońca, widoczne
+  też z wysokości lotu. W palecie pór roku (`src/weather/seasons.js`): `balesStubble`, `balesHay`, `waves`.
+- **Elewacje** (`src/buildings.js`): bloki – pastelowe pola co ~12 m (jak po termomodernizacji), balkony w całych
+  pionach (balustrada w dolnej części kondygnacji, cień pod płytą), linie stropów; wszystkie budynki z oknami – ciemny
+  cokół do 0,5 m i zabrudzenie przy ziemi, zacieki pod oknami, drzwi na parterze w części kolumn (domy częściej,
+  bloki – klatki schodowe; nocą nie świecą jak okna). Szczegóły wygaszane z odległością.
+- **Odbicia brzegu w wodzie w otwartym świecie** (`reliefReflect` w `src/world/reliefshade.js`, jak `reflectOcc`
+  regionów): promień odbity od wody idzie w poziomie do ~420 m – las i zbocza na brzegu widać w jeziorach i rzekach
+  jako ciemny, zielony pas zamiast nieba (z bliska okno gruntu, dalej zgrubne okno rzeźby).
+- Poprawka: cienie rzeźby i przyciemnienie dolin w otwartym świecie znikały po pierwszym przesunięciu początku układu
+  (po ~20 km lotu) – shader terenu podawał współrzędne z przesunięciem `worldOffset`, a okna rzeźby są w układzie gry.
 - **Ostrzejsze cienie z bliska – dwie kaskady mapy cieni** (`src/shadows.js`): do dalekiej (±1,4 km, 4096², ~0,7 m
   na teksel, wszystkie rzucające cień) doszła bliska (±250 m wokół samolotu, 2048², ~0,24 m) – tylko warstwa
   `CASTER_NEAR` (budynki, mosty, aleje, słupy, bliskie drzewa), bez 360 tys. dalszych drzew. Cienie domów, koron

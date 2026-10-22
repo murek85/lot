@@ -148,7 +148,34 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const band = step(0.5, fract(buv.y.div(H.mul(0.45 / 7)).mul(0.5)));
 		const striped = step(light.x, -1.5).mul(step(H.mul(0.55), buv.y));
 		const wallBase = mix(wallC, mix(vec3(0.78, 0.78, 0.76), vec3(0.6, 0.07, 0.04), band), striped);
-		const wallAlb = mix(wallBase.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(2)))), glass, win.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin)));
+		// --- elewacje: bloki (szansa okien > 1) – pasy kolorów po termomodernizacji, balkony w pionach, linie stropów;
+		// wszystkie – cokół i zabrudzenie przy ziemi, zacieki pod oknami, drzwi na parterze ---
+		const isBlock = step(1.05, light.x);
+		const col = floor(buv.x.div(3.1)), floorN = floor(buv.y.div(3));
+		const seedB = light.y.mul(91.7);
+		// pastelowe pola na blokach (odcinki ~12 m wzdłuż obwodu)
+		const seg = floor(buv.x.div(12));
+		const hs = hash12(vec2(seg, seedB));
+		const pastel = select(hs.lessThan(0.33), vec3(0.62, 0.5, 0.32), select(hs.lessThan(0.66), vec3(0.42, 0.52, 0.56), vec3(0.6, 0.42, 0.36)));
+		const painted = mix(wallBase, pastel, step(hash12(vec2(seg, seedB.add(3.3))), 0.4).mul(isBlock).mul(0.7));
+		// balkony: całe piony (kolumna okien), od pierwszego piętra – balustrada w dolnej części kondygnacji, cień pod płytą
+		const hasBalc = step(hash12(vec2(col, seedB.add(7.7))), 0.35).mul(isBlock).mul(step(3, buv.y)).mul(hasWin);
+		const rail = step(0.08, cellU).mul(step(cellU, 0.92)).mul(step(cellV, 0.32)).mul(hasBalc);
+		const underSlab = step(0.9, cellV).mul(step(0.08, cellU)).mul(step(cellU, 0.92)).mul(hasBalc).mul(step(buv.y.add(0.3).div(3).floor(), floorN.add(0.5)));
+		const railC = mix(vec3(0.7, 0.7, 0.68), pastel.mul(0.9), step(0.5, hash12(vec2(col, seedB.add(1.9)))));
+		// linie stropów na blokach, cokół i zabrudzenie przy ziemi, zacieki pod oknami
+		const slab = mix(float(1), float(0.9), step(cellV, 0.03).mul(isBlock).mul(step(3, buv.y)));
+		const plinth = float(1).sub(step(buv.y, 0.5).mul(hasWin.max(isBlock)));
+		const soil = mix(float(0.82), float(1), smoothstep(0, 1.5, buv.y));
+		const streak = step(0.36, cellU).mul(step(cellU, 0.66)).mul(float(1).sub(smoothstep(0, 0.3, cellV))).mul(step(3, buv.y)).mul(hasWin).mul(valueNoise(vec2(buv.x.mul(3), buv.y.mul(0.4))).mul(0.18));
+		const facade = mix(mix(painted.mul(slab).mul(soil).mul(float(1).sub(streak.mul(detail))), vec3(0.3, 0.29, 0.28), plinth.oneMinus().mul(0.75)), railC, rail.mul(detail))
+			.mul(float(1).sub(underSlab.mul(detail).mul(0.45)));
+		// drzwi: parter, część kolumn (domy częściej, w blokach – klatki schodowe), w miejscu okna
+		const isDoor = step(hash12(vec2(col, seedB.add(5.5))), select(isBlock.greaterThan(0.5), float(0.07), float(0.12))).mul(step(buv.y, 2.2))
+			.mul(step(0.34, cellU)).mul(step(cellU, 0.66)).mul(hasWin).mul(step(buv.y, 3));
+		const doorC = mix(vec3(0.16, 0.1, 0.06), vec3(0.22, 0.24, 0.26), step(0.5, hash12(vec2(col, seedB.add(2.1)))));
+		const winNoDoor = win.mul(float(1).sub(step(hash12(vec2(col, seedB.add(5.5))), select(isBlock.greaterThan(0.5), float(0.07), float(0.12))).mul(step(buv.y, 3))));
+		const wallAlb = mix(mix(facade.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(2)))), glass, winNoDoor.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin))), doorC, isDoor.mul(detail));
 		// --- dachy spadziste: u – metry wzdłuż kalenicy, v – metry wzdłuż spadku od okapu; rodzaj 1 (okap) → 1,4 (kalenica)
 		const onSlope = clamp(kind.sub(1).div(0.4), 0, 1);
 		const seed = light.y;
@@ -192,7 +219,7 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const skyE = atmo.skyIrradiance();
 		// ściany dostają mniej nieba (zasłania je połowa nieboskłonu) i trochę światła odbitego od ziemi
 		const sky = skyE.mul(N.y.mul(0.5).add(0.5)).add(sunE.mul(max(0, sun.y)).mul(0.12).mul(float(1).sub(N.y)).mul(0.5));
-		const spec = pow(max(0, dot(V.negate().sub(N.mul(dot(V.negate(), N).mul(2))), sun)), 60).mul(0.15).mul(win).mul(detail);
+		const spec = pow(max(0, dot(V.negate().sub(N.mul(dot(V.negate(), N).mul(2))), sun)), 60).mul(0.15).mul(winNoDoor).mul(detail);
 		// latarnie oświetlają ściany od dołu (słabnie z wysokością nad ulicą)
 		const street = cityLight(vWorld).mul(float(1).sub(N.y.max(0).mul(0.3))).mul(0.35);
 		const lit = albedo.div(Math.PI).mul(sunE.mul(ndl).mul(shadow).add(sky).add(plane.lights.landingLight(vWorld, N)).add(street)).add(sunE.mul(spec).mul(shadow));
@@ -205,7 +232,7 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const tone = hash12(cellId.add(vec2(light.y.mul(57.1), 3.3)));
 		const wcol = mix(vec3(1.0, 0.68, 0.36), vec3(0.62, 0.72, 1.0), step(0.86, tone)).mul(mix(float(0.55), float(1.1), tone));
 		// z bliska – kształt okna; z daleka – średnia (okna zajmują ~18% ściany)
-		const shape = win.mul(detail).add(float(0.18).mul(detail.oneMinus()));
+		const shape = winNoDoor.mul(detail).add(float(0.18).mul(detail.oneMinus()));
 		return lit.add(wcol.mul(on.mul(shape).mul(1.3).mul(CU.winGlow)));
 	})();
 	return m;
