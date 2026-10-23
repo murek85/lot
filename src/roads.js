@@ -7,8 +7,9 @@ import {
 	Fn, float, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, smoothstep, step, fract,
 	fwidth, dot, select, floor,
 } from 'three/tsl';
-import { onGround, cityLight, worldOffset } from './gfx/ground.js';
+import { onGround, cityLight, worldOffset, snowCover } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
+import { wetness, wetAlbedo, puddles, wetSheen } from './gfx/wet.js';
 import { densify, ribbon } from './gfx/ribbon.js';
 import { roadCrossings, CROSSING } from './gen/crossings.js';
 
@@ -189,12 +190,32 @@ export function makeRoadMaterial(region, atmo, clouds, plane, worldShadow) {
 		albedo.assign(mix(albedo, vec3(0.55), paint));
 		// zebra: biała farba (krycie – opacityNode), starta jak linie
 		albedo.assign(mix(albedo, vec3(0.6).mul(wear), isZebra));
+		// deszcz: mokra nawierzchnia ciemnieje (asfalt najmocniej), kałuże w koleinach i zagłębieniach – bardziej na
+		// drogach gruntowych; połysk: asfalt i kostka – cienka warstwa wody, żwir i piach – tylko kałuże
+		const hard = step(surf, 1.5);
+		const pud = puddles(xz).mul(mix(float(0.35), float(1), max(isTrack, step(2.5, surf)))).mul(float(1).sub(paint.mul(0.7)));
+		albedo.assign(wetAlbedo(albedo, mix(float(0.3), float(0.45), hard)).mul(float(1).sub(pud.mul(wetness).mul(0.4))));
+		const gloss = max(mix(float(0.15), float(0.75), hard), pud);
+		// zima: drogi główne (krajowe, wojewódzkie, powiatowe) odśnieżone i mokre od soli – śnieg tylko przy krawędzi
+		// i między śladami kół; osiedlowe i lokalne – ubity śnieg z ciemniejszymi koleinami; gruntowe – białe
+		const snowNow = clamp(snowCover.mul(1.35), 0, 1);
+		const mainRd = step(cls, 3.5).mul(hard);
+		const wheel = smoothstep(0.1, 0.22, abs(abs(u).sub(0.45))).oneMinus().mul(nearDetail.mul(0.6).add(0.4));
+		const edgeSnow = smoothstep(1.2, 0.25, fromEdge).mul(valueNoise(xz.div(2.2)).mul(0.5).add(0.5));
+		const snowMain = edgeSnow.add(smoothstep(0.08, 0.0, abs(u)).mul(0.3)); // przy krawędziach i na osi
+		const snowMinor = mix(float(0.92), float(0.55), wheel);
+		const roadSnow = mix(mix(snowMinor, float(0.97), max(isTrack, step(2.5, surf))), snowMain, mainRd).mul(snowNow);
+		albedo.assign(mix(albedo, vec3(0.74, 0.76, 0.8).mul(mix(float(0.9), float(1.05), valueNoise(xz.div(1.6)))), roadSnow));
+		const wetRoad = max(wetness, snowNow.mul(0.7).mul(mainRd));
+		albedo.mulAssign(float(1).sub(snowNow.mul(0.3).mul(mainRd).mul(float(1).sub(roadSnow)))); // mokra od soli
 		// światło jak na terenie (płaska powierzchnia)
 		const sun = atmo.u.lightDir;
 		const sunE = atmo.sunLight(vWorld.y);
 		let shadow = clouds.groundShadow(vWorld).mul(plane.groundShadow(vWorld));
 		if (worldShadow) shadow = shadow.mul(worldShadow.visibility(vWorld, 0.3));
-		return albedo.div(Math.PI).mul(sunE.mul(max(0, sun.y)).mul(shadow).add(atmo.skyIrradiance()).add(plane.lights.landingLight(vWorld, vec3(0, 1, 0))).add(cityLight(vWorld)));
+		const street = cityLight(vWorld);
+		const lit = albedo.div(Math.PI).mul(sunE.mul(max(0, sun.y)).mul(shadow).add(atmo.skyIrradiance()).add(plane.lights.landingLight(vWorld, vec3(0, 1, 0))).add(street));
+		return lit.add(wetSheen(atmo, clouds, vWorld, vec3(0, 1, 0), gloss.mul(float(1).sub(roadSnow)), shadow, street.div(Math.PI), wetRoad));
 	})();
 	// krycie: miękka krawędź (wygładzona do wielkości piksela), a wąska droga z daleka – proporcjonalnie bledsza
 	m.opacityNode = Fn(() => {

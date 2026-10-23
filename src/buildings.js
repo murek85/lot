@@ -7,9 +7,10 @@ import {
 	Fn, float, vec2, vec3, floor, attribute, varying, positionLocal, uniform, max, mix, smoothstep, step, fract, dot, normalize,
 	cameraPosition, pow, select, fwidth, instancedBufferAttribute, uv, exp, clamp, length, time,
 } from 'three/tsl';
-import { onGround, cityLight, cityUniforms, worldOffset } from './gfx/ground.js';
+import { onGround, cityLight, cityUniforms, worldOffset, snowCover } from './gfx/ground.js';
 import { hash12 } from './gfx/noise.js';
 import { valueNoise } from './gfx/noise.js';
+import { wetAlbedo, puddles, wetSheen } from './gfx/wet.js';
 import { rng } from './clouds/noise3d.js';
 import { CASTER_LAYER, CASTER_NEAR } from './shadows.js';
 import { coolingProfile } from './gfx/structures.js';
@@ -75,10 +76,22 @@ export function buildingMeshes(tiles, info, atmo, clouds, plane, worldShadow = n
 function beaconSprite(beacons, camXZ, pixelAngle) {
 	const n = beacons.length;
 	const pos = new Float32Array(n * 3), phase = new Float32Array(n);
-	beacons.forEach((p, i) => { pos.set(p, i * 3); phase[i] = (Math.abs(Math.round(p[0] * 7 + p[2] * 3)) % 100) / 100; });
+	beacons.forEach((p, i) => { pos.set(p, i * 3); phase[i] = beaconPhase(p); });
+	const sprite = new Sprite(beaconMaterial(new InstancedBufferAttribute(pos, 3), new InstancedBufferAttribute(phase, 1), camXZ, pixelAngle));
+	sprite.count = n;
+	sprite.frustumCulled = false;
+	sprite.renderOrder = 16;
+	return sprite;
+}
+
+/** Faza migania światła przeszkodowego (każda budowla inna). */
+export const beaconPhase = (p) => (Math.abs(Math.round(p[0] * 7 + p[2] * 3)) % 100) / 100;
+
+/** Materiał świateł przeszkodowych: posAttr (vec3) i phaseAttr (float) – atrybuty instancji. */
+export function beaconMaterial(posAttr, phaseAttr, camXZ, pixelAngle) {
 	const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
-	const center = instancedBufferAttribute(new InstancedBufferAttribute(pos, 3));
-	const ph = instancedBufferAttribute(new InstancedBufferAttribute(phase, 1));
+	const center = instancedBufferAttribute(posAttr);
+	const ph = instancedBufferAttribute(phaseAttr);
 	const world = onGround(center, camXZ);
 	m.positionNode = world;
 	// z daleka nie mniejsze niż kilka pikseli – kominy widać z kilometrów jako czerwone punkty
@@ -95,11 +108,7 @@ function beaconSprite(beacons, camXZ, pixelAngle) {
 	const on = CU ? CU.street : float(1);
 	const glow = CU ? max(CU.glow, 0.2) : float(1);
 	m.colorNode = vec3(1, 0.06, 0.03).mul(f.mul(blink).mul(on).mul(glow).mul(9));
-	const sprite = new Sprite(m);
-	sprite.count = n;
-	sprite.frustumCulled = false;
-	sprite.renderOrder = 16;
-	return sprite;
+	return m;
 }
 
 /** Tani materiał do mapy cieni: ta sama pozycja (z krzywizną), bez oświetlenia. */
@@ -210,7 +219,17 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const flatAlb = roofC.mul(patches).mul(strips);
 		// tylne ściany (wnętrze chłodni widziane z góry) – ciemne
 		const back = select(dot(N, V).lessThan(0), float(0.12), float(1));
-		const albedo = select(kind.lessThan(0.5), wallAlb, select(kind.lessThan(1.5), roofAlb, flatAlb)).mul(back);
+		// deszcz: mokre dachy ciemnieją i błyszczą (blacha najmocniej, dachówka słabiej), na płaskich – kałuże; ściany
+		// tylko ciemnieją (zacieki z deszczu)
+		const isWall = step(kind, 0.5), isFlat = step(1.5, kind);
+		const roofPud = puddles(vWorld.xz.add(worldOffset), 0.6).mul(isFlat);
+		// zima: śnieg na dachach (stromszych mniej, w plamach – nad ogrzewanymi poddaszami topnieje), gzymsy i parapety
+		// ścian bez zmian
+		const snowP = valueNoise(vWorld.xz.add(worldOffset).div(5)).mul(0.6).add(valueNoise(vWorld.xz.add(worldOffset).div(1.3)).mul(0.4));
+		const roofSnow = clamp(snowCover.mul(1.5).sub(snowP.mul(0.55)), 0, 1).mul(smoothstep(0.4, 0.62, N.y)).mul(isWall.oneMinus());
+		const snowAlb = vec3(0.78, 0.8, 0.84).mul(mix(float(0.92), float(1.04), snowP));
+		const albedo = mix(wetAlbedo(select(kind.lessThan(0.5), wallAlb, select(kind.lessThan(1.5), roofAlb, flatAlb)), mix(float(0.3), float(0.15), isWall)), snowAlb, roofSnow).mul(back);
+		const roofGloss = max(select(isFlat.greaterThan(0.5), float(0.25), mix(float(0.5), float(0.3), isClay)), roofPud).mul(isWall.oneMinus()).mul(roofSnow.oneMinus());
 		const sun = atmo.u.lightDir;
 		const sunE = atmo.sunLight(vWorld.y);
 		let shadow = clouds.groundShadow(vWorld).mul(plane.groundShadow(vWorld));
@@ -222,7 +241,8 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const spec = pow(max(0, dot(V.negate().sub(N.mul(dot(V.negate(), N).mul(2))), sun)), 60).mul(0.15).mul(winNoDoor).mul(detail);
 		// latarnie oświetlają ściany od dołu (słabnie z wysokością nad ulicą)
 		const street = cityLight(vWorld).mul(float(1).sub(N.y.max(0).mul(0.3))).mul(0.35);
-		const lit = albedo.div(Math.PI).mul(sunE.mul(ndl).mul(shadow).add(sky).add(plane.lights.landingLight(vWorld, N)).add(street)).add(sunE.mul(spec).mul(shadow));
+		const lit = albedo.div(Math.PI).mul(sunE.mul(ndl).mul(shadow).add(sky).add(plane.lights.landingLight(vWorld, N)).add(street)).add(sunE.mul(spec).mul(shadow))
+			.add(wetSheen(atmo, clouds, vWorld, N, roofGloss, shadow, street.div(Math.PI)));
 		// zapalone okna: los na okno (komórka siatki + budynek), odsetek z godziny; barwa ciepła, czasem chłodna (telewizor)
 		const CU = cityUniforms();
 		if (!CU) return lit;

@@ -16,6 +16,7 @@ import { waveMap } from './gfx/waves.js';
 import { COL } from './gfx/palette.js';
 import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
 import { TREE_WIND } from './forest.js';
+import { wetness } from './gfx/wet.js';
 
 const EARTH_R = 6371000;
 
@@ -177,15 +178,21 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 
 		// pola: pasy o różnych uprawach, miedze, ścieżki technologiczne i rzędy
 		If(wCrop.greaterThan(0.002), () => {
-			// kierunek pól stały w strefach ~5 km (obrót wokół środka strefy – bez wirów daleko od początku układu)
-			const zone = floor(xz.div(5200).add(valueNoise(xz.div(1800)).mul(0.6)));
+			// kierunek pól stały w strefach ~5 km – komórkach Woronoja: granice stref to proste odcinki (jak granice
+			// dawnych majątków), a nie łuki poziomic szumu, które potrafiły zamknąć się w okrąg przecinający pola
+			const vz = voronoi(xz.div(5200));
+			const zone = vec2(vz.z.mul(977.3), vz.z.mul(311.9));
+			const zoneEdge = vz.y.sub(vz.x).mul(5200 * 0.5); // m do granicy strefy (w przybliżeniu)
 			const ang = hash12(zone.add(3.7)).sub(0.5).mul(1.9);
 			const ca = cos(ang), sa = sin(ang);
 			const r = vec2(xz.x.mul(ca).sub(xz.y.mul(sa)), xz.x.mul(sa).add(xz.y.mul(ca)));
 			// lite (daleki teren otwartego świata): bloki pól bez podziału na pasy – z ~10 km i tak niewidoczne
-			const { id, edgeM, across: acrossM } = src.lite
+			const layout = src.lite
 				? { id: hash12(floor(r.div(vec2(430, 330))).add(zone.mul(7.1))), edgeM: float(50), across: r.x }
 				: fieldLayout(r, zone);
+			// na granicy stref – miedza jak między polami
+			const { id, across: acrossM } = layout;
+			const edgeM = min(layout.edgeM, zoneEdge);
 			const border = smoothstep(1.2, 2.6, edgeM.add(footprint.mul(0.5)));
 			const headland = smoothstep(10, 14, edgeM).oneMinus().mul(float(1).sub(smoothstep(1.5, 6, footprint)));
 			const crop = vec3(0).toVar();
@@ -391,6 +398,9 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			albedo.assign(mix(albedo, scree, screeAmt.mul(float(1).sub(wWater))));
 			albedo.assign(mix(albedo, rock, rockAmt.mul(float(1).sub(wWater))));
 		}
+
+		// --- deszcz: mokra gleba i trawa ciemnieją (las mniej – korony) ---
+		albedo.mulAssign(float(1).sub(wetness.mul(0.22).mul(float(1).sub(wWater)).mul(mix(float(1), float(0.4), wForest))));
 
 		// --- śnieg (pogoda): biel na płaskim, w plamach przy małej pokrywie; las – tylko prześwity między koronami ---
 		{

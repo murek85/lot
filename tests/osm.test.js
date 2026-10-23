@@ -133,3 +133,28 @@ test('przejścia dla pieszych: skrzyżowania z drogą wyższej klasy w zabudowie
 	const wide = [1, 180, 0, 0, 0, main[5], 1];
 	assert.equal(roadCrossings([wide, side], houses).length, 1);
 });
+
+test('punkty orientacyjne: rodzaj i wymiary ze znaczników, geometria i światła przeszkodowe', async () => {
+	const { landmarkInfo, LANDMARK } = await import('../src/gen/osmtags.js');
+	const { landmarkArrays } = await import('../src/gen/landmarkgeo.js');
+	assert.deepEqual(landmarkInfo({ power: 'generator', 'generator:source': 'wind', height: '120', 'rotor:diameter': '112' }), { kind: LANDMARK.wind, height: 120, rotor: 112 });
+	assert.equal(landmarkInfo({ power: 'generator', 'generator:source': 'solar' }), null);
+	assert.equal(landmarkInfo({ power: 'generator', 'generator:method': 'wind_turbine' }).rotor, 90); // domyślnie: 100 m, wirnik 0,9 H
+	assert.equal(landmarkInfo({ man_made: 'chimney', height: '12' }), null); // kominy domów – pomijane
+	assert.equal(landmarkInfo({ man_made: 'chimney', height: '150 m' }).height, 150);
+	assert.equal(landmarkInfo({ man_made: 'mineshaft' }), null); // szyb bez wieży
+	assert.equal(landmarkInfo({ man_made: 'mineshaft', headframe: 'yes' }).kind, LANDMARK.headframe);
+	assert.equal(landmarkInfo({ man_made: 'tower', 'tower:type': 'communication', height: '90' }).kind, LANDMARK.mast);
+	assert.equal(landmarkInfo({ man_made: 'tower', 'tower:type': 'observation' }), null);
+	// wiatrak: wieża w bryłach, gondola i trzy łopaty w wirniku (łopaty obracane – aSpin > 0), światło na gondoli
+	const w = landmarkArrays([[LANDMARK.wind, 0, 0, 1000, 900]], () => 200);
+	assert.ok(w.body.count > 0);
+	const spin = [...w.rotor.spin];
+	assert.equal(spin.filter((s) => s > 0).length, 12);
+	assert.ok(w.rotor.top.every((v, i) => (i % 3 === 1 ? v === 300 : v === 0)));
+	assert.equal(w.beacons.length, 1);
+	assert.ok(w.beacons[0][1] > 300);
+	// wysoki komin: pasy i dwa światła; bez wysokości terenu – pomijany
+	assert.equal(landmarkArrays([[LANDMARK.chimney, 0, 0, 1200, 0]], () => 0).beacons.length, 2);
+	assert.equal(landmarkArrays([[LANDMARK.chimney, 0, 0, 1200, 0]], () => NaN).body.count, 0);
+});

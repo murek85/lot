@@ -5,6 +5,36 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Poprawka: świecące linie nocą w górach i lasach** (`src/world/lights.js`): plamy światła latarni pochodzą
+  z tekstury w oknie ~2,8 km wokół kamery, adresowanej w kółko. Dalej niż ~1,4 km od kamery odczyt trafiał w plamy
+  zupełnie innego miejsca, przez co powtórzony wzór ulic wsi świecił na zboczach, koronach drzew i skałach. Poza
+  oknem światła latarni na ziemi już nie ma (lampy z daleka widać jak dotąd).
+- **Mokre nawierzchnie w deszczu** (`src/gfx/wet.js`, drogi, dachy, teren): zmoczenie narasta w deszczu (~20 s)
+  i schnie po nim (~2 min). Mokry asfalt i dachy ciemnieją i odbijają niebo (pod pełnym zachmurzeniem szare)
+  z Fresnelem, odblask słońca w prześwitach, nocą rozlane światło latarni. Kałuże w koleinach dróg gruntowych
+  i na płaskich dachach przy ulewie, mokra gleba lekko ciemniejsza.
+- **Elektrownie wiatrowe i punkty orientacyjne** (nowa warstwa `landmarks` w `tools/tiles/lot-schema.yml`,
+  `landmarkInfo` w `src/gen/osmtags.js`, geometria w `src/gen/landmarkgeo.js`, `src/landmarks.js`): wiatraki z OSM
+  (wieża, gondola, wirnik o średnicy z danych) ustawiają się pod wiatr i obracają (~14 obr./min, przy ciszy stoją).
+  Kominy-punkty (od 20 m, wysokie w czerwono-białe pasy), wieże szybowe (kratownica z kołami linowymi i zastrzałem),
+  wieże ciśnień, maszty telekomunikacyjne w czerwono-białe odcinki. Światła przeszkodowe w otwartym świecie: jeden
+  wspólny zestaw dla wszystkich kafli, z kominami i chłodniami z obrysów budynków (wcześniej liczone, ale nie
+  rysowane). Kafle wektorowe Śląskiego, Małopolskiego i Opolskiego przepieczone.
+- **Poprawka wypiekania kafli** (`tools/bake-tiles.js`, `tools/pack-tiles.js`): `tiles.json` zapisywany dopiero po
+  spakowaniu archiwów. Wcześniej gra uruchomiona w trakcie pakowania zapisywała w pamięci kafli starą treść pod nowym
+  znacznikiem wypieczenia i trzymała ją aż do kolejnego wypieczenia.
+- **Zima na dachach i drogach** (`src/buildings.js`, `src/roads.js`): śnieg na dachach (na stromych mniej, w plamach).
+  Drogi główne odśnieżone i mokre od soli, ze śniegiem przy krawędziach; lokalne z ubitym śniegiem i ciemniejszymi
+  koleinami; gruntowe białe.
+- **Poprawka: potoki na zboczach** (`riverArrays` w `src/objgeo.js`): gdy linia cieku z OSM biegnie po zboczu obok doliny
+  w modelu terenu, pozioma wstęga wody wisiała nad niższym stokiem (do ~1,5 m) i chowała się pod wyższym. Wąskie cieki
+  (poniżej 12 m) leżą teraz na terenie po obu brzegach, a szerokie rzeki mają brzeg opuszczony do niższego terenu.
+- **Poprawka: gęstość siatki terenu przy kamerze swobodnej** (`src/world/chunkview.js`): rzadsza siatka dalekich kafli
+  liczona jest od bliższego z dwóch punktów: samolotu albo kamery. Wcześniej teren pod odlatującą kamerą tracił
+  szczegóły i rozjeżdżał się z wodą i drogami.
+- **Poprawka: strefy kierunku pól** (`src/terrain.js`): strefy są komórkami Woronoja, więc ich granice to proste odcinki
+  z miedzą. Wcześniej poziomice szumu potrafiły zamknąć się w okrąg o promieniu kilkuset metrów, który przecinał pola
+  łukiem.
 - **Daleki las** (`src/terrain.js`, poza zasięgiem dalekich drzew – 5 km): mozaika wydzieleń jak na zdjęciach lotniczych –
   wyraźniejsze różnice barwy między wydzieleniami, cień wyższego drzewostanu na młodniku i zrębie wzdłuż granicy od
   strony słońca, kępy i luki w skali 50–160 m (z domieszką liściastych – cieplejszy odcień). Jaśniejszy (`farForest`

@@ -20,6 +20,8 @@ import { buildingMeshes } from '../buildings.js';
 import { lonLatToLocal } from '../geo.js';
 import { makeRoadMaterial, densify, ribbon } from '../roads.js';
 import { riversFromArrays } from '../rivers.js';
+import { landmarksFromArrays, updateLandmarkMaterials, updateRotors, BeaconSet } from '../landmarks.js';
+import { TREE_WIND } from '../forest.js';
 import { railsFromArrays } from '../rails.js';
 import { bridgesFromArrays } from '../bridges.js';
 import { detailsFromArrays } from '../details.js';
@@ -231,7 +233,8 @@ export class ChunkView {
 		this.terrainMat = terrainMaterial(this.coverTex, this.U, atmo, clouds, plane, worldShadow);
 		this.roadMat = makeRoadMaterial(null, atmo, clouds, plane, worldShadow);
 		this.buildingShared = null; // z pierwszego kafla z budynkami
-		this.shared = { rivers: null, rails: null, bridges: null, details: {} }; // wspólne materiały – z pierwszego kafla, który ich użył
+		this.shared = { rivers: null, rails: null, bridges: null, details: {}, landmarks: {} }; // wspólne materiały – z pierwszego kafla, który ich użył
+		this.beacons = new BeaconSet(scene, this.camXZ, atmo.u.pixelAngle); // światła przeszkodowe wszystkich kafli
 		this.floor = farFloor(this.U, atmo, clouds, plane);
 		scene.add(this.floor.mesh);
 		this.group = new Group();
@@ -242,6 +245,7 @@ export class ChunkView {
 		this.streamer = null; // ustawia createWorld
 		this.loaded = new Set(); // kafle z terenem w scenie
 		this.center = { x: 0, z: 0 };
+		this.eye = { x: 0, z: 0 }; // kamera – w trybie swobodnym bywa daleko od samolotu
 		this.lodAt = 0;
 		this.stats = { chunks: 0, objectChunks: 0, buildMs: 0 };
 	}
@@ -280,16 +284,19 @@ export class ChunkView {
 		if (!ch.objs) return;
 		for (const o of ch.objs.list) { o.parent?.remove(o); o.geometry?.dispose(); }
 		ch.objs = null;
+		this.beacons.remove(ch.key);
 		this.stats.objectChunks--;
 	}
 
 	/**
 	 * Gęstość siatki kafla: gęste kafle (GUGiK, 129²) bliżej niż ~5 km – pełne (tam stoją obiekty, ich wysokości
-	 * liczone są na pełnej siatce), dalej – co drugi wierzchołek; histereza 5–6 km.
+	 * liczone są na pełnej siatce), dalej – co drugi wierzchołek; histereza 5–6 km. Odległość od bliższego z dwóch:
+	 * samolotu i kamery (kamera swobodna odlatuje od samolotu – pod nią rzadsza siatka rozjeżdża się z wodą i drogami).
 	 */
 	strideFor(ch, cur) {
 		if ((ch.n ?? GRID) < 129) return 1;
-		const d = Math.hypot(ch.frame.x0 + ch.frame.w / 2 - this.center.x, ch.frame.z0 + ch.frame.h / 2 - this.center.z);
+		const cx = ch.frame.x0 + ch.frame.w / 2, cz = ch.frame.z0 + ch.frame.h / 2;
+		const d = Math.min(Math.hypot(cx - this.center.x, cz - this.center.z), Math.hypot(cx - this.eye.x, cz - this.eye.z));
 		return d > 6000 ? 2 : d < 5000 ? 1 : cur;
 	}
 
@@ -307,7 +314,9 @@ export class ChunkView {
 			for (const a of [d.rivers.mesh.pos, d.rails.mesh.pos, d.bridges.pos, d.details.pylons.pos, d.details.wires]) sh(a);
 			const m = d.details.trees;
 			for (let i = 0; i < m.length; i += 16) { m[i + 12] -= p.x; m[i + 14] -= p.z; }
-			for (const b of d.buildings.beacons) { b[0] -= p.x; b[2] -= p.z; }
+			for (const b of [...d.buildings.beacons, ...d.landmarks.beacons]) { b[0] -= p.x; b[2] -= p.z; }
+			sh(d.landmarks.body.pos);
+			sh(d.landmarks.rotor.top);
 		}
 		// drogi: jedna siatka na kafel (z wątku)
 		const r = d.roads;
@@ -339,6 +348,10 @@ export class ChunkView {
 		// zasięg widoczności szczegółów (drzewa przydrożne i przewody z daleka są poniżej piksela; słupy widać dalej)
 		for (const o of [...det.objects, ...det.shadowCasters]) o.userData.detailRange = o.isInstancedMesh ? 2200 : o.isLineSegments ? 2500 : 6000;
 		list.push(...det.objects, ...det.shadowCasters);
+		// punkty orientacyjne (wiatraki, kominy, wieże szybowe i ciśnień, maszty) i światła przeszkodowe
+		const lm = landmarksFromArrays(d.landmarks, ...A, this.shared.landmarks);
+		list.push(...lm.objects, ...lm.shadowCasters);
+		this.beacons.set(ch.key, [...d.buildings.beacons, ...d.landmarks.beacons]);
 		// budynki: geometria z wątku, materiały wspólne dla wszystkich kafli
 		if (d.buildings.tiles.length) {
 			const b = buildingMeshes(d.buildings.tiles, d.buildings, this.atmo, this.clouds, this.plane, this.worldShadow, this.buildingShared);
@@ -365,6 +378,7 @@ export class ChunkView {
 		if (performance.now() - this.lodAt > 500) {
 			this.lodAt = performance.now();
 			const cx = camera.position.x, cz = camera.position.z;
+			this.eye = { x: cx, z: cz };
 			for (const ch of this.loaded) {
 				if (ch.objs) {
 					const d = Math.max(0, Math.hypot(ch.frame.x0 + ch.frame.w / 2 - cx, ch.frame.z0 + ch.frame.h / 2 - cz) - ch.frame.w * 0.7);
@@ -386,6 +400,9 @@ export class ChunkView {
 		const sh = this.shared;
 		for (const m of [sh.rivers?.material, sh.rails?.material, sh.bridges?.material, sh.bridges?.shadowMaterial, ...Object.values(sh.details)]) m?.userData.camXZ?.value.set(cx, cz);
 		if (sh.rivers) sh.rivers.material.userData.time.value = performance.now() / 1000;
+		updateLandmarkMaterials(sh.landmarks, cx, cz);
+		updateRotors(TREE_WIND.dt.value);
+		this.beacons.update();
 		// obiekty: zlecenia do wątków (najbliższe najpierw, do 3 naraz), siatki z gotowych – jeden kafel na klatkę
 		if (this.objectQueue.length && this.inflight < 3 && this.streamer) {
 			const dist = (c) => Math.hypot(c.frame.x0 + c.frame.w / 2 - center.x, c.frame.z0 + c.frame.h / 2 - center.z);
@@ -429,9 +446,19 @@ export class ChunkView {
 					const a = o.instanceMatrix.array;
 					for (let i = 0; i < o.count; i++) { a[i * 16 + 12] -= dx; a[i * 16 + 14] -= dz; }
 					o.instanceMatrix.needsUpdate = true;
+				} else if (o.userData.rotor) {
+					// wirniki: pozycje lokalne, położenie – w atrybucie aTop (geometria wspólna z cieniem – raz)
+					const g = o.geometry;
+					if (done.has(g)) continue;
+					done.add(g);
+					const t = g.attributes.aTop, a = t.array;
+					for (let i = 0; i < a.length; i += 3) { a[i] -= dx; a[i + 2] -= dz; }
+					t.needsUpdate = true;
+					if (g.boundingSphere) { g.boundingSphere.center.x -= dx; g.boundingSphere.center.z -= dz; }
 				} else move(o.geometry);
 			}
 		}
+		this.beacons.shift(dx, dz);
 	}
 
 	/** Wysokość podłogi: poniżej najniższego wczytanego terenu. */

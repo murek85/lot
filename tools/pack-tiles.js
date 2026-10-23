@@ -19,10 +19,11 @@ export const TILES_DIR = path.join(ROOT, 'data/tiles/lot');
  * Pakuje obszary (domyślnie wszystkie z tiles.json) do <dir>/<obszar>.pmtiles. Zwraca [{ id, tiles, bytes, file }].
  * Kafel bez pliku (np. wysokości poza zasięgiem NMT) – pomijany; gra przyjmie go jak brakujący.
  */
-export function packTiles(dir = TILES_DIR, ids = null) {
+export function packTiles(dir = TILES_DIR, ids = null, given = null) {
 	const manifestFile = path.join(dir, 'tiles.json');
-	if (!fs.existsSync(manifestFile)) throw new Error(`brak ${manifestFile} – najpierw npm run bake:tiles`);
-	const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+	if (!given && !fs.existsSync(manifestFile)) throw new Error(`brak ${manifestFile} – najpierw npm run bake:tiles`);
+	// given – opis jeszcze niezapisany (bake:tiles zapisuje tiles.json dopiero po spakowaniu archiwów)
+	const manifest = given ?? JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
 	const own = readManifest(manifest);
 	const out = [];
 	for (const id of ids ?? Object.keys(manifest.areas ?? {})) {

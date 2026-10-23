@@ -56,3 +56,28 @@ export function buildingInfo(tags) {
 	return { type, height: Math.min(120, height), roof, known: hasLevels || tags.height != null };
 }
 
+
+// Punkty orientacyjne: 0 elektrownia wiatrowa, 1 komin, 2 wieża szybowa, 3 wieża ciśnień, 4 maszt / wieża
+// telekomunikacyjna. Domyślne wysokości – typowe w Polsce (wiatrak: wieża ~100 m, wirnik ~90 m).
+export const LANDMARK = { wind: 0, chimney: 1, headframe: 2, waterTower: 3, mast: 4 };
+const LANDMARK_H = [100, 60, 45, 28, 70];
+const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
+
+/** Rodzaj i wymiary punktu orientacyjnego ze znaczników OSM → { kind, height, rotor } albo null (pomijany). */
+export function landmarkInfo(tags) {
+	let kind = null;
+	if (tags.power === 'generator') {
+		if (tags['generator:source'] === 'wind' || tags['generator:method'] === 'wind_turbine') kind = LANDMARK.wind;
+	} else if (tags.man_made === 'chimney') kind = LANDMARK.chimney;
+	else if (tags.man_made === 'mineshaft') { if (yes(tags.headframe)) kind = LANDMARK.headframe; }
+	else if (tags.man_made === 'water_tower') kind = LANDMARK.waterTower;
+	else if (tags.man_made === 'mast' || tags.man_made === 'communications_tower') kind = LANDMARK.mast;
+	else if (tags.man_made === 'tower' && (tags['tower:type'] === 'communication' || tags['tower:type'] === 'radio')) kind = LANDMARK.mast;
+	if (kind == null) return null;
+	let height = num(String(tags.height ?? '').replace(/\s*m$/, '')) ?? LANDMARK_H[kind];
+	// kominy domów i niskie maszty z daleka niewidoczne; absurdalne wartości – przycięte
+	if ((kind === LANDMARK.chimney && height < 20) || (kind === LANDMARK.mast && height < 25)) return null;
+	height = Math.min(kind === LANDMARK.mast ? 350 : 250, height);
+	const rotor = kind === LANDMARK.wind ? Math.min(170, num(tags['rotor:diameter']) ?? Math.min(130, height * 0.9)) : 0;
+	return { kind, height, rotor };
+}

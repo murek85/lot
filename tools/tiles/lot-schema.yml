@@ -112,6 +112,31 @@ layers:
       power: [line, minor_line]
     attributes:
     - key: power
+- id: landmarks
+  # punkty orientacyjne widoczne z daleka: elektrownie wiatrowe, kominy, wieże szybowe, wieże ciśnień, maszty
+  # (wielokąty – środek liczy src/gen/lottiles.js)
+  features:
+  - source: osm
+    geometry: point
+    min_zoom: 14
+    include_when:
+      power: generator
+      man_made: [chimney, mineshaft, water_tower, tower, mast, communications_tower]
+    attributes: &landmark_attrs
+    - key: power
+    - key: generator:source
+    - key: generator:method
+    - key: man_made
+    - key: tower:type
+    - key: headframe
+    - key: height
+    - key: rotor:diameter
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      man_made: [chimney, mineshaft, water_tower, tower]
+    attributes: *landmark_attrs
 - id: tree_rows
   features:
   - source: osm

@@ -257,9 +257,9 @@ const info = {
 	attribution: 'Dane © współtwórcy OpenStreetMap (ODbL) · ESA WorldCover 2021 (CC BY 4.0) · NMT © GUGiK',
 };
 for (const { area, z14, z11 } of plan) manifest = mergeArea(manifest, area, { bounds: tilesBounds(z14) ?? [0, 0, 0, 0], built, source: osm, z14, z11 }, info);
+// --- 5. po jednym pliku na wypieczony obszar dla serwera gry: data/tiles/lot/<obszar>.pmtiles; opis zapisany dopiero
+// potem – nowy znacznik wypieczenia przy starym archiwum zapisałby w pamięci kafli gry starą treść pod nowym kluczem ---
+for (const r of packTiles(OUT, plan.map((p) => p.area), manifest)) log(`Spakowane: data/tiles/lot/${path.basename(r.file)} – ${r.tiles} kafli, ${(r.bytes / 1e6).toFixed(0)} MB`);
 fs.writeFileSync(manifestFile, JSON.stringify(manifest));
 log(`Gotowe: ${manifestFile} (${Object.keys(manifest.areas).join(', ')}; ${(fs.statSync(manifestFile).size / 1024).toFixed(0)} kB)`);
-
-// --- 5. po jednym pliku na wypieczony obszar dla serwera gry: data/tiles/lot/<obszar>.pmtiles ---
-for (const r of packTiles(OUT, plan.map((p) => p.area))) log(`Spakowane: data/tiles/lot/${path.basename(r.file)} – ${r.tiles} kafli, ${(r.bytes / 1e6).toFixed(0)} MB`);
 log('Na serwer gry: data/tiles/lot/tiles.json i pliki .pmtiles wypieczonych obszarów');

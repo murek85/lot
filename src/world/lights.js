@@ -3,7 +3,7 @@
 // spricie z instancjami (wszystkie wczytane kafle – łańcuchy świateł po horyzont), plamy światła na ziemi w oknie
 // wokół kamery (tekstura adresowana w kółko jak okno gruntu, src/world/window.js).
 import { Sprite, SpriteNodeMaterial, AdditiveBlending, DataTexture, RedFormat, UnsignedByteType, LinearFilter, RepeatWrapping, InstancedBufferAttribute, Vector2 } from 'three/webgpu';
-import { uniform, texture, vec3, float, uv, dot, exp, max, cameraPosition, length, instancedBufferAttribute, clamp } from 'three/tsl';
+import { uniform, texture, vec3, float, uv, dot, exp, max, cameraPosition, length, instancedBufferAttribute, clamp, step } from 'three/tsl';
 import { densify } from '../roads.js';
 import { onGround } from '../gfx/ground.js';
 import { rng } from '../clouds/noise3d.js';
@@ -53,6 +53,7 @@ export class WorldLights {
 	constructor() {
 		this.U = {
 			street: uniform(0), windows: uniform(0), glow: uniform(0), winGlow: uniform(1), camXZ: uniform(new Vector2()),
+			org: uniform(new Vector2(1e9, 1e9)), // róg okna plam światła (poza oknem – bez światła)
 		};
 		this.uniforms = this.U;
 		this.lamps = new Map(); // "x/y" → { frame, data }
@@ -70,10 +71,16 @@ export class WorldLights {
 		this.stats = { lamps: 0, ms: 0 };
 	}
 
-	/** Natężenie światła latarni na ziemi w punkcie p (świat) – z okna wokół kamery. */
+	/**
+	 * Natężenie światła latarni na ziemi w punkcie p (świat) – z okna wokół kamery. Tekstura adresowana w kółko: poza
+	 * oknem (dalej niż ~1,4 km od kamery) odczyt trafiłby w plamy innego miejsca – świecące „ulice” na zboczach gór
+	 * i w lasach – więc tam światła nie ma.
+	 */
 	groundLight(p) {
 		const v = this.lightTex.sample(p.xz.div(SIZE)).level(0).r;
-		return vec3(1.0, 0.72, 0.42).mul(v.mul(255 / 200).mul(STREET_E).mul(this.U.street));
+		const q = p.xz.sub(this.U.org);
+		const inside = step(CELL, q.x).mul(step(q.x, SIZE - CELL)).mul(step(CELL, q.y)).mul(step(q.y, SIZE - CELL));
+		return vec3(1.0, 0.72, 0.42).mul(v.mul(255 / 200).mul(STREET_E).mul(this.U.street).mul(inside));
 	}
 
 	createGlows(terrain, pixelAngle) {
@@ -146,6 +153,7 @@ export class WorldLights {
 		const nx = Math.floor((cx - SIZE / 2) / STEP) * STEP, nz = Math.floor((cz - SIZE / 2) / STEP) * STEP;
 		if (this.ox === null || Math.abs(nx - this.ox) >= SIZE || Math.abs(nz - this.oz) >= SIZE) {
 			this.ox = nx; this.oz = nz;
+			this.U.org.value.set(nx, nz);
 			this.dirty = [[nx, nx + SIZE, nz, nz + SIZE]];
 		} else if (nx !== this.ox || nz !== this.oz) {
 			if (nx > this.ox) this.dirty.push([this.ox + SIZE, nx + SIZE, nz, nz + SIZE]);
@@ -153,6 +161,7 @@ export class WorldLights {
 			if (nz > this.oz) this.dirty.push([nx, nx + SIZE, this.oz + SIZE, nz + SIZE]);
 			if (nz < this.oz) this.dirty.push([nx, nx + SIZE, nz, this.oz]);
 			this.ox = nx; this.oz = nz;
+			this.U.org.value.set(nx, nz);
 		}
 		if (this.dirty.length) {
 			while (this.dirty.length) this.fill(...this.dirty.shift());
@@ -164,7 +173,7 @@ export class WorldLights {
 	/** Nowy początek układu w (dx, dz) – wielokrotność SIZE (okno plam zostaje ważne): latarnie i róg okna. */
 	shift(dx, dz) {
 		for (const { data } of this.lamps.values()) for (let i = 0; i < data.length; i += 4) { data[i] -= dx; data[i + 2] -= dz; }
-		if (this.ox !== null) { this.ox -= dx; this.oz -= dz; }
+		if (this.ox !== null) { this.ox -= dx; this.oz -= dz; this.U.org.value.set(this.ox, this.oz); }
 		this.dirty = this.dirty.map(([a, b, c, d]) => [a - dx, b - dx, c - dz, d - dz]);
 		this.glowDirty = true;
 		this.glowAt = 0;

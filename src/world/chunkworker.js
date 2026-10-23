@@ -6,6 +6,7 @@ import { tileKey } from '../gen/tiles.js';
 import { lotSource } from './lotsource.js';
 import { buildBuildingTiles } from '../buildgeo.js';
 import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
+import { landmarkArrays } from '../gen/landmarkgeo.js';
 import { COVER } from '../gen/terrain.js';
 import { densify, ribbon } from '../gfx/ribbon.js';
 import { roadCrossings, CROSSING } from '../gen/crossings.js';
@@ -103,7 +104,7 @@ async function chunkMsg(e) {
 			frame: { x0: F.x0, z0: F.z0, w: F.w, h: F.h },
 			heights: g.heights, normals: g.normals, min: g.min, max: g.max, cover, mask,
 			// daleki kafel: bez obiektów, tylko miejscowości (mapy, miejsca startu)
-			osm: far ? { roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], places: osm.places } : osm,
+			osm: far ? { roads: [], rails: [], buildings: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], places: osm.places } : osm,
 			ms: performance.now() - t0, cached: mapT.cached, source: useLot ? 'lot' : 'ofm',
 		};
 		// dane do późniejszej budowy obiektów (wysokości – kopia, oryginał odchodzi do wątku głównego)
@@ -191,13 +192,14 @@ async function objectsMsg(e) {
 		const rails = railArrays(d.osm.rails, hAt).mesh;
 		const bridges = bridgeArrays(d.osm, hAt);
 		const details = detailArrays(d.osm, hAt, coverAt, COVER, Infinity, (x * 7919 + y) % 100000);
+		const landmarks = landmarkArrays(d.osm.landmarks ?? [], hAt);
 		const transfer = [];
 		const take = (o) => { for (const v of Object.values(o)) if (ArrayBuffer.isView(v)) transfer.push(v.buffer); };
 		for (const t of tiles) take(t);
-		for (const o of [roads, rivers, rails, bridges, details, details.pylons]) take(o);
+		for (const o of [roads, rivers, rails, bridges, details, details.pylons, landmarks.body, landmarks.rotor]) take(o);
 		self.postMessage({
 			type: 'objects', req, key, origin, buildings: { tiles, count: b.count, structures: b.structures, beacons: b.beacons },
-			roads, rivers: { mesh: rivers, lines: [] }, rails: { mesh: rails, lines: [] }, bridges, details, ms: performance.now() - t0,
+			roads, rivers: { mesh: rivers, lines: [] }, rails: { mesh: rails, lines: [] }, bridges, details, landmarks, ms: performance.now() - t0,
 		}, transfer);
 	} catch (err) {
 		self.postMessage({ type: 'error', req, key, message: String(err?.message ?? err) });

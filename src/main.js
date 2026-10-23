@@ -14,6 +14,7 @@ import { createDetails } from './details.js';
 import { WORLD_ID, worldStart, worldRegion, createWorld, trimTileCache, REBASE_AT, REBASE_STEP } from './world/world.js';
 import { WorldLights } from './world/lights.js';
 import { setTerrainUniforms, setCityLights, snowCover, bareTrees, setSeason } from './gfx/ground.js';
+import { wetness } from './gfx/wet.js';
 import { seasonPalette } from './weather/seasons.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
@@ -386,7 +387,7 @@ async function start() {
 	// upływ czasu w locie: ostatnie tempo „w ruchu” (do wznowienia klawiszem T)
 	let lastRunning = env.timeSpeed !== 'stop' ? env.timeSpeed : 'x1';
 	// pogoda w locie: śnieg na ziemi narasta powoli (cel), burza – harmonogram błyskawic, bieżące uderzenie
-	const wx = { snowTarget: 0, storm: lightning(), strike: null, thunder: [], wind: { x: 0, z: 0, speed: 0 } };
+	const wx = { snowTarget: 0, wetTarget: 0, storm: lightning(), strike: null, thunder: [], wind: { x: 0, z: 0, speed: 0 } };
 	const setEnvironment = (kind, id, instant = false) => {
 		env[kind] = id;
 		if (kind === 'time') state.hour = (TIMES.find((t) => t.id === id) ?? TIMES[1]).hour;
@@ -406,7 +407,8 @@ async function start() {
 			clouds.u.extinction.value = c.extinction;
 			clouds.u.history.value = 0; // inna warstwa – bez starej historii
 			wx.snowTarget = w.snow ?? 0;
-			if (instant) snowCover.value = wx.snowTarget;
+			wx.wetTarget = w.precip?.type === 'rain' ? Math.min(1, 0.4 + w.precip.rate) : 0; // deszcz – mokro, ulewa – kałuże
+			if (instant) { snowCover.value = wx.snowTarget; wetness.value = wx.wetTarget; }
 		}
 		syncPanel();
 	};
@@ -1112,6 +1114,9 @@ async function start() {
 			flight.heading += tb.yaw * 0.06 * k * dt;
 		}
 		snowCover.value += (wx.snowTarget - snowCover.value) * (1 - Math.exp(-dt / 12));
+		// zmoczenie: w deszczu narasta w ~20 s, po nim schnie w ~2 min
+		const wetT = wx.wetTarget ?? 0;
+		wetness.value += (wetT - wetness.value) * (1 - Math.exp(-dt / (wetT > wetness.value ? 20 : 120)));
 		let flash = 0, bolt = 0;
 		if (W.storm && live) {
 			const ev = wx.storm.next(dt);
@@ -1404,7 +1409,7 @@ async function start() {
 		out.sort((a, b) => a - b);
 		return out[n >> 1];
 	};
-	window.__lot = { gpuTime, jumpTo, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { gpuTime, jumpTo, setEnvironment, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

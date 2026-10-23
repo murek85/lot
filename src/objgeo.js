@@ -46,6 +46,13 @@ export function riverArrays(waterways, heightAt, half = Infinity) {
 		};
 		// trochę szerzej niż koryto – brzeg rozmywa przezroczystość
 		const rb = ribbon(pts, width / 2 + 1, hAt, g.count);
+		// koryto w poprzek zbocza (linia z OSM obok doliny w modelu terenu): pozioma wstęga wisiała nad niższym stokiem
+		// i chowała się pod wyższym – wąskie cieki (koryto węższe niż oczko siatki terenu) leżą na terenie po obu
+		// brzegach, szerokie rzeki – brzeg nad niższym terenem opuszczony do niego (pod skarpami brzeg się chowa)
+		for (let k = 0; k < rb.pos.length; k += 3) {
+			const t = heightAt(rb.pos[k], rb.pos[k + 2]) + 0.12;
+			rb.pos[k + 1] = width < 12 ? t : Math.min(rb.pos[k + 1], t);
+		}
 		for (const v of rb.pos) g.pos.push(v);
 		for (const v of rb.side) g.side.push(v);
 		for (const v of rb.idx) g.idx.push(v);

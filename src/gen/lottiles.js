@@ -6,9 +6,9 @@
 import { COVER } from './terrain.js';
 import { tileToLocal, clipLine, clipRing } from './tiles.js';
 import { ringArea } from './mvt.js';
-import { roadInfo, buildingInfo, num } from './osmtags.js';
+import { roadInfo, buildingInfo, landmarkInfo, num } from './osmtags.js';
 
-export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'waterways', 'water', 'power', 'tree_rows', 'stations', 'crossings', 'places'];
+export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places'];
 const RAIL = { rail: 0, light_rail: 0, preserved: 0, narrow_gauge: 1, disused: 2, abandoned: 3 };
 const WATERWAY = { river: 12, canal: 6, stream: 2.5, ditch: 1.2, drain: 1.2 };
 const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
@@ -18,7 +18,7 @@ const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
  * treeRows, stations, crossings, platforms, cover: [{ cls, rings }] (woda), places } – współrzędne w decymetrach.
  */
 export function convertLotTile(tile, z, x, y, opts) {
-	const out = { roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [] };
+	const out = { roads: [], rails: [], buildings: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [] };
 	const L = tile.layers;
 	const ext = Object.values(L)[0]?.extent ?? 4096;
 	const T = tileToLocal(z, x, y, ext, opts.center);
@@ -82,6 +82,20 @@ export function convertLotTile(tile, z, x, y, opts) {
 		if (rings.length) out.cover.push({ cls: COVER.water, rings });
 	}
 	for (const f of L.power?.features ?? []) lines(f, (c) => out.power.push([f.props.power === 'minor_line' ? 1 : 0, c]));
+	// punkty orientacyjne: [rodzaj, x, z (dm), wysokość, średnica wirnika (dm)]; wielokąty – środek obrysu z wnętrza kafla
+	for (const f of L.landmarks?.features ?? []) {
+		const info = landmarkInfo(f.props);
+		if (!info) continue;
+		let m = point(f);
+		if (!m && f.type === 3) {
+			const ring = f.geom[0], k = Math.max(1, ring.length / 2 - 1); // bez powtórzonego pierwszego punktu
+			let u = 0, v = 0;
+			for (let i = 0; i < k * 2; i += 2) { u += ring[i]; v += ring[i + 1]; }
+			u /= k; v /= k;
+			if (u >= 0 && v >= 0 && u < ext && v < ext) m = T.pt(u, v);
+		}
+		if (m) out.landmarks.push([info.kind, Math.round(m[0] * 10), Math.round(m[1] * 10), Math.round(info.height * 10), Math.round(info.rotor * 10)]);
+	}
 	for (const f of L.tree_rows?.features ?? []) lines(f, (c) => out.treeRows.push([c]));
 	for (const f of L.stations?.features ?? []) {
 		const m = point(f);
