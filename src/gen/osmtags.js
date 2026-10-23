@@ -9,7 +9,7 @@ const SURFACE = {
 	compacted: 3, fine_gravel: 3, gravel: 3, pebblestone: 3, ground: 4, dirt: 4, sand: 4, earth: 4, grass: 4, unpaved: 4, mud: 4, wood: 1,
 };
 // Budynki: 0 dom, 1 blok, 2 gospodarczy/garaż, 3 przemysł/magazyn, 4 usługi/handel, 5 publiczny (szkoła, urząd),
-// 6 kościół, 7 inny
+// 6 kościół, 7 inny, 8 stadion / trybuna (beton bez okien)
 const BUILDING = {
 	house: 0, detached: 0, semidetached_house: 0, terrace: 0, bungalow: 0, residential: 0, farm: 0,
 	apartments: 1, dormitory: 1, hotel: 1,
@@ -18,8 +18,9 @@ const BUILDING = {
 	retail: 4, commercial: 4, supermarket: 4, kiosk: 4, office: 4,
 	school: 5, public: 5, civic: 5, hospital: 5, kindergarten: 5, train_station: 5, university: 5, sports_hall: 5, fire_station: 5,
 	church: 6, chapel: 6, cathedral: 6,
+	stadium: 8, grandstand: 8,
 };
-const DEFAULT_LEVELS = [1.4, 4, 1, 2, 2, 3, 2, 1.5];
+const DEFAULT_LEVELS = [1.4, 4, 1, 2, 2, 3, 2, 1.5, 4];
 const ROOF = { gabled: 1, hipped: 2, pyramidal: 2, flat: 0, skillion: 3, half_hipped: 2, mansard: 2, gambrel: 1, round: 0, dome: 0 };
 
 export const num = (v) => {

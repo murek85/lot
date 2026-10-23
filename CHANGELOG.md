@@ -5,6 +5,11 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Stadiony i dziedzińce** (`src/buildgeo.js`, `src/gen/convert.js`, `src/gen/lottiles.js`, `src/gen/osmtags.js`):
+  budynki zachowują otwory w obrysie (boisko stadionu, dziedzińce kamienic): dach płaski z otworem i ściany wewnętrzne.
+  Wcześniej boisko przykrywał płaski dach. Stadion (`building=stadium`, `grandstand` albo obrys z dużym otworem) i budynki
+  stojące w jego obrysie to betonowe trybuny bez okien. Z kafli OpenMapTiles, które nie znają rodzaju budynku, wysokie
+  trybuny wyglądały jak bloki mieszkalne z oknami i balkonami. Region Zabrze przepieczony (`npm run bake:gen -- zabrze`).
 - **Poprawka: świecące linie nocą w górach i lasach** (`src/world/lights.js`): plamy światła latarni pochodzą
   z tekstury w oknie ~2,8 km wokół kamery, adresowanej w kółko. Dalej niż ~1,4 km od kamery odczyt trafiał w plamy
   zupełnie innego miejsca, przez co powtórzony wzór ulic wsi świecił na zboczach, koronach drzew i skałach. Poza

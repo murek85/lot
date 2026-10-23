@@ -118,24 +118,6 @@
 			"instr": "Chorzowem"
 		}
 	],
-	"generated": {
-		"terrain": "detailed",
-		"buildings": "all",
-		"mapTiles": 930,
-		"heightTiles": 289,
-		"downloadMB": 35.4
-	},
-	"sources": [
-		{
-			"name": "AWS Terrain Tiles (Terrarium)",
-			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
-		},
-		{
-			"name": "OpenFreeMap (schemat OpenMapTiles)",
-			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
-		}
-	],
-	"baked": "2026-10-18T08:42:10.591Z",
 	"labels": [
 		{
 			"name": "Gliwice",
@@ -5537,5 +5519,23 @@
 			"lon": 18.92127,
 			"lat": 50.31765
 		}
-	]
+	],
+	"generated": {
+		"terrain": "detailed",
+		"buildings": "all",
+		"mapTiles": 930,
+		"heightTiles": 289,
+		"downloadMB": 35.4
+	},
+	"sources": [
+		{
+			"name": "AWS Terrain Tiles (Terrarium)",
+			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
+		},
+		{
+			"name": "OpenFreeMap (schemat OpenMapTiles)",
+			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
+		}
+	],
+	"baked": "2026-10-23T20:59:39.490Z"
 }

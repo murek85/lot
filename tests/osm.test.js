@@ -158,3 +158,28 @@ test('punkty orientacyjne: rodzaj i wymiary ze znaczników, geometria i światł
 	assert.equal(landmarkArrays([[LANDMARK.chimney, 0, 0, 1200, 0]], () => 0).beacons.length, 2);
 	assert.equal(landmarkArrays([[LANDMARK.chimney, 0, 0, 1200, 0]], () => NaN).body.count, 0);
 });
+
+test('stadion: otwór nad boiskiem, trybuny w obrysie bez okien, dziedziniec zwykłego budynku', async () => {
+	const { buildBuildingTiles } = await import('../src/buildgeo.js');
+	const sq = (x, z, r, ccw = true) => { const p = [x - r, z - r, x + r, z - r, x + r, z + r, x - r, z + r].map((v) => v * 10); return ccw ? p : [p[6], p[7], p[4], p[5], p[2], p[3], p[0], p[1]]; };
+	// stadion 160 × 160 m z boiskiem 100 × 100 m; trybuna (wysoka, z OpenMapTiles – typ 1) w jego obrysie; kamienica z dziedzińcem
+	const t = buildBuildingTiles([
+		[3, 50, -1, 0, sq(0, 0, 80), [sq(0, 0, 50, false)]],
+		[1, 250, -1, 1, sq(65, 0, 10), []],
+		[1, 150, -1, 1, sq(500, 0, 30), [sq(500, 0, 12, false)]],
+	], () => 0);
+	assert.equal(t.count, 3);
+	const all = t.tiles.flatMap((b) => b.light.filter((_, i) => i % 2 === 0));
+	// stadion i trybuna – bez okien (−1), kamienica – okna (szansa > 0)
+	assert.equal(all.filter((v) => v === -1).length > 0, true);
+	assert.equal(all.filter((v) => v > 0).length > 0, true);
+	// dach stadionu nie przykrywa boiska: żaden trójkąt dachu (kind 2) nie ma środka w (0, 0) ± 40 m
+	for (const b of t.tiles) {
+		for (let i = 0; i < b.idx.length; i += 3) {
+			const v = [b.idx[i], b.idx[i + 1], b.idx[i + 2]];
+			if (!v.every((k) => b.kind[k] === 2)) continue;
+			const cx = v.reduce((s, k) => s + b.pos[k * 3], 0) / 3, cz = v.reduce((s, k) => s + b.pos[k * 3 + 2], 0) / 3;
+			assert.ok(Math.abs(cx) > 40 || Math.abs(cz) > 40 || Math.abs(cx) > 400, `trójkąt dachu nad boiskiem: ${cx}, ${cz}`);
+		}
+	}
+});

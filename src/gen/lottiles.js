@@ -58,15 +58,19 @@ export function convertLotTile(tile, z, x, y, opts) {
 	for (const f of L.buildings?.features ?? []) {
 		if (f.type !== 3) continue;
 		const b = buildingInfo(f.props);
+		// pierścień zewnętrzny, po nim jego otwory (dziedzińce, boisko stadionu) – szósty element budynku
+		let last = null;
 		for (const ring of f.geom) {
-			if (ringArea(ring) <= 0) continue; // otwory dziedzińców pomijamy (budynek pełny)
 			const cl = clipRing(ring, ext);
+			if (ringArea(ring) <= 0) { if (last && cl) last[5].push(dm(cl)); continue; }
+			last = null;
 			if (!cl) continue;
 			const m = T.line(cl);
 			let a = 0;
 			for (let i = 0; i + 3 < m.length; i += 2) a += m[i] * m[i + 3] - m[i + 2] * m[i + 1];
 			if (Math.abs(a / 2) < 6) continue;
-			out.buildings.push([b.type, Math.round(b.height * 10), b.roof, b.known ? 1 : 0, dm(cl)]);
+			last = [b.type, Math.round(b.height * 10), b.roof, b.known ? 1 : 0, dm(cl), []];
+			out.buildings.push(last);
 		}
 	}
 	for (const f of L.waterways?.features ?? []) {

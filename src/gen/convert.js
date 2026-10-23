@@ -104,16 +104,20 @@ export function convertTile(tile, z, x, y, opts) {
 			if (f.type !== 3) continue;
 			const h = f.props.render_height ?? 5, h0 = f.props.render_min_height ?? 0;
 			if (h0 > 0 && h - h0 < 2.5) continue; // podniesione części (wiaty nad przejściem) – pomijamy
+			// pierścień zewnętrzny, po nim jego otwory (dziedzińce, boisko stadionu) – szósty element budynku
+			let last = null;
 			for (const ring of f.geom) {
-				if (ringArea(ring) <= 0) continue; // otwory dziedzińców pomijamy (budynek pełny)
 				const cl = clipRing(ring, ext);
+				if (ringArea(ring) <= 0) { if (last && cl) last[5].push(dm(cl)); continue; }
+				last = null;
 				if (!cl) continue;
 				const m = T.line(cl);
 				let a = 0;
 				for (let i = 0; i + 3 < m.length; i += 2) a += m[i] * m[i + 3] - m[i + 2] * m[i + 1];
 				a = Math.abs(a / 2);
 				if (a < minArea || !inRegion(m)) continue;
-				out.buildings.push([buildingType(a, h), Math.round(h * 10), -1, h >= 8 ? 1 : 0, dm(cl)]);
+				last = [buildingType(a, h), Math.round(h * 10), -1, h >= 8 ? 1 : 0, dm(cl), []];
+				out.buildings.push(last);
 			}
 		}
 	}
