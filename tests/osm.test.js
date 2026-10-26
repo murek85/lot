@@ -205,3 +205,27 @@ test('części budynków 3D: znaczniki, pojemnik nierysowany, kopuła nad wież�
 	const tower = t.tiles.flatMap((b) => b.pos.filter((_, i) => i % 3 === 1 && b.pos[i + 1] < -10.5));
 	assert.ok(Math.min(...tower) > 99.6 + 29.9);
 });
+
+test('ręczne przepisy znanych budowli: wybór dla kafla, pomijanie brył OSM, geometria i światła', async () => {
+	const { RECIPES, recipesNear, recipeCovers, buildRecipes } = await import('../src/gen/recipes.js');
+	const { GeoArrays } = await import('../src/gfx/geobuilder.js');
+	const spodek = RECIPES.find((r) => r.id === 'spodek');
+	const origin = { lon: spodek.lon, lat: spodek.lat, merc: { k: Math.cos((spodek.lat * Math.PI) / 180) } };
+	// kafel ze Spodkiem w środku (własny) i sąsiad 200 m dalej (tylko pomijanie brył)
+	const own = recipesNear(origin, { x0: -500, z0: -500, w: 1000, h: 1000 });
+	const near = recipesNear(origin, { x0: 100, z0: -500, w: 1000, h: 1000 });
+	assert.deepEqual(own.filter((r) => r.own).map((r) => r.id), ['spodek']);
+	assert.equal(near.find((r) => r.id === 'spodek').own, false);
+	assert.equal(recipeCovers(own, 30, 20), true); // hala w obrysie – zastąpiona przepisem
+	assert.equal(recipeCovers(own, 90, 0), false);
+	const b = new GeoArrays(), beacons = [];
+	buildRecipes(b, beacons, own, () => 270);
+	assert.ok(b.count > 1000);
+	const ys = b.pos.filter((_, i) => i % 3 === 1);
+	assert.ok(Math.abs(Math.max(...ys) - (270 + 29.2)) < 0.01, `szczyt Spodka: ${Math.max(...ys)}`); // podstawa – najniższy punkt terenu
+	// Radiostacja: światła przeszkodowe (111 m)
+	const radio = { ...RECIPES.find((r) => r.id === 'radiostacja'), x: 0, z: 0, own: true };
+	const b2 = new GeoArrays(), beacons2 = [];
+	buildRecipes(b2, beacons2, [radio], () => 200);
+	assert.equal(beacons2.length, 2);
+});

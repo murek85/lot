@@ -264,7 +264,7 @@ const srgb = (c) => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) 
  * { tiles: [{ pos, nrm, kind, uv, wall, roof, light, idx, count }], count, structures, beacons }. heightAt(x, z) –
  * wysokość terenu; half – pomijanie budynków poza kwadratem ±half; parts – części budynków 3D (src/gen/lottiles.js).
  */
-export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts = []) {
+export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts = [], skip = null) {
 	const tiles = new Map();
 	const r = rng(77);
 	// części budynków 3D (building:part): środki w siatce 100 m – obrys budynku, w którym stoją, jest tylko pojemnikiem
@@ -277,7 +277,7 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts =
 		const n = pts.length / 2;
 		for (let i = 0; i < n; i++) { cx += pts[i * 2]; cz += pts[i * 2 + 1]; }
 		return { pts, cx: cx / n, cz: cz / n, minH: min10 / 10, h: h10 < 0 ? null : h10 / 10, roofShape, roofH: rh10 < 0 ? null : rh10 / 10, wallC, roofC, holesDm, owner: null };
-	}).filter((q) => q.pts.length >= 6 && Math.abs(q.cx) < half && Math.abs(q.cz) < half);
+	}).filter((q) => q.pts.length >= 6 && Math.abs(q.cx) < half && Math.abs(q.cz) < half && !skip?.(q.cx, q.cz));
 	const grid = new Map();
 	for (const q of P) { const k = `${Math.floor(q.cx / 100)},${Math.floor(q.cz / 100)}`; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(q); }
 	const tileOf = (x, z) => {
@@ -351,6 +351,8 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts =
 		for (let i = 0; i < n; i++) base = Math.min(base, heightAt(pts[i * 2], pts[i * 2 + 1]));
 		base -= 0.4;
 		const seed = r();
+		// w obrębie ręcznego przepisu znanej budowli (src/gen/recipes.js) – bryła z przepisu zamiast tej
+		if (skip?.(cx, cz)) continue;
 		// budynek z częściami 3D – tylko pojemnik: części dostają jego podstawę i wysokość
 		if (P.length) {
 			const inside = partsIn(c);

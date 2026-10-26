@@ -39,6 +39,43 @@ export class GeoArrays {
 		}
 	}
 
+	/**
+	 * Bryła obrotowa nad elipsą: środek (x, z), półosie ax, az (obrót rot wokół pionu), profil [[ułamek promienia, y,
+	 * kolor], …] od dołu do góry; każdy pas między punktami profilu – własne normalne (ostre krawędzie pasów).
+	 */
+	lathe(x, z, ax, az, rot, profile, sides = 48) {
+		const c = Math.cos(rot), s = Math.sin(rot);
+		const P = (k, f, y) => {
+			const a = (k / sides) * Math.PI * 2, u = Math.cos(a) * ax * f, v = Math.sin(a) * az * f;
+			return [x + u * c - v * s, y, z + u * s + v * c];
+		};
+		const N = (k, nr, ny) => {
+			// normalna elipsy w płaszczyźnie (cos/ax, sin/az), obrócona, z udziałem pionu
+			const a = (k / sides) * Math.PI * 2;
+			let u = Math.cos(a) / ax, v = Math.sin(a) / az;
+			const l = Math.hypot(u, v) || 1;
+			u /= l; v /= l;
+			const nx = (u * c - v * s) * nr, nz = (u * s + v * c) * nr, m = Math.hypot(nx, ny, nz) || 1;
+			return [nx / m, ny / m, nz / m];
+		};
+		for (let j = 0; j + 1 < profile.length; j++) {
+			const [f0, y0, col] = profile[j], [f1, y1] = profile[j + 1];
+			// normalna pasa w przekroju: prostopadła do (Δr, Δy) – r w metrach średniej półosi
+			const R = (ax + az) / 2, dr = (f1 - f0) * R, dy = y1 - y0;
+			let nr = dy, ny = -dr;
+			if (Math.abs(nr) + Math.abs(ny) < 1e-6) continue;
+			if (f0 === 0 && f1 === 0) continue;
+			for (let k = 0; k < sides; k++) {
+				const i = this.count;
+				for (const [kk, f, y] of [[k, f0, y0], [k + 1, f0, y0], [k + 1, f1, y1], [k, f1, y1]]) {
+					this.pos.push(...P(kk, f, y)); this.nrm.push(...N(kk, nr, ny)); this.col.push(...col);
+				}
+				this.idx.push(i, i + 1, i + 2, i, i + 2, i + 3);
+				this.count += 4;
+			}
+		}
+	}
+
 	/** Pień stożka (walec, gdy r0 = r1) w (x, z) od y0 do y1, sides ścian z gładkimi normalnymi; cap – denko u góry. */
 	tube(x, z, y0, y1, r0, r1, sides, color, cap = true) {
 		const ny = (r0 - r1) / Math.max(1e-3, y1 - y0); // pochylenie ściany stożka

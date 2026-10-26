@@ -9,6 +9,7 @@
 import { GeoArrays } from '../gfx/geobuilder.js';
 import { LANDMARK } from './osmtags.js';
 import { beaconHeights } from '../gfx/structures.js';
+import { buildRecipes, recipeCovers } from './recipes.js';
 
 const WHITE = [0.78, 0.79, 0.8], RED = [0.55, 0.08, 0.05], BRICK = [0.36, 0.17, 0.11], CONCRETE = [0.48, 0.47, 0.44];
 const STEEL = [0.3, 0.12, 0.08], DARK = [0.16, 0.16, 0.17];
@@ -23,7 +24,7 @@ const hash = (x, z, k) => {
  * zbieracza, rotor: { pos, nrm, col, top, spin, idx, count } (współrzędne lokalne względem szczytu wieży, oś wirnika
  * +z), beacons: [[x, y, z]] }.
  */
-export function landmarkArrays(list, heightAt) {
+export function landmarkArrays(list, heightAt, recipes = [], buildings = []) {
 	const body = new GeoArrays();
 	const R = { pos: [], nrm: [], col: [], top: [], spin: [], idx: [], count: 0 };
 	const beacons = [];
@@ -42,7 +43,7 @@ export function landmarkArrays(list, heightAt) {
 	};
 	for (const [kind, x10, z10, h10, r10] of list) {
 		const x = x10 / 10, z = z10 / 10, H = h10 / 10, g = heightAt(x, z);
-		if (!Number.isFinite(g)) continue;
+		if (!Number.isFinite(g) || recipeCovers(recipes, x, z)) continue; // ta budowla ma ręczny przepis
 		if (kind === LANDMARK.wind) {
 			const s = H / 100;
 			body.tube(x, z, g - 1, g + H, 2.3 * s + 0.6, 1.4 * s + 0.4, 12, WHITE, false);
@@ -132,6 +133,8 @@ export function landmarkArrays(list, heightAt) {
 			for (const y of beaconHeights(H)) beacons.push([x, g + y + 1, z]);
 		}
 	}
+	// ręczne przepisy znanych budowli (src/gen/recipes.js)
+	buildRecipes(body, beacons, recipes, heightAt, buildings);
 	const F = (a) => new Float32Array(a);
 	return {
 		body: body.arrays(),

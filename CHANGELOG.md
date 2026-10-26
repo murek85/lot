@@ -5,6 +5,12 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Ręczne przepisy znanych budowli** (`src/gen/recipes.js`, bryła obrotowa `lathe` w `src/gfx/geobuilder.js`): śląskie
+  ikony bez części 3D w OSM mają bryłę z kilku parametrów w miejscu z OSM. **Spodek**: szklany cokół, pochyła okładzina
+  i płaski stożek dachu. **Stadion Śląski**: owalne trybuny, bieżnia i murawa, biały dach-pierścień na masztach.
+  **Radiostacja Gliwice**: drewniana kratownica 111 m ze światłami przeszkodowymi. **Zamek Moszna**: wieżyczki
+  z łupkowymi hełmami na narożnikach obrysu. Zwykłe bryły i punkty orientacyjne OSM w obrębie przepisu są pomijane.
+  Wielka Krokiew – później (skocznia musi leżeć na zboczu).
 - **Części budynków 3D z OpenStreetMap** (`building:part`; warstwa `parts` w `tools/tiles/lot-schema.yml`, `partInfo`
   w `src/gen/osmtags.js`, geometria w `src/buildgeo.js`): znane budowle opisane w OSM bryłami (Wawel, Mariacki,
   Sukiennice, Jasna Góra, Bazylika Bożego Ciała, Teatr Słowackiego…) mają w grze wysokość dolną i górną każdej części,

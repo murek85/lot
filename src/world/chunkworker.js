@@ -7,6 +7,7 @@ import { lotSource } from './lotsource.js';
 import { buildBuildingTiles } from '../buildgeo.js';
 import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
 import { landmarkArrays } from '../gen/landmarkgeo.js';
+import { recipesNear, recipeCovers } from '../gen/recipes.js';
 import { COVER } from '../gen/terrain.js';
 import { densify, ribbon } from '../gfx/ribbon.js';
 import { roadCrossings, CROSSING } from '../gen/crossings.js';
@@ -166,7 +167,9 @@ async function objectsMsg(e) {
 			if (!d) throw new Error('brak danych kafla');
 		}
 		const hAt = (px, pz) => gridHeightAt(d, px, pz);
-		const b = buildBuildingTiles(d.osm.buildings, hAt, Infinity, d.osm.parts ?? []);
+		// ręczne przepisy znanych budowli w pobliżu kafla: bryły OSM w ich obrębie pomijane, przepis buduje kafel ze środkiem
+		const recipes = recipesNear(origin, d.frame);
+		const b = buildBuildingTiles(d.osm.buildings, hAt, Infinity, d.osm.parts ?? [], recipes.length ? (x, z) => recipeCovers(recipes, x, z) : null);
 		// sfera otaczająca liczona tutaj (w wątku głównym computeBoundingSphere po setkach tysięcy wierzchołków to ~7 ms)
 		const sphere = (p) => {
 			let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
@@ -192,7 +195,7 @@ async function objectsMsg(e) {
 		const rails = railArrays(d.osm.rails, hAt).mesh;
 		const bridges = bridgeArrays(d.osm, hAt);
 		const details = detailArrays(d.osm, hAt, coverAt, COVER, Infinity, (x * 7919 + y) % 100000);
-		const landmarks = landmarkArrays(d.osm.landmarks ?? [], hAt);
+		const landmarks = landmarkArrays(d.osm.landmarks ?? [], hAt, recipes, d.osm.buildings);
 		const transfer = [];
 		const take = (o) => { for (const v of Object.values(o)) if (ArrayBuffer.isView(v)) transfer.push(v.buffer); };
 		for (const t of tiles) take(t);
