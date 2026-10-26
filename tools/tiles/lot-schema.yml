@@ -75,6 +75,31 @@ layers:
     - key: roof:shape
     - key: roof:levels
     - key: amenity
+- id: parts
+  # części budynków 3D (Simple 3D Buildings): bryły z wysokością dolną i górną, kształtem dachu i kolorem – znane
+  # budowle (kościoły, zamki, teatry); obrys budynku z częściami gra pomija (src/buildgeo.js)
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      building:part: __any__
+    exclude_when:
+      building:part: 'no'
+    attributes:
+    - key: building:part
+    - key: height
+    - key: min_height
+    - key: building:levels
+    - key: building:min_level
+    - key: roof:shape
+    - key: roof:height
+    - key: roof:levels
+    - key: colour
+    - key: building:colour
+    - key: roof:colour
+    - key: building:material
+    - key: roof:material
 - id: waterways
   features:
   - source: osm

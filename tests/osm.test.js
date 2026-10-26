@@ -183,3 +183,25 @@ test('stadion: otwór nad boiskiem, trybuny w obrysie bez okien, dziedziniec zwy
 		}
 	}
 });
+
+test('części budynków 3D: znaczniki, pojemnik nierysowany, kopuła nad wieżą na wysokości dolnej', async () => {
+	const { partInfo, parseColour } = await import('../src/gen/osmtags.js');
+	const { buildBuildingTiles } = await import('../src/buildgeo.js');
+	assert.equal(parseColour('#fff'), 0xffffff);
+	assert.equal(parseColour('Light Grey'), parseColour('lightgrey'));
+	assert.deepEqual(partInfo({ 'building:part': 'yes', height: '40 m', min_height: '25', 'roof:shape': 'dome', 'roof:colour': 'green' }),
+		{ minH: 25, height: 40, roof: 4, roofH: null, wall: -1, roofColour: parseColour('green') });
+	assert.equal(partInfo({ 'building:part': 'yes' }).height, null); // wysokość z budynku-pojemnika
+	const sq = (x, z, r) => [x - r, z - r, x + r, z - r, x + r, z + r, x - r, z + r].map((v) => v * 10);
+	// pojemnik 40 × 40 m (12 m), w nim nawa (część bez wysokości) i wieża 10 × 10 m z kopułą od 30 m do 45 m
+	const t = buildBuildingTiles([[6, 120, -1, 1, sq(0, 0, 20), []]], () => 100, Infinity, [
+		[0, -1, 0, -1, -1, -1, sq(0, 5, 15), []],
+		[300, 450, 4, -1, -1, -1, sq(0, -15, 5), []],
+	]);
+	assert.equal(t.count, 2); // dwie części, pojemnik pominięty
+	const ys = t.tiles.flatMap((b) => b.pos.filter((_, i) => i % 3 === 1));
+	assert.ok(Math.abs(Math.max(...ys) - (99.6 + 45)) < 0.01, `szczyt kopuły: ${Math.max(...ys)}`);
+	// nawa: wysokość pojemnika (12 m); wieża zaczyna się 30 m nad podstawą (bez ścian niżej)
+	const tower = t.tiles.flatMap((b) => b.pos.filter((_, i) => i % 3 === 1 && b.pos[i + 1] < -10.5));
+	assert.ok(Math.min(...tower) > 99.6 + 29.9);
+});

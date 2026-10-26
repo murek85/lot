@@ -6,9 +6,9 @@
 import { COVER } from './terrain.js';
 import { tileToLocal, clipLine, clipRing } from './tiles.js';
 import { ringArea } from './mvt.js';
-import { roadInfo, buildingInfo, landmarkInfo, num } from './osmtags.js';
+import { roadInfo, buildingInfo, landmarkInfo, partInfo, num } from './osmtags.js';
 
-export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places'];
+export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'parts', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places'];
 const RAIL = { rail: 0, light_rail: 0, preserved: 0, narrow_gauge: 1, disused: 2, abandoned: 3 };
 const WATERWAY = { river: 12, canal: 6, stream: 2.5, ditch: 1.2, drain: 1.2 };
 const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
@@ -18,7 +18,7 @@ const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
  * treeRows, stations, crossings, platforms, cover: [{ cls, rings }] (woda), places } – współrzędne w decymetrach.
  */
 export function convertLotTile(tile, z, x, y, opts) {
-	const out = { roads: [], rails: [], buildings: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [] };
+	const out = { roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [] };
 	const L = tile.layers;
 	const ext = Object.values(L)[0]?.extent ?? 4096;
 	const T = tileToLocal(z, x, y, ext, opts.center);
@@ -71,6 +71,22 @@ export function convertLotTile(tile, z, x, y, opts) {
 			if (Math.abs(a / 2) < 6) continue;
 			last = [b.type, Math.round(b.height * 10), b.roof, b.known ? 1 : 0, dm(cl), []];
 			out.buildings.push(last);
+		}
+	}
+	// części budynków 3D: [wys. dolna, wys. (−1 – z budynku), dach, wys. dachu (−1 – z kształtu) – dm, kolor ścian, dachu
+	// (0xRRGGBB, −1 – domyślny), obrys dm, otwory]
+	for (const f of L.parts?.features ?? []) {
+		if (f.type !== 3) continue;
+		const pi = partInfo(f.props);
+		if (!pi) continue;
+		let last = null;
+		for (const ring of f.geom) {
+			const cl = clipRing(ring, ext);
+			if (ringArea(ring) <= 0) { if (last && cl) last[7].push(dm(cl)); continue; }
+			last = null;
+			if (!cl) continue;
+			last = [Math.round(pi.minH * 10), pi.height == null ? -1 : Math.round(pi.height * 10), pi.roof, pi.roofH == null ? -1 : Math.round(pi.roofH * 10), pi.wall, pi.roofColour, dm(cl), []];
+			out.parts.push(last);
 		}
 	}
 	for (const f of L.waterways?.features ?? []) {

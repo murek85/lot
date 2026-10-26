@@ -5,6 +5,13 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Części budynków 3D z OpenStreetMap** (`building:part`; warstwa `parts` w `tools/tiles/lot-schema.yml`, `partInfo`
+  w `src/gen/osmtags.js`, geometria w `src/buildgeo.js`): znane budowle opisane w OSM bryłami (Wawel, Mariacki,
+  Sukiennice, Jasna Góra, Bazylika Bożego Ciała, Teatr Słowackiego…) mają w grze wysokość dolną i górną każdej części,
+  dachy płaskie, dwuspadowe, ostrosłupy i stożki, kopuły i cebulowe hełmy, kolory ścian i dachów z danych (nazwy i hex).
+  Obrys budynku z częściami jest tylko pojemnikiem: daje podstawę (najniższy punkt terenu) i wysokość części bez
+  danych. Części bez siatki okien. Obok zespołów z częściami 3D gra nie dokłada wymyślonych wież kościołów (kaplice
+  Jasnej Góry dostawały ich cały las). W trzech województwach jest ~10 tys. części. Kafle wektorowe przepieczone.
 - **Stadiony i dziedzińce** (`src/buildgeo.js`, `src/gen/convert.js`, `src/gen/lottiles.js`, `src/gen/osmtags.js`):
   budynki zachowują otwory w obrysie (boisko stadionu, dziedzińce kamienic): dach płaski z otworem i ściany wewnętrzne.
   Wcześniej boisko przykrywał płaski dach. Stadion (`building=stadium`, `grandstand` albo obrys z dużym otworem) i budynki

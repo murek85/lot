@@ -66,7 +66,7 @@ const BRICK = [0.26, 0.09, 0.06], CHIMNEY_TOP = [0.05, 0.045, 0.045];
  * Geometria jednego budynku dopisywana do bufora b. pts – obrys (metry, bez powtórzonego końca), base – wysokość podstawy;
  * chimney – komin z cegły przy kalenicy (dach dwuspadowy domów).
  */
-export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chimney = false, holes = []) {
+export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chimney = false, holes = [], rise0 = null) {
 	const n = pts.length / 2;
 	if (holes.length) roofKind = 0; // z otworami (dziedziniec, boisko stadionu) – dach płaski
 	const push = (x, y, z, nx, ny, nz, kind, u, v, wc = wall, rc = roof) => {
@@ -130,7 +130,8 @@ export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chi
 		if (W > L) { ang += Math.PI / 2; [L, W] = [W, L]; }
 		const c = Math.cos(ang), s = Math.sin(ang);
 		const hl = L / 2 + 0.4, hw = W / 2 + 0.5;
-		const pitch = 0.62 + seed * 0.25; // ~32–42°
+		// ~32–42° albo z podanej wysokości dachu (części budynków 3D)
+		const pitch = rise0 != null ? Math.atan(rise0 / Math.max(0.5, W / 2)) : 0.62 + seed * 0.25;
 		const rise = (W / 2) * Math.tan(pitch);
 		const P = (u, v, y) => [r.cx + u * c - v * s, y, r.cz + u * s + v * c];
 		const eave = top - 0.15;
@@ -213,14 +214,93 @@ export function addCoolingTower(b, cx, cz, r0, base, h, wall) {
 	}
 }
 
+// profile dachów obrotowych nad obrysem: [t (0 – okap, 1 – szczyt), skala obrysu ku środkowi, wysokość 0..1]
+const DOME = Array.from({ length: 7 }, (_, k) => { const a = (k / 6) * Math.PI / 2; return [k / 6, Math.cos(a), Math.sin(a)]; });
+const ONION = [[0, 1, 0], [0.12, 1.18, 0.12], [0.28, 1.26, 0.28], [0.45, 1.1, 0.45], [0.6, 0.72, 0.6], [0.75, 0.38, 0.75], [0.88, 0.14, 0.88], [1, 0, 1]];
+const SPIRE = [[0, 1, 0], [1, 0, 1]];
+
+/**
+ * Dach obrotowy (ostrosłup, stożek, kopuła, cebula) nad obrysem pts na wysokości y0, wysokość rh – pierścienie obrysu
+ * skalowane ku środkowi według profilu; normalne z sąsiednich wierzchołków (gładkie). Rodzaj 1 (pokrycie dachu).
+ */
+function addRoofOfRevolution(b, pts, y0, rh, profile, roof, wall) {
+	const n = pts.length / 2;
+	let cx = 0, cz = 0;
+	for (let i = 0; i < n; i++) { cx += pts[i * 2]; cz += pts[i * 2 + 1]; }
+	cx /= n; cz /= n;
+	const ring = ([, s, h]) => Array.from({ length: n }, (_, i) => [cx + (pts[i * 2] - cx) * s, y0 + h * rh, cz + (pts[i * 2 + 1] - cz) * s]);
+	const R = profile.map(ring);
+	const first = b.count;
+	for (let k = 0; k < R.length; k++) {
+		const up = R[Math.min(R.length - 1, k + 1)], dn = R[Math.max(0, k - 1)];
+		for (let i = 0; i < n; i++) {
+			const p = R[k][i], a = R[k][(i + 1) % n], c = R[k][(i + n - 1) % n];
+			// styczne: wzdłuż pierścienia i wzdłuż południka
+			const t1 = [a[0] - c[0], a[1] - c[1], a[2] - c[2]];
+			let t2 = [up[i][0] - dn[i][0], up[i][1] - dn[i][1], up[i][2] - dn[i][2]];
+			if (Math.hypot(...t2) < 1e-4) t2 = [0, 1, 0];
+			let nx = t1[1] * t2[2] - t1[2] * t2[1], ny = t1[2] * t2[0] - t1[0] * t2[2], nz = t1[0] * t2[1] - t1[1] * t2[0];
+			// na zewnątrz (od osi); u szczytu (punkt na osi) – w górę
+			const ox = pts[i * 2] - cx, oz = pts[i * 2 + 1] - cz;
+			if (nx * ox + nz * oz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+			if (profile[k][1] < 1e-3) { nx = 0; ny = 1; nz = 0; }
+			const l = Math.hypot(nx, ny, nz) || 1;
+			b.pos.push(...p); b.nrm.push(nx / l, ny / l, nz / l); b.kind.push(1 + 0.4 * profile[k][0]);
+			b.uv.push(i * 2, profile[k][0] * rh * 1.4); b.wall.push(...wall); b.roof.push(...roof);
+			b.count++;
+		}
+	}
+	for (let k = 0; k + 1 < R.length; k++) for (let i = 0; i < n; i++) {
+		const j = (i + 1) % n, a = first + k * n + i, c = first + k * n + j, d = first + (k + 1) * n + j, e = first + (k + 1) * n + i;
+		b.idx.push(a, c, d, a, d, e);
+	}
+}
+
+/** Kolor 0xRRGGBB (sRGB) → albedo liniowe (lekko przyciemnione jak barwy z palety). */
+const srgb = (c) => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255].map((v) => v ** 2.2 * 0.9);
+
 /**
  * Tablice geometrii budynków (osm.buildings – [rodzaj, wys.×10, dach, znana, obrys dm]), scalone w kafelki 2 km:
  * { tiles: [{ pos, nrm, kind, uv, wall, roof, light, idx, count }], count, structures, beacons }. heightAt(x, z) –
- * wysokość terenu; half – pomijanie budynków poza kwadratem ±half.
+ * wysokość terenu; half – pomijanie budynków poza kwadratem ±half; parts – części budynków 3D (src/gen/lottiles.js).
  */
-export function buildBuildingTiles(buildings, heightAt, half = Infinity) {
+export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts = []) {
 	const tiles = new Map();
 	const r = rng(77);
+	// części budynków 3D (building:part): środki w siatce 100 m – obrys budynku, w którym stoją, jest tylko pojemnikiem
+	// (nie rysowany; daje podstawę – najniższy punkt terenu pod budynkiem – i wysokość części bez danych)
+	const P = parts.map(([min10, h10, roofShape, rh10, wallC, roofC, c, holesDm]) => {
+		let pts = [];
+		for (let i = 0; i < c.length; i += 2) pts.push(c[i] / 10, c[i + 1] / 10);
+		if (pts[0] === pts[pts.length - 2] && pts[1] === pts[pts.length - 1]) pts = pts.slice(0, -2);
+		let cx = 0, cz = 0;
+		const n = pts.length / 2;
+		for (let i = 0; i < n; i++) { cx += pts[i * 2]; cz += pts[i * 2 + 1]; }
+		return { pts, cx: cx / n, cz: cz / n, minH: min10 / 10, h: h10 < 0 ? null : h10 / 10, roofShape, roofH: rh10 < 0 ? null : rh10 / 10, wallC, roofC, holesDm, owner: null };
+	}).filter((q) => q.pts.length >= 6 && Math.abs(q.cx) < half && Math.abs(q.cz) < half);
+	const grid = new Map();
+	for (const q of P) { const k = `${Math.floor(q.cx / 100)},${Math.floor(q.cz / 100)}`; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(q); }
+	const tileOf = (x, z) => {
+		const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
+		let b = tiles.get(key);
+		if (!b) tiles.set(key, (b = { pos: [], nrm: [], kind: [], uv: [], wall: [], roof: [], idx: [], light: [], count: 0 }));
+		return b;
+	};
+	const partsNear = (x, z, d) => {
+		for (let gx = Math.floor((x - d) / 100); gx <= Math.floor((x + d) / 100); gx++) for (let gz = Math.floor((z - d) / 100); gz <= Math.floor((z + d) / 100); gz++) {
+			for (const q of grid.get(`${gx},${gz}`) ?? []) if (Math.hypot(q.cx - x, q.cz - z) < d) return true;
+		}
+		return false;
+	};
+	const partsIn = (c) => {
+		let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+		for (let i = 0; i < c.length; i += 2) { x0 = Math.min(x0, c[i]); x1 = Math.max(x1, c[i]); z0 = Math.min(z0, c[i + 1]); z1 = Math.max(z1, c[i + 1]); }
+		const out = [];
+		for (let gx = Math.floor(x0 / 1000); gx <= Math.floor(x1 / 1000); gx++) for (let gz = Math.floor(z0 / 1000); gz <= Math.floor(z1 / 1000); gz++) {
+			for (const q of grid.get(`${gx},${gz}`) ?? []) if (!q.owner && pointInRing(c, q.cx * 10, q.cz * 10)) out.push(q);
+		}
+		return out;
+	};
 	let count = 0;
 	const beacons = []; // światła przeszkodowe: [x, y, z] (y – bezwzględnie, nad poziomem morza)
 	const structures = { chimney: 0, cooling: 0, tank: 0 };
@@ -271,6 +351,15 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity) {
 		for (let i = 0; i < n; i++) base = Math.min(base, heightAt(pts[i * 2], pts[i * 2 + 1]));
 		base -= 0.4;
 		const seed = r();
+		// budynek z częściami 3D – tylko pojemnik: części dostają jego podstawę i wysokość
+		if (P.length) {
+			const inside = partsIn(c);
+			if (inside.length) {
+				const h = h10 / 10;
+				for (const q of inside) q.owner = { base, h: known ? h : Math.max(h, 6), wall: WALL_COLORS[Math.floor(seed * WALL_COLORS.length)] };
+				continue;
+			}
+		}
 		// wysokość ścian: z danych albo z rodzaju (domy: parterowe lub piętrowe)
 		let wallH;
 		const h = h10 / 10;
@@ -336,8 +425,9 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity) {
 		// okna nocą: domy i bloki często, usługi i urzędy rzadziej, przemysł rzadko, gospodarcze – nigdy
 		const lightP = [1, 1.1, 0, 0.25, 0.6, 0.45, 0.15, 0.7][type];
 		for (let i = first; i < b.count; i++) b.light.push(lightP, seed);
-		// kościół: wieża z hełmem na końcu dłuższego boku
-		if (type === 6 && area > 120) {
+		// kościół: wieża z hełmem na końcu dłuższego boku – nie w zespołach opisanych częściami 3D (kaplice klasztoru
+		// dostawały las wymyślonych wież obok prawdziwych)
+		if (type === 6 && area > 120 && !partsNear(cx, cz, 150)) {
 			const rr = minRect(pts);
 			let ang = rr.angle, L = rr.w, W = rr.h;
 			if (W > L) { ang += Math.PI / 2; [L, W] = [W, L]; }
@@ -349,6 +439,53 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity) {
 			addBuilding(b, corners.flat(), base, wallH * 2.4 + 6, 4, wall, [0.12, 0.2, 0.16], 0.5);
 			for (let i = first2; i < b.count; i++) b.light.push(0, seed);
 		}
+		count++;
+	}
+
+	// części 3D: ściany od wysokości dolnej do podstawy dachu, dach z kształtu (płaski, dwuspadowy, ostrosłup, kopuła,
+	// cebula), kolory z danych
+	for (const q of P) {
+		const n = q.pts.length / 2;
+		let pts = q.pts;
+		if (polygonArea2(pts) < 0) { const rev = []; for (let i = n - 1; i >= 0; i--) rev.push(pts[i * 2], pts[i * 2 + 1]); pts = rev; }
+		if (Math.abs(polygonArea2(pts)) < 1) continue;
+		let base = q.owner?.base;
+		if (base == null) { base = Infinity; for (let i = 0; i < n; i++) base = Math.min(base, heightAt(pts[i * 2], pts[i * 2 + 1])); base -= 0.4; }
+		if (!Number.isFinite(base)) continue;
+		const holes = [];
+		for (const hc of q.holesDm ?? []) {
+			let h = [];
+			for (let i = 0; i < hc.length; i += 2) h.push(hc[i] / 10, hc[i + 1] / 10);
+			if (h[0] === h[h.length - 2] && h[1] === h[h.length - 1]) h = h.slice(0, -2);
+			const ha = polygonArea2(h);
+			if (h.length < 6 || Math.abs(ha) < 4) continue;
+			if (ha > 0) { const rev = []; for (let i = h.length / 2 - 1; i >= 0; i--) rev.push(h[i * 2], h[i * 2 + 1]); h = rev; }
+			holes.push(h);
+		}
+		const top = q.h ?? q.owner?.h ?? 8;
+		if (top - q.minH < 0.3) continue;
+		let rad = 0;
+		for (let i = 0; i < n; i++) rad = Math.max(rad, Math.hypot(pts[i * 2] - q.cx, pts[i * 2 + 1] - q.cz));
+		let shape = holes.length ? 0 : q.roofShape;
+		// dwuspadowy (i czterospadowy – w przybliżeniu) tylko na obrysie bliskim prostokątowi – inaczej płaski
+		const rect = shape === 1 || shape === 2 ? minRect(pts) : null;
+		if (rect && Math.abs(polygonArea2(pts)) / rect.area < 0.8) shape = 0;
+		// wysokość dachu: z danych, inaczej z kształtu i obrysu; mieści się w wysokości części (height – wierzch dachu)
+		const defRoof = [0, rect ? (Math.min(rect.w, rect.h) / 2) * 0.75 : 0, rect ? (Math.min(rect.w, rect.h) / 2) * 0.75 : 0, rad * 1.1, rad * 0.95, rad * 1.7, rad * 2.2][shape] ?? 0;
+		const roofH = shape ? Math.min(q.roofH ?? defRoof, (top - q.minH) * (shape <= 2 ? 0.6 : 0.9)) : 0;
+		const wallH = Math.max(0.3, top - q.minH - roofH);
+		const seed = r();
+		const wall = q.wallC >= 0 ? srgb(q.wallC) : q.owner?.wall ?? WALL_COLORS[Math.floor(seed * WALL_COLORS.length)];
+		const roof = q.roofC >= 0 ? srgb(q.roofC)
+			: shape === 4 || shape === 5 ? [0.13, 0.22, 0.17] // kopuły i cebule – zaśniedziała miedź
+				: shape === 3 || shape === 6 ? [0.11, 0.12, 0.13] : ROOF_COLORS[Math.floor(seed * ROOF_COLORS.length)];
+		const b = tileOf(q.cx, q.cz);
+		const first = b.count;
+		const y0 = base + q.minH;
+		addBuilding(b, pts, y0, wallH, shape === 1 || shape === 2 ? 1 : 0, wall, roof, seed, false, holes, shape === 1 || shape === 2 ? roofH : null);
+		if (shape >= 3) addRoofOfRevolution(b, pts, y0 + wallH, roofH, shape === 4 ? DOME : shape === 5 ? ONION : SPIRE, roof, wall);
+		// bez siatki okien – na kościołach, zamkach i wieżach wyglądała jak biurowiec
+		for (let i = first; i < b.count; i++) b.light.push(-1, top);
 		count++;
 	}
 

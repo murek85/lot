@@ -104,7 +104,7 @@ async function chunkMsg(e) {
 			frame: { x0: F.x0, z0: F.z0, w: F.w, h: F.h },
 			heights: g.heights, normals: g.normals, min: g.min, max: g.max, cover, mask,
 			// daleki kafel: bez obiektów, tylko miejscowości (mapy, miejsca startu)
-			osm: far ? { roads: [], rails: [], buildings: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], places: osm.places } : osm,
+			osm: far ? { roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], places: osm.places } : osm,
 			ms: performance.now() - t0, cached: mapT.cached, source: useLot ? 'lot' : 'ofm',
 		};
 		// dane do późniejszej budowy obiektów (wysokości – kopia, oryginał odchodzi do wątku głównego)
@@ -166,7 +166,7 @@ async function objectsMsg(e) {
 			if (!d) throw new Error('brak danych kafla');
 		}
 		const hAt = (px, pz) => gridHeightAt(d, px, pz);
-		const b = buildBuildingTiles(d.osm.buildings, hAt);
+		const b = buildBuildingTiles(d.osm.buildings, hAt, Infinity, d.osm.parts ?? []);
 		// sfera otaczająca liczona tutaj (w wątku głównym computeBoundingSphere po setkach tysięcy wierzchołków to ~7 ms)
 		const sphere = (p) => {
 			let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;

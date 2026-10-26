@@ -82,3 +82,45 @@ export function landmarkInfo(tags) {
 	const rotor = kind === LANDMARK.wind ? Math.min(170, num(tags['rotor:diameter']) ?? Math.min(130, height * 0.9)) : 0;
 	return { kind, height, rotor };
 }
+
+// Części budynków 3D (building:part): kształty dachów → kody gry
+export const ROOF_SHAPE = { flat: 0, gabled: 1, hipped: 2, pyramidal: 3, dome: 4, onion: 5, cone: 6, skillion: 0, round: 1, half_hipped: 2, side_hipped: 2, mansard: 2, gambrel: 1, saltbox: 1, gabled_row: 1, double_saltbox: 1, quadruple_saltbox: 2, crosspitched: 2, many: 2 };
+const COLOUR = {
+	white: 0xeeeeea, black: 0x202020, grey: 0x8a8a88, gray: 0x8a8a88, darkgrey: 0x505050, darkgray: 0x505050, lightgrey: 0xc0c0bc, lightgray: 0xc0c0bc, silver: 0xb8b8b8,
+	red: 0x8e3a2a, darkred: 0x6a1c16, maroon: 0x6a1c16, brown: 0x6b4630, tan: 0xc0a07a, beige: 0xd8c9a6, cream: 0xe8dfc4, ivory: 0xece6d0,
+	yellow: 0xd8c35a, gold: 0xc9a43a, orange: 0xc9783a, green: 0x4e7a48, darkgreen: 0x2f4f2c, lightgreen: 0x8fb57d, olive: 0x6b6b3a, teal: 0x3f7f78,
+	blue: 0x3f5f8f, navy: 0x2a3550, lightblue: 0x8fb0c8, pink: 0xd8a0a0, purple: 0x6a4a7a, copper: 0x5f9a82, brick: 0x8a4632,
+};
+const MATERIAL_COLOUR = { brick: 0x8a4632, stone: 0xb0a890, concrete: 0xa0a09a, glass: 0x5f7a8a, metal: 0x8a8d90, copper: 0x5f9a82, wood: 0x7a5a3a, plaster: 0xd8d0bc, roof_tiles: 0x8a3a26, tile: 0x8a3a26, slate: 0x4a4e52, tar_paper: 0x3a3a3a, eternit: 0x8a8a84, zinc: 0x9aa0a4, steel: 0x8a8d90 };
+
+/** Kolor OSM (nazwa albo #rgb / #rrggbb) → 0xRRGGBB, null – nieznany. */
+export function parseColour(v) {
+	if (!v) return null;
+	const s = String(v).trim().toLowerCase().replace(/[\s_-]/g, '');
+	if (COLOUR[s] != null) return COLOUR[s];
+	let m = /^#?([0-9a-f]{6})$/.exec(s);
+	if (m) return parseInt(m[1], 16);
+	m = /^#?([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(s);
+	if (m) return parseInt(m[1] + m[1] + m[2] + m[2] + m[3] + m[3], 16);
+	return null;
+}
+
+/**
+ * Część budynku ze znaczników → { minH, height, roof, roofH, wall, roofColour } (metry; kolory 0xRRGGBB albo -1).
+ * height – wierzch dachu, null – brak danych (gra bierze wysokość budynku, w którym część stoi); roofH null – z kształtu
+ * dachu i obrysu w grze. null – część pomijana (bez bryły).
+ */
+export function partInfo(tags) {
+	const levels = num(tags['building:levels']), minLevel = num(tags['building:min_level']);
+	const roofLevels = num(tags['roof:levels']) ?? 0;
+	const roof = ROOF_SHAPE[tags['roof:shape']] ?? 0;
+	let roofH = num(String(tags['roof:height'] ?? '').replace(/\s*m$/, ''));
+	if (roofH == null && roofLevels) roofH = roofLevels * 2.8;
+	let height = num(String(tags.height ?? '').replace(/\s*m$/, ''));
+	if (height == null && levels != null) height = levels * 3.2 + (roofH ?? 0);
+	const minH = num(String(tags.min_height ?? '').replace(/\s*m$/, '')) ?? (minLevel != null ? minLevel * 3.2 : 0);
+	if (height != null && height - minH < 0.5) return null;
+	const wall = parseColour(tags['building:colour'] ?? tags.colour) ?? MATERIAL_COLOUR[tags['building:material']] ?? -1;
+	const roofColour = parseColour(tags['roof:colour']) ?? MATERIAL_COLOUR[tags['roof:material']] ?? -1;
+	return { minH: Math.max(0, minH), height: height == null ? null : Math.min(250, height), roof, roofH, wall, roofColour };
+}
