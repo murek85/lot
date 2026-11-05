@@ -229,3 +229,27 @@ test('ręczne przepisy znanych budowli: wybór dla kafla, pomijanie brył OSM, g
 	buildRecipes(b2, beacons2, [radio], () => 200);
 	assert.equal(beacons2.length, 2);
 });
+
+test('przepisy: skocznia na zboczu (start wyżej niż próg, zeskok na terenie), ruiny z budynków w elipsie', async () => {
+	const { RECIPES, recipeCovers, buildRecipes } = await import('../src/gen/recipes.js');
+	const { GeoArrays } = await import('../src/gfx/geobuilder.js');
+	// zbocze opadające na wschód (oś skoczni – na wschód): 0,4 m spadku na metr
+	const slope = (x) => 500 - 0.4 * x;
+	const jump = { ...RECIPES.find((r) => r.id === 'srednia-krokiew'), x: 0, z: 0, rot: 0, own: true };
+	const b = new GeoArrays();
+	buildRecipes(b, [], [jump], (x) => slope(x));
+	const ys = b.pos.filter((_, i) => i % 3 === 1), xs = b.pos.filter((_, i) => i % 3 === 0);
+	// najwyżej – zachodni (górny) koniec: start nad terenem w miejscu startu
+	const top = ys.indexOf(Math.max(...ys));
+	assert.ok(xs[top] < -jump.len / 2 + 10, `start na górze zbocza: x = ${xs[top]}`);
+	assert.ok(Math.max(...ys) > slope(-jump.len / 2) + 4);
+	assert.equal(recipeCovers([jump], 50, 0), true);
+	assert.equal(recipeCovers([jump], 50, 60), false);
+	// ruiny: budynek w elipsie – mury bez dachu; budynek poza – pomijany
+	const ruins = { ...RECIPES.find((r) => r.id === 'ogrodzieniec'), x: 0, z: 0, rot: 0, own: false };
+	const sq = (x, z, r) => [x - r, z - r, x + r, z - r, x + r, z + r, x - r, z + r].map((v) => v * 10);
+	const b2 = new GeoArrays();
+	buildRecipes(b2, [], [ruins], () => 300, [[7, 150, -1, 1, sq(0, 0, 10), []], [0, 60, -1, 0, sq(300, 0, 5), []]]);
+	const xs2 = b2.pos.filter((_, i) => i % 3 === 0);
+	assert.ok(b2.count > 0 && Math.max(...xs2) < 12);
+});

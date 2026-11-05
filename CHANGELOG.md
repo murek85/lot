@@ -5,6 +5,10 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Skocznie i ruiny zamków** (`src/gen/recipes.js`): Wielka i Średnia Krokiew, Malinka w Wiśle i Skalite w Szczyrku –
+  rozbieg na podporach pod ~35° z wieżą startową, zeskok i wybieg z mat na zboczu, wieża sędziowska; oś i rozmiar
+  z obrysów OSM, kierunek w dół zbocza, wycinka lasu wzdłuż skoczni (maska dróg kafla). Ruiny Ogrodzieńca i Olsztyna:
+  budynki OSM w obrysie zamku jako mury z wapienia bez dachów z poszarpaną koroną.
 - **Ręczne przepisy znanych budowli** (`src/gen/recipes.js`, bryła obrotowa `lathe` w `src/gfx/geobuilder.js`): śląskie
   ikony bez części 3D w OSM mają bryłę z kilku parametrów w miejscu z OSM. **Spodek**: szklany cokół, pochyła okładzina
   i płaski stożek dachu. **Stadion Śląski**: owalne trybuny, bieżnia i murawa, biały dach-pierścień na masztach.

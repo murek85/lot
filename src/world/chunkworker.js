@@ -7,7 +7,7 @@ import { lotSource } from './lotsource.js';
 import { buildBuildingTiles } from '../buildgeo.js';
 import { riverArrays, railArrays, bridgeArrays, detailArrays } from '../objgeo.js';
 import { landmarkArrays } from '../gen/landmarkgeo.js';
-import { recipesNear, recipeCovers } from '../gen/recipes.js';
+import { recipesNear, recipeCovers, recipeLanes } from '../gen/recipes.js';
 import { COVER } from '../gen/terrain.js';
 import { densify, ribbon } from '../gfx/ribbon.js';
 import { roadCrossings, CROSSING } from '../gen/crossings.js';
@@ -97,7 +97,9 @@ async function chunkMsg(e) {
 		const g = gridNormals(H, F.w / (n - 1), F.h / (n - 1), n);
 		// odległość od brzegu dla wody (głębia, piana); daleki teren – bez brzegów (głęboko)
 		const shore = far ? new Uint8Array(cover.length).fill(255) : shoreDistance(cover, COVER_RES, F.w / COVER_RES);
-		const mask = far ? new Uint8Array(0) : chunkMask(osm, F);
+		// maska dróg (bez drzew) – z wycinką wzdłuż skoczni z przepisów
+		const lanes = far ? [] : recipeLanes(recipesNear(origin, F));
+		const mask = far ? new Uint8Array(0) : chunkMask(lanes.length ? { ...osm, roads: [...osm.roads, ...lanes] } : osm, F);
 		// przyciemnienie gruntu przy budynkach i skraju lasu (daleki teren – bez)
 		const occ = far ? new Uint8Array(0) : chunkOcclusion(osm, cover, F);
 		const msg = {
