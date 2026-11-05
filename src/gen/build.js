@@ -3,6 +3,7 @@
 // Terrarium → siatka wysokości, woda i brzegi. Pobieranie, dekodowanie PNG i zapis dostarcza wołający (io).
 import { decodeTile } from './mvt.js';
 import { tilesFor } from './tiles.js';
+import { convertLotTile, LOT_LAYERS } from './lottiles.js';
 import { convertTile, rasterizePolygon, pickPlaces, pickLabels, COVER, COVER_PRIORITY, UNSET } from './convert.js';
 import { packTerrain, SHORE_STEP } from './terrain.js';
 import { localToLonLat, lonToTileX, latToTileY, regionBounds } from '../geo.js';
@@ -27,7 +28,7 @@ export async function pool(list, n, fn, signal) {
 	await Promise.all(Array.from({ length: Math.min(n, list.length) }, worker));
 }
 
-const empty = () => ({ roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [] });
+const empty = () => ({ roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [] });
 
 /**
  * Miejsca startu: podane z nazwy (regiony wbudowane – z odmianą gen/instr, kolejność jak na liście) albo wybrane
@@ -85,6 +86,14 @@ export async function buildRegion(params, io) {
 		if (t.cached) fromCache++;
 		if (t.buf.byteLength) {
 			const out = convertTile(decodeTile(t.buf, LAYERS), MAP_Z, x, y, { center, half, buildings });
+			// budynki z własnych kafli gry (io.lotTile – wypiekanie regionów z dysku), gdy są: z rodzajem, otworami
+			// i częściami 3D (building:part); OpenMapTiles zna tylko wysokości
+			const lot = buildings !== 'none' && io.lotTile ? await io.lotTile(x, y) : null;
+			if (lot?.byteLength) {
+				const own = convertLotTile(decodeTile(lot, LOT_LAYERS), MAP_Z, x, y, { center });
+				out.buildings = own.buildings;
+				osm.parts.push(...own.parts);
+			}
 			for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms']) for (const o of out[k]) osm[k].push(o);
 			for (const c of out.cover) rasterizePolygon(cover, coverRes, size, c.rings, c.cls, COVER_PRIORITY);
 			allPlaces.push(...out.places);

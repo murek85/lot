@@ -62,6 +62,11 @@ const { meta, data } = await buildRegion({ id: region.id, name: region.name, cen
 		const t = await cached(`ofm/${MAP_Z}/${x}/${y}.pbf`, tpl.replace('{z}', MAP_Z).replace('{x}', x).replace('{y}', y));
 		return { buf: new Uint8Array(t.buf.buffer, t.buf.byteOffset, t.buf.byteLength), cached: t.cached };
 	},
+	// własne kafle gry (npm run bake:tiles) – budynki z rodzajem i częściami 3D; brak pliku – OpenFreeMap
+	lotTile: async (x, y) => {
+		const f = path.join(import.meta.dirname, '..', 'data', 'tiles', 'lot', String(MAP_Z), String(x), `${y}.pbf`);
+		return fs.existsSync(f) ? fs.readFileSync(f) : null;
+	},
 	heightTile: async (z, x, y) => {
 		const { buf } = await cached(`terrarium/${z}/${x}/${y}.png`, TERRARIUM(z, x, y));
 		const h = new Float32Array(256 * 256);

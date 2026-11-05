@@ -21,7 +21,7 @@ export { buildBuildingTiles, minRect, polygonArea2, addBuilding, addCoolingTower
 const EARTH_R = 6371000;
 export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null, shared = null) {
 	const terrainH = (x, z) => terrain.meshHeightAt(x, z);
-	const { tiles, count, structures, beacons } = buildBuildingTiles(osm.buildings, terrainH, region.size / 2 - 30);
+	const { tiles, count, structures, beacons } = buildBuildingTiles(osm.buildings, terrainH, region.size / 2 - 30, osm.parts ?? []);
 	return buildingMeshes(tiles, { count, structures, beacons }, atmo, clouds, plane, worldShadow, shared);
 }
 

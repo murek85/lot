@@ -5,6 +5,10 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Części 3D i rodzaje budynków w regionach** (`src/gen/build.js`, `tools/bake-gen.js`): wypiekanie regionu bierze
+  budynki z własnych kafli gry, gdy są na dysku (z rodzajem, otworami i częściami `building:part`), a tam, gdzie ich
+  nie ma, nadal z OpenFreeMap. Region Zabrze przepieczony: 2362 części 3D (m.in. Arena Zabrze), ~489 tys. budynków
+  (wcześniej 470 tys. z uproszczonych kafli OpenMapTiles). Generator regionów w grze bez zmian.
 - **Skocznie i ruiny zamków** (`src/gen/recipes.js`): Wielka i Średnia Krokiew, Malinka w Wiśle i Skalite w Szczyrku –
   rozbieg na podporach pod ~35° z wieżą startową, zeskok i wybieg z mat na zboczu, wieża sędziowska; oś i rozmiar
   z obrysów OSM, kierunek w dół zbocza, wycinka lasu wzdłuż skoczni (maska dróg kafla). Ruiny Ogrodzieńca i Olsztyna:

@@ -53,7 +53,8 @@
 		"counts": {
 			"roads": 188047,
 			"rails": 4539,
-			"buildings": 470212,
+			"buildings": 488765,
+			"parts": 2362,
 			"waterways": 9122,
 			"power": 0,
 			"treeRows": 0,
@@ -5537,5 +5538,5 @@
 			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
 		}
 	],
-	"baked": "2026-10-23T20:59:39.490Z"
+	"baked": "2026-11-05T13:11:22.435Z"
 }
