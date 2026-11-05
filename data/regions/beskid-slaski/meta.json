@@ -53,7 +53,8 @@
 		"counts": {
 			"roads": 92409,
 			"rails": 1000,
-			"buildings": 272257,
+			"buildings": 264931,
+			"parts": 555,
 			"waterways": 14361,
 			"power": 0,
 			"treeRows": 0,
@@ -118,24 +119,6 @@
 			"instr": "Skoczowem"
 		}
 	],
-	"generated": {
-		"terrain": "detailed",
-		"buildings": "all",
-		"mapTiles": 900,
-		"heightTiles": 289,
-		"downloadMB": 25.6
-	},
-	"sources": [
-		{
-			"name": "AWS Terrain Tiles (Terrarium)",
-			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
-		},
-		{
-			"name": "OpenFreeMap (schemat OpenMapTiles)",
-			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
-		}
-	],
-	"baked": "2026-10-18T08:42:31.600Z",
 	"labels": [
 		{
 			"name": "Bielsko-Biała",
@@ -5537,5 +5520,23 @@
 			"lon": 18.83582,
 			"lat": 49.50239
 		}
-	]
+	],
+	"generated": {
+		"terrain": "detailed",
+		"buildings": "all",
+		"mapTiles": 900,
+		"heightTiles": 289,
+		"downloadMB": 25.6
+	},
+	"sources": [
+		{
+			"name": "AWS Terrain Tiles (Terrarium)",
+			"license": "różne otwarte źródła, m.in. SRTM i EU-DEM – zob. github.com/tilezen/joerd"
+		},
+		{
+			"name": "OpenFreeMap (schemat OpenMapTiles)",
+			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
+		}
+	],
+	"baked": "2026-11-05T13:29:14.957Z"
 }
