@@ -440,7 +440,7 @@ async function start() {
 		document.body.classList.add('flying');
 		menu.hide();
 		if (mode !== view) setMode(view === 'cockpit' || view === 'free' ? view : 'plane');
-		$('esc-hint').textContent = world ? 'Otwarty świat (beta) – mapa doczytuje się w locie · Tab – mapa · Esc – pauza i menu' : 'Esc – pauza i menu';
+		$('esc-hint').textContent = world ? 'Otwarty świat – mapa doczytuje się w locie · Tab – mapa · Esc – pauza i menu' : 'Esc – pauza i menu';
 		escHintUntil = performance.now() + (world ? 8000 : 5000);
 		autosaveAt = performance.now() + 30000;
 	};

@@ -29,7 +29,7 @@ const EYEBROWS = {
 	crash: 'ZDARZENIE LOTNICZE',
 	regions: 'MAPY / REGIONY LOTÓW',
 	generator: 'GENERATOR REGIONÓW / OPENSTREETMAP',
-	world: 'OTWARTY ŚWIAT / BETA · CAŁA POLSKA',
+	world: 'OTWARTY ŚWIAT · CAŁA POLSKA',
 };
 
 const SIZES = [
@@ -56,7 +56,7 @@ export const NEWS = [
 		['Pora roku – zima', '3 stycznia: śnieg na polach przy każdej pogodzie, opady śniegu zamiast deszczu, drzewa liściaste bez liści.'],
 	] },
 	{ v: '0.34', title: 'Otwarty świat dla każdego', items: [
-		['Otwarty świat (beta)', 'menu główne – cała Polska bez granic regionu: gotowe miejsca startu albo wyszukiwarka, mapa doczytywana w locie.'],
+		['Otwarty świat', 'menu główne – cała Polska bez granic regionu: gotowe miejsca startu albo wyszukiwarka, mapa doczytywana w locie.'],
 		['Jakość mapy', 'przy każdym miejscu startu: pełna na Śląsku (własne kafle gry), podstawowa w pozostałej części Polski; podpowiedź w locie przy granicy.'],
 	] },
 	{ v: '0.33', title: 'Skok w dowolne miejsce', items: [
@@ -326,7 +326,7 @@ export class GameMenu {
 				${this.btn('quick', 'Szybki start', { prominent: !cont, hint: '<kbd>ENTER</kbd>' })}
 				${this.btn('new', 'Nowy lot — plan lotu')}
 				${this.btn('load', 'Wczytaj lot — sloty')}
-				${this.btn('world', 'Otwarty świat <small style="opacity:.7;font-weight:400">· cała Polska · beta</small>')}
+				${this.btn('world', 'Otwarty świat <small style="opacity:.7;font-weight:400">· cała Polska</small>')}
 				${this.btn('regions', 'Regiony i generator map')}
 				${this.btn('settings', 'Ustawienia')}
 				${this.btn('help', 'Sterowanie i pomoc')}
@@ -443,14 +443,14 @@ export class GameMenu {
 		// otwarty świat (wersja rozwojowa): ostatnie miejsce startu; nowe – w generatorze („Otwarty świat stąd”)
 		const ws = this.game.worldStart;
 		const worldRow = ws ? `<div class="region-row"><button class="menu-action slot${this.game.inWorld ? ' current' : ''}" data-act="world-last"${this.game.inWorld ? ' disabled' : ''}>
-				<span class="slot-no"><small>${this.game.inWorld ? 'TERAZ' : 'BETA'}</small>${this.game.inWorld ? '●' : '◇'}</span><span><b>Otwarty świat · ${esc(ws.name)}</b><span class="meta">kafle doczytywane w locie · ${qualityAt(this.world.areas, ws).name} · start ${ws.lat.toFixed(2)}° N, ${ws.lon.toFixed(2)}° E</span></span>
+				<span class="slot-no"><small>${this.game.inWorld ? 'TERAZ' : ''}</small>${this.game.inWorld ? '●' : '◇'}</span><span><b>Otwarty świat · ${esc(ws.name)}</b><span class="meta">kafle doczytywane w locie · ${qualityAt(this.world.areas, ws).name} · start ${ws.lat.toFixed(2)}° N, ${ws.lon.toFixed(2)}° E</span></span>
 				<span aria-hidden="true">${this.game.inWorld ? 'WCZYTANY' : 'LEĆ TUTAJ'}</span></button></div>` : '';
 		const date = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`; };
 		const km = (m) => `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km`;
 		el.innerHTML = builtin.map(({ r, m }) => row(r.id, r.name, `${km(r)}${m?.osm ? ` · ${num(m.osm.counts.buildings)} budynków` : ''} · ${r.gen ? 'kafle OpenStreetMap' : 'ESA WorldCover i OpenStreetMap'} · wbudowany`, false)).join('') +
 			list.map((m) => row(m.id, m.name, `${Math.round(m.size / 1000)} × ${Math.round(m.size / 1000)} km · ${num(m.osm.counts.buildings)} budynków · ${(m.bytes / 1e6).toFixed(0)} MB · ${date(m.baked)}`, true)).join('') +
 			(list.length ? '' : '<p class="lead" style="margin-top:14px">Nie ma jeszcze wygenerowanych regionów – zacznij od generatora, np. Katowice albo Beskid Śląski.</p>') +
-			(ws ? `<h2>Otwarty świat · beta</h2>${worldRow}` : '');
+			(ws ? `<h2>Otwarty świat</h2>${worldRow}` : '');
 		const u = await usage();
 		const ue = this.root.querySelector('#region-usage');
 		if (u && ue) ue.textContent = `Pamięć przeglądarki: ${(u.used / 1e6).toFixed(0)} MB${u.quota ? ` z ${(u.quota / 1e9).toFixed(0)} GB` : ''}`;
@@ -485,7 +485,7 @@ export class GameMenu {
 	render_world() {
 		const w = this.world, ws = this.game.worldStart;
 		const last = ws && !this.game.inWorld ? `<h2>Ostatni start</h2><div class="tiles wide">${this.worldTile(ws, -1, '↺')}</div>` : '';
-		return `<section class="menu-content menu-window">${this.head('Otwarty świat.', 'Cała Polska bez granic regionu: mapa doczytuje się w locie z internetu, kafel po kaflu wokół samolotu. Wersja beta – pierwsze wczytanie okolicy trwa dłużej, potem kafle zostają w pamięci przeglądarki.')}
+		return `<section class="menu-content menu-window">${this.head('Otwarty świat.', 'Cała Polska bez granic regionu: mapa doczytuje się w locie z internetu, kafel po kaflu wokół samolotu. Pierwsze wczytanie okolicy trwa dłużej, potem kafle zostają w pamięci przeglądarki.')}
 			<div class="menu-scroll">
 				${last}
 				<h2>Miejsce startu</h2>
