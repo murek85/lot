@@ -71,8 +71,8 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 	const farView = new FarView(scene, view.U, atmo, clouds, plane, mask);
 	const farStreamer = new WorldStreamer(region.meta.center, {
 		z: FAR_Z, radius: 50000, objectRadius: 0, workers: 2,
-		onLoad: (ch) => { farView.add(ch); map.add(ch); relief?.chunkLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
-		onUnload: (ch) => farView.remove(ch),
+		onLoad: (ch) => { farView.add(ch); map.add(ch); relief?.chunkLoaded(ch); lights?.farLoaded(ch); if (ch.min < lowest) { lowest = ch.min; view.setFloor(lowest - 60); } },
+		onUnload: (ch) => { farView.remove(ch); lights?.farUnloaded(ch); },
 	});
 	const map = new WorldMap();
 	const streamer = new WorldStreamer(region.meta.center, {

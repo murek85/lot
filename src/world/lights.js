@@ -9,10 +9,11 @@ import { onGround } from '../gfx/ground.js';
 import { rng } from '../clouds/noise3d.js';
 import { lampPositions, windowsLit } from '../citylights.js';
 import { gridHeightAt } from './streamer.js';
+import { COVER } from '../gen/terrain.js';
 
 const SPACING = 34, DENSE = 50;
 const SIZE = 2816, RES = 512, CELL = SIZE / RES, STEP = 128; // okno plam światła (jak okno gruntu)
-const CAP = 120000; // poświaty
+const CAP = 200000; // poświaty (latarnie kafli bliskich i światła zabudowy dalekiego terenu)
 const STREET_E = 0.5;
 
 /** Latarnie kafla: [x, y, z, rodzaj] (rodzaj 0 – sodowa, 1 – LED); ulice klas 1–4 tam, gdzie wokół stoją domy. */
@@ -49,6 +50,22 @@ export function chunkLamps(ch) {
 	return new Float32Array(out);
 }
 
+/**
+ * Daleki teren (kafle z11 do ~50 km): światła z zabudowy na rastrze pokrycia (~50 m na piksel) – co trzeci piksel
+ * zabudowy, w losowym miejscu piksela, 6 m nad siatką kafla: z daleka miasta i wsie świecą łańcuchami po horyzont.
+ * [x, y, z, rodzaj] jak latarnie.
+ */
+export function farLamps(ch) {
+	const R = Math.round(Math.sqrt(ch.cover.length)), f = ch.frame, out = [];
+	const r = rng(4242 + (ch.x * 7919 + ch.y) % 100000);
+	for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
+		if (ch.cover[j * R + i] !== COVER.built || r() > 0.33) continue;
+		const x = f.x0 + ((i + r()) / R) * f.w, z = f.z0 + ((j + r()) / R) * f.h;
+		out.push(x, gridHeightAt(ch, x, z) + 6, z, r() < 0.55 ? 0 : 1);
+	}
+	return new Float32Array(out);
+}
+
 export class WorldLights {
 	constructor() {
 		this.U = {
@@ -57,6 +74,7 @@ export class WorldLights {
 		};
 		this.uniforms = this.U;
 		this.lamps = new Map(); // "x/y" → { frame, data }
+		this.far = new Map(); // daleki teren: "x/y" → dane jak latarnie (farLamps)
 		this.queue = [];
 		this.data = new Uint8Array(RES * RES);
 		this.tex = new DataTexture(this.data, RES, RES, RedFormat, UnsignedByteType);
@@ -97,7 +115,8 @@ export class WorldLights {
 		const q = uv().sub(0.5).mul(2);
 		const r2 = dot(q, q);
 		const f = exp(r2.mul(-9)).add(float(0.06).div(r2.mul(12).add(1))).mul(clamp(float(1).sub(r2), 0, 1));
-		m.colorNode = color.mul(f.mul(this.U.glow).mul(1.6));
+		// powietrze gasi dalekie światła (~1/3 na 30 km) – łuna po horyzont, ale słabsza niż ulica pod samolotem
+		m.colorNode = color.mul(f.mul(this.U.glow).mul(1.6).mul(exp(dist.mul(-1 / 30000))));
 		this.sprite = new Sprite(m);
 		this.sprite.count = 0;
 		this.sprite.frustumCulled = false;
@@ -106,6 +125,9 @@ export class WorldLights {
 	}
 
 	chunkLoaded(ch) { this.queue.push(ch); }
+
+	farLoaded(ch) { if (ch.cover?.length) { this.far.set(ch.key, farLamps(ch)); this.glowDirty = true; } }
+	farUnloaded(ch) { if (this.far.delete(ch.key)) this.glowDirty = true; }
 
 	chunkUnloaded(ch) {
 		const qi = this.queue.indexOf(ch);
@@ -137,11 +159,22 @@ export class WorldLights {
 		if (this.glowDirty && this.pos && performance.now() - this.glowAt > 500) {
 			const P = this.pos.array, C = this.col.array;
 			let n = 0;
-			for (const { data } of this.lamps.values()) {
-				for (let i = 0; i < data.length && n < CAP; i += 4, n++) {
-					P[n * 3] = data[i]; P[n * 3 + 1] = data[i + 1]; P[n * 3 + 2] = data[i + 2];
-					if (data[i + 3]) { C[n * 3] = 0.85; C[n * 3 + 1] = 0.9; C[n * 3 + 2] = 1.0; } else { C[n * 3] = 1.0; C[n * 3 + 1] = 0.62; C[n * 3 + 2] = 0.28; }
-				}
+			const put = (data, i) => {
+				P[n * 3] = data[i]; P[n * 3 + 1] = data[i + 1]; P[n * 3 + 2] = data[i + 2];
+				if (data[i + 3]) { C[n * 3] = 0.85; C[n * 3 + 1] = 0.9; C[n * 3 + 2] = 1.0; } else { C[n * 3] = 1.0; C[n * 3 + 1] = 0.62; C[n * 3 + 2] = 0.28; }
+				n++;
+			};
+			const near = new Set();
+			let ref = null;
+			for (const { frame, data } of this.lamps.values()) {
+				ref ??= frame;
+				near.add(`${Math.round((frame.x0 - ref.x0) / ref.w)},${Math.round((frame.z0 - ref.z0) / ref.h)}`);
+				for (let i = 0; i < data.length && n < CAP; i += 4) put(data, i);
+			}
+			// daleki teren – poza kaflami bliskimi (tam prawdziwe latarnie); kafle z14 to równa siatka w układzie świata
+			const covered = (x, z) => ref && near.has(`${Math.floor((x - ref.x0) / ref.w)},${Math.floor((z - ref.z0) / ref.h)}`);
+			for (const data of this.far.values()) {
+				for (let i = 0; i < data.length && n < CAP; i += 4) if (!covered(data[i], data[i + 2])) put(data, i);
 			}
 			this.sprite.count = n;
 			this.pos.needsUpdate = this.col.needsUpdate = true;
@@ -172,7 +205,7 @@ export class WorldLights {
 
 	/** Nowy początek układu w (dx, dz) – wielokrotność SIZE (okno plam zostaje ważne): latarnie i róg okna. */
 	shift(dx, dz) {
-		for (const { data } of this.lamps.values()) for (let i = 0; i < data.length; i += 4) { data[i] -= dx; data[i + 2] -= dz; }
+		for (const data of [...[...this.lamps.values()].map((l) => l.data), ...this.far.values()]) for (let i = 0; i < data.length; i += 4) { data[i] -= dx; data[i + 2] -= dz; }
 		if (this.ox !== null) { this.ox -= dx; this.oz -= dz; this.U.org.value.set(this.ox, this.oz); }
 		this.dirty = this.dirty.map(([a, b, c, d]) => [a - dx, b - dx, c - dz, d - dz]);
 		this.glowDirty = true;

@@ -5,6 +5,9 @@ wstecz kolejnym etapom; od 0.7 numer jest pokazywany w grze. Kolejność wewnąt
 
 ## W przygotowaniu – własne kafle dla kolejnych województw
 
+- **Światła nocą po horyzont** (`src/world/lights.js`): daleki teren (kafle z11 do ~50 km) dostaje światła z zabudowy
+  na rastrze pokrycia (co trzeci piksel zabudowy, ~50 m) – w jednym zestawie poświat z latarniami kafli bliskich (poza
+  nimi), do 200 tys. punktów. Wcześniej za ~9 km było ciemno. Dalekie światła słabną z odległością (~1/3 na 30 km).
 - **Części 3D i rodzaje budynków w regionach** (`src/gen/build.js`, `tools/bake-gen.js`): wypiekanie regionu bierze
   budynki z własnych kafli gry, gdy są na dysku (z rodzajem, otworami i częściami `building:part`), a tam, gdzie ich
   nie ma, nadal z OpenFreeMap. Region Zabrze przepieczony: 2362 części 3D (m.in. Arena Zabrze), ~489 tys. budynków
