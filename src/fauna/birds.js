@@ -13,10 +13,20 @@ export const SPECIES = {
 	buzzard: { span: 1.25, speed: 9, alt: [70, 320], count: [1, 2], flap: 3, glide: 0.9, glidePeriod: 20, col: [[0.32, 0.22, 0.14], [0.15, 0.1, 0.07]], cover: ['crop', 'grass', 'forest'], flock: false, thermal: true },
 	gull: { span: 1.2, speed: 11, alt: [10, 70], count: [4, 14], flap: 3.5, glide: 0.5, glidePeriod: 6, col: [[0.88, 0.88, 0.9], [0.35, 0.36, 0.4]], cover: ['water'], flock: true },
 	crow: { span: 0.95, speed: 11, alt: [15, 90], count: [6, 24], flap: 4, glide: 0.25, glidePeriod: 5, col: [[0.05, 0.05, 0.06], [0.03, 0.03, 0.035]], cover: ['built', 'crop'], flock: true },
+	// przeloty w kluczu (vee): jesienią na południowy zachód, wiosną na północny wschód, wysoko
+	goose: { span: 1.5, speed: 17, alt: [180, 520], count: [12, 36], flap: 3.2, glide: 0.1, glidePeriod: 4, col: [[0.42, 0.4, 0.36], [0.12, 0.12, 0.12]], cover: ['crop', 'grass', 'forest', 'water', 'wetland', 'built', 'shrub', 'bare'], flock: false, vee: 5.5, migrate: [[55, 100], [258, 325]] },
+	crane: { span: 2.2, speed: 15, alt: [220, 650], count: [8, 28], flap: 2.4, glide: 0.35, glidePeriod: 7, col: [[0.55, 0.56, 0.58], [0.08, 0.08, 0.09]], cover: ['crop', 'grass', 'forest', 'water', 'wetland', 'built', 'shrub', 'bare'], flock: false, vee: 7.5, migrate: [[60, 95], [262, 315]] },
 };
 export const SPECIES_IDS = Object.keys(SPECIES);
 
 const rnd = (r, a, b) => a + r() * (b - a);
+
+/** Miejsce ptaka nr i w kluczu (V): czoło w (v.x, v.z), ramiona na przemian w lewo i w prawo, odstęp gap metrów. */
+export function veeSlot(v, i, gap) {
+	const rank = Math.ceil(i / 2), side = i % 2 ? 1 : -1;
+	const back = rank * gap, lat = rank * gap * 0.75 * side;
+	return [v.x - v.hx * back - v.hz * lat, v.z - v.hz * back + v.hx * lat];
+}
 function rng(seed) {
 	let s = seed >>> 0 || 1;
 	return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; };
@@ -32,11 +42,12 @@ export function speciesWeights(env) {
 	for (const id of SPECIES_IDS) w[id] = day ? 1 : 0;
 	if (!day || env.weather?.storm) return Object.fromEntries(SPECIES_IDS.map((k) => [k, 0]));
 	const pr = env.weather?.precip;
-	if (pr?.type === 'snow') return { starling: 0, stork: 0, buzzard: 0, gull: 0.3, crow: 1 };
+	if (pr?.type === 'snow') return { starling: 0, stork: 0, buzzard: 0, gull: 0.3, crow: 1, goose: 0, crane: 0 };
 	const rain = pr?.type === 'rain' ? 0.35 : 1;
 	for (const id of SPECIES_IDS) {
 		const s = SPECIES[id];
 		if (s.season && (env.day < s.season[0] || env.day > s.season[1])) w[id] = 0;
+		if (s.migrate && !s.migrate.some(([a, b]) => env.day >= a && env.day <= b)) w[id] = 0;
 		w[id] *= rain;
 	}
 	// myszołowy krążą w kominach termicznych – pogodne popołudnie; szpaki – o zmierzchu najwięcej
@@ -87,7 +98,13 @@ export class BirdSim {
 			// cel wędrówki (stado krąży po okolicy), u drapieżnika – środek komina termicznego
 			tx: x, tz: z, retarget: 0, thermal: S.thermal ? { x, z, r: rnd(r, 35, 80), w: (r() < 0.5 ? 1 : -1) * rnd(r, 0.08, 0.14) } : null,
 		};
-		const heading = r() * Math.PI * 2;
+		let heading = r() * Math.PI * 2;
+		if (S.vee) {
+			// klucz: kurs przelotu (wiosną na NE, jesienią na SW, ±25°), czoło klucza – punkt prowadzący
+			const spring = (this.day ?? 180) < 180; // dzień roku – ustawia main.js
+			heading = (spring ? Math.PI / 4 : Math.PI * 1.25) + (r() - 0.5) * 0.9;
+			g.vee = { x, z, hx: Math.sin(heading), hz: -Math.cos(heading) };
+		}
 		for (let i = 0; i < n; i++) {
 			const spread = S.flock ? 6 + Math.sqrt(n) * 2.5 : 30;
 			const b = {
@@ -98,6 +115,7 @@ export class BirdSim {
 			};
 			b.y = this.groundAt(b.x, b.z) + alt + (r() - 0.5) * 8;
 			if (g.thermal) { b.ang = (i / n) * Math.PI * 2; b.ty = b.y; }
+			if (g.vee) { b.slot = i; const p = veeSlot(g.vee, i, S.vee); b.x = p[0]; b.z = p[1]; }
 			g.birds.push(b);
 		}
 		this.groups.push(g);
@@ -133,7 +151,13 @@ export class BirdSim {
 			if (g.scared > 0) g.scared -= dt;
 			// nowy cel wędrówki co kilkanaście sekund (stado krąży w promieniu ~600 m)
 			g.retarget -= dt;
-			if (g.retarget <= 0 && !g.thermal) {
+			if (g.vee) {
+				// czoło klucza leci prosto, z wolno zmieniającą się wysokością nad terenem
+				g.vee.x += g.vee.hx * S.speed * dt; g.vee.z += g.vee.hz * S.speed * dt;
+				const gy = this.groundAt(g.vee.x, g.vee.z) + g.alt;
+				g.vee.y = g.vee.y === undefined ? gy : g.vee.y + (gy - g.vee.y) * Math.min(1, dt * 0.2);
+			}
+			if (g.retarget <= 0 && !g.thermal && !g.vee) {
 				g.retarget = rnd(r, 8, 20);
 				g.tx = cx + (r() - 0.5) * 1200; g.tz = cz + (r() - 0.5) * 1200;
 			}
@@ -142,7 +166,14 @@ export class BirdSim {
 			for (const b of g.birds) {
 				let ax = 0, ay = 0, az = 0;
 				const ground = this.groundAt(b.x, b.z);
-				if (g.thermal && g.scared <= 0) {
+				if (g.vee && g.scared <= 0) {
+					// lot w kluczu: każdy ptak trzyma swoje miejsce za poprzednikiem (lekko falując)
+					const [px, pz] = veeSlot(g.vee, b.slot, S.vee);
+					const wob = Math.sin(this.t * 0.6 + b.slot) * 0.6;
+					ax += (px - b.x) * 2 + (g.vee.hx * S.speed - b.vx) * 1.5 + wob;
+					az += (pz - b.z) * 2 + (g.vee.hz * S.speed - b.vz) * 1.5;
+					ay += (g.vee.y + b.slot * 0.15 - b.y) * 0.4 - b.vy * 0.8;
+				} else if (g.thermal && g.scared <= 0) {
 					// krążenie w kominie termicznym: po okręgu, powolne wznoszenie i opadanie
 					b.ang += g.thermal.w * dt * (S.speed / 9);
 					const px = g.thermal.x + Math.cos(b.ang) * g.thermal.r, pz = g.thermal.z + Math.sin(b.ang) * g.thermal.r;
@@ -180,7 +211,7 @@ export class BirdSim {
 				}
 				b.vx += ax * dt; b.vy += ay * dt; b.vz += az * dt;
 				// prędkość w granicach gatunku (wystraszony – szybciej)
-				const vmax = S.speed * (g.scared > 0 ? 1.7 : 1.15), vmin = S.speed * 0.6;
+				const vmax = S.speed * (g.scared > 0 ? 1.7 : g.vee ? 1.4 : 1.15), vmin = S.speed * 0.6;
 				const v = Math.hypot(b.vx, b.vy, b.vz) || 1;
 				const k = v > vmax ? vmax / v : v < vmin ? vmin / v : 1;
 				b.vx *= k; b.vy *= k; b.vz *= k;

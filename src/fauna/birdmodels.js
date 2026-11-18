@@ -36,6 +36,19 @@ export const MODELS = {
 		col: { back: C(0.05, 0.05, 0.065), belly: C(0.05, 0.05, 0.06), wing: C(0.05, 0.05, 0.07), trail: C(0.04, 0.04, 0.05), tip: C(0.035, 0.035, 0.045), head: C(0.05, 0.05, 0.06), tail: C(0.04, 0.04, 0.05) },
 		anim: { amp: 0.65, wrist: 0.35, dihedral: 0.03, bob: 0.03 },
 	},
+	// gęś: długa czarna szyja, szarobrązowa; żuraw: szary, długa szyja i nogi wyciągnięte w locie (jak bocian)
+	goose: {
+		body: [0.42, 0.11, 0.11], neck: 0.14, head: 0.04, beak: [0.05, C(0.85, 0.5, 0.2)], tail: [0.08, 0.1],
+		wing: { chord: [0.2, 0.18, 0.06], arm: 0.42, sweep: 0.08, wristFwd: 0.01, fingers: 0, fingerLen: 0 },
+		col: { back: C(0.4, 0.38, 0.34), belly: C(0.62, 0.6, 0.55), wing: C(0.42, 0.4, 0.36), trail: C(0.25, 0.24, 0.22), tip: C(0.12, 0.12, 0.12), head: C(0.08, 0.08, 0.08), tail: C(0.8, 0.8, 0.78) },
+		anim: { amp: 0.45, wrist: 0.25, dihedral: 0.03, bob: 0.015 },
+	},
+	crane: {
+		body: [0.38, 0.09, 0.1], neck: 0.2, head: 0.035, beak: [0.09, C(0.35, 0.33, 0.3)], legs: [0.3, C(0.15, 0.15, 0.15)], tail: [0.08, 0.1],
+		wing: { chord: [0.19, 0.19, 0.1], arm: 0.45, sweep: 0.03, wristFwd: 0.0, fingers: 6, fingerLen: 0.08 },
+		col: { back: C(0.55, 0.56, 0.58), belly: C(0.6, 0.61, 0.63), wing: C(0.56, 0.57, 0.59), trail: C(0.08, 0.08, 0.09), tip: C(0.06, 0.06, 0.07), head: C(0.15, 0.15, 0.15), tail: C(0.3, 0.3, 0.3) },
+		anim: { amp: 0.42, wrist: 0.2, dihedral: 0.03, bob: 0.012 },
+	},
 	starling: {
 		body: [0.38, 0.11, 0.1], neck: 0, head: 0.06, beak: [0.06, C(0.75, 0.62, 0.15)], tail: [0.1, 0.08],
 		wing: { chord: [0.22, 0.17, 0.03], arm: 0.4, sweep: 0.13, wristFwd: 0.01, fingers: 0, fingerLen: 0 },

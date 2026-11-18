@@ -8,6 +8,8 @@ const SURFACE = {
 	asphalt: 0, paved: 0, concrete: 1, 'concrete:plates': 1, paving_stones: 1, sett: 2, cobblestone: 2, unhewn_cobblestone: 2,
 	compacted: 3, fine_gravel: 3, gravel: 3, pebblestone: 3, ground: 4, dirt: 4, sand: 4, earth: 4, grass: 4, unpaved: 4, mud: 4, wood: 1,
 };
+/** Rodzaje źródeł dymu (src/smoke.js): komin przemysłowy, chłodnia (para), komin domu. */
+export const SMOKE = { chimney: 0, steam: 1, house: 2 };
 // Budynki: 0 dom, 1 blok, 2 gospodarczy/garaż, 3 przemysł/magazyn, 4 usługi/handel, 5 publiczny (szkoła, urząd),
 // 6 kościół, 7 inny, 8 stadion / trybuna (beton bez okien)
 const BUILDING = {
@@ -60,8 +62,8 @@ export function buildingInfo(tags) {
 
 // Punkty orientacyjne: 0 elektrownia wiatrowa, 1 komin, 2 wieża szybowa, 3 wieża ciśnień, 4 maszt / wieża
 // telekomunikacyjna. Domyślne wysokości – typowe w Polsce (wiatrak: wieża ~100 m, wirnik ~90 m).
-export const LANDMARK = { wind: 0, chimney: 1, headframe: 2, waterTower: 3, mast: 4 };
-const LANDMARK_H = [100, 60, 45, 28, 70];
+export const LANDMARK = { wind: 0, chimney: 1, headframe: 2, waterTower: 3, mast: 4, crane: 5 };
+const LANDMARK_H = [100, 60, 45, 28, 70, 45];
 const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
 
 /** Rodzaj i wymiary punktu orientacyjnego ze znaczników OSM → { kind, height, rotor } albo null (pomijany). */
@@ -72,6 +74,7 @@ export function landmarkInfo(tags) {
 	} else if (tags.man_made === 'chimney') kind = LANDMARK.chimney;
 	else if (tags.man_made === 'mineshaft') { if (yes(tags.headframe)) kind = LANDMARK.headframe; }
 	else if (tags.man_made === 'water_tower') kind = LANDMARK.waterTower;
+	else if (tags.man_made === 'crane' && (!tags['crane:type'] || tags['crane:type'] === 'tower_crane')) kind = LANDMARK.crane;
 	else if (tags.man_made === 'mast' || tags.man_made === 'communications_tower') kind = LANDMARK.mast;
 	else if (tags.man_made === 'tower' && (tags['tower:type'] === 'communication' || tags['tower:type'] === 'radio')) kind = LANDMARK.mast;
 	if (kind == null) return null;

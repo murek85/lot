@@ -1,7 +1,7 @@
 // Wspólne przekształcenie obiektów stojących na ziemi (drogi, tory, budynki, mosty, słupy, aleje): przesunięcie
 // o tyle, o ile przewyższenie rzeźby (suwak) podniosło teren w tym miejscu – sam obiekt zachowuje wysokość – oraz
 // krzywizna Ziemi względem kamery. Dzięki temu obiekty nie odrywają się od terenu przy zmianie przewyższenia.
-import { vec3, dot, texture, uniform } from 'three/tsl';
+import { vec3, dot, texture, uniform, mix, step, fract } from 'three/tsl';
 import { Vector2, Color } from 'three/webgpu';
 import { seasonPalette } from '../weather/seasons.js';
 
@@ -30,6 +30,7 @@ export const SEASON = {
 	grass: uniform(new Color(1, 1, 1)),
 	leaf: uniform(new Color()),
 	autumnLeaf: uniform(new Color()),
+	autumnRed: uniform(new Color()), // druga barwa jesieni (klony, dęby czerwone, buki – rdza)
 	autumn: uniform(0),
 	balesStubble: uniform(0),
 	balesHay: uniform(0),
@@ -41,12 +42,17 @@ export function setSeason(p) {
 	SEASON.grass.value.setRGB(...p.grass);
 	SEASON.leaf.value.setRGB(...p.leaf);
 	SEASON.autumnLeaf.value.setRGB(...p.autumnLeaf);
+	SEASON.autumnRed.value.setRGB(...(p.autumnRed ?? p.autumnLeaf));
+	if (p.bare !== undefined) bareTrees.value = p.bare;
 	SEASON.autumn.value = p.autumn;
 	SEASON.balesStubble.value = p.balesStubble ?? 0;
 	SEASON.balesHay.value = p.balesHay ?? 0;
 	SEASON.waves.value = p.waves ?? 0;
 }
 setSeason(seasonPalette('summer'));
+
+/** Liście drzewa liściastego z losu drzewa h (0..1): letnie albo – część drzew wg SEASON.autumn – złote lub rdzawe. */
+export const seasonLeaves = (h) => mix(SEASON.leaf, mix(SEASON.autumnLeaf, SEASON.autumnRed, step(0.62, fract(h.mul(13.7)))), step(fract(h.mul(7.31)), SEASON.autumn));
 
 const EARTH_R = 6371000;
 let T = null;

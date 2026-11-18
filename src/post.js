@@ -3,7 +3,7 @@
 // wyostrzenie (RCAS – oddaje detale rozmyte przez TRAA), poświata jasnych świateł (bloom), efekt miniatury
 // (tilt-shift), opady i błyskawice (osobna scena, po wygładzaniu) i na końcu tone mapping.
 import { RenderPipeline, TempNode, NodeUpdateType, Color } from 'three/webgpu';
-import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length, abs, clamp, smoothstep } from 'three/tsl';
+import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length, abs, clamp, smoothstep, acos, dot, fract } from 'three/tsl';
 import { RELIEF } from './world/reliefshade.js';
 import { worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
@@ -50,6 +50,8 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 	const veilColor = uniform(new Color(0.3, 0.32, 0.35));
 	// poranna mgła w dolinach 0..1 (pora dnia, wiatr, pogoda, pora roku – src/weather/weather.js: valleyFog)
 	const fog = uniform(0);
+	// tęcza 0..1 (deszcz przy niskim słońcu i zaraz po deszczu) – łuk 42° wokół punktu przeciwsłonecznego, wtórny 51°
+	const rainbow = uniform(0);
 
 	/**
 	 * Mgła radiacyjna w obniżeniach terenu (otwarty świat): grunt w punkcie p leży `under` metrów pod poziomem okolicy
@@ -83,8 +85,9 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 		const st = uv();
 		const d = depth.sample(st).r;
 		const viewPos = getViewPosition(st, d, projInv);
-		const offset = camWorld.mul(vec4(viewPos, 0)).xyz;
-		const dir = normalize(offset);
+		// toVar: zmienne zadeklarowane przed gałęziami (inaczej TSL wstawia je w pierwszą gałąź, a tęcza niżej czyta zero)
+		const offset = camWorld.mul(vec4(viewPos, 0)).xyz.toVar();
+		const dir = normalize(offset).toVar();
 		const out = vec3(0).toVar();
 		// odwrócony bufor głębi: 0 = nieskończoność (niebo)
 		If(d.lessThanEqual(0.0), () => {
@@ -97,6 +100,18 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 		// chmury (pół rozdzielczości, wygładzone czasowo, przycięte głębią sceny): ich światło + tło przez nie
 		const cloud = new CloudStepNode(clouds, clouds.sample(st));
 		out.assign(cloud.rgb.add(out.mul(cloud.a)));
+		{
+			const ang = acos(clamp(dot(dir, atmo.u.lightDir.negate()), -1, 1)).mul(180 / Math.PI);
+			// barwa z kąta: fiolet wewnątrz, czerwień na zewnątrz (wtórny – odwrotnie i słabszy)
+			const spec = (t) => clamp(abs(fract(vec3(1, 2 / 3, 1 / 3).add(t.oneMinus().mul(0.75))).mul(6).sub(3)).sub(1), 0, 1);
+			const t1 = ang.sub(40.4).div(2), t2 = float(53.5).sub(ang).div(3.2);
+			const band = (t) => smoothstep(0, 0.15, t).mul(smoothstep(0.85, 1, t).oneMinus());
+			const bow = spec(t1).mul(band(t1)).add(spec(t2).mul(band(t2)).mul(0.4))
+				.add(vec3(0.12).mul(smoothstep(20, 40, ang)).mul(smoothstep(40, 41, ang).oneMinus()));
+			// na tle nieba i dalekiej zasłony deszczu (nie na bliskim gruncie); jasność względem tła
+			const where = select(d.lessThanEqual(0.0), float(1), float(1).sub(exp(length(offset).mul(-1 / 1500))));
+			out.addAssign(bow.mul(luminance(out)).mul(rainbow).mul(where).mul(0.45));
+		}
 		// zasłona opadu: rośnie z odległością (niebo – pełna), błysk rozświetla
 		const far = select(d.lessThanEqual(0.0), float(1), float(1).sub(exp(length(offset).mul(-1 / 2500))));
 		out.assign(mix(out, veilColor, far.mul(veil)));
@@ -145,7 +160,7 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 		if (sh !== undefined) sharpness.value = 2 - 2 * sh;
 	};
 	return {
-		pipeline, scenePass, saturation, flash, veil, veilColor, fog, tiltShift: ts, resetHistory, setLook,
+		pipeline, scenePass, saturation, flash, veil, veilColor, fog, rainbow, tiltShift: ts, resetHistory, setLook,
 		render: () => { exposure.value = renderer.toneMappingExposure; pipeline.render(); },
 	};
 }

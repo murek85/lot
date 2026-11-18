@@ -54,7 +54,7 @@ export function buildingType(area, h) {
  * cover: [{ cls, rings }], places }.
  */
 export function convertTile(tile, z, x, y, opts) {
-	const out = { roads: [], rails: [], buildings: [], waterways: [], stations: [], platforms: [], cover: [], places: [] };
+	const out = { roads: [], rails: [], buildings: [], waterways: [], stations: [], platforms: [], cover: [], places: [], cemeteries: [] };
 	const L = tile.layers;
 	const ext = (L.transportation ?? L.building ?? L.water ?? Object.values(L)[0])?.extent ?? 4096;
 	const T = tileToLocal(z, x, y, ext, opts.center);
@@ -136,7 +136,11 @@ export function convertTile(tile, z, x, y, opts) {
 		if (rings.length) out.cover.push({ cls, rings });
 	};
 	for (const f of L.landcover?.features ?? []) coverPoly(f, LANDCOVER_SUB[f.props.subclass] ?? LANDCOVER[f.props.class]);
-	for (const f of L.landuse?.features ?? []) coverPoly(f, LANDUSE[f.props.class]);
+	for (const f of L.landuse?.features ?? []) {
+		coverPoly(f, LANDUSE[f.props.class]);
+		// cmentarze: obrysy zewnętrzne w dm (znicze 1 listopada – src/calendar.js)
+		if (f.props.class === 'cemetery' && f.type === 3) for (const ring of f.geom) { const cl = ringArea(ring) > 0 && clipRing(ring, ext); if (cl) out.cemeteries.push(dm(cl)); }
+	}
 	for (const f of L.water?.features ?? []) if (f.props.brunnel !== 'tunnel') coverPoly(f, COVER.water);
 
 	for (const f of L.poi?.features ?? []) {

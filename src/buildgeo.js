@@ -4,6 +4,7 @@
 import { ShapeUtils, Vector2 } from '../vendor/three/three.core.js';
 import { rng } from './clouds/noise3d.js';
 import { structureKind, coolingProfile, beaconHeights } from './gfx/structures.js';
+import { SMOKE } from './gen/osmtags.js';
 
 const TILE = 2000;
 
@@ -67,6 +68,7 @@ const BRICK = [0.26, 0.09, 0.06], CHIMNEY_TOP = [0.05, 0.045, 0.045];
  * chimney – komin z cegły przy kalenicy (dach dwuspadowy domów).
  */
 export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chimney = false, holes = [], rise0 = null) {
+	let chimneyTop = null; // wylot komina domu (dym zimą, src/smoke.js)
 	const n = pts.length / 2;
 	if (holes.length) roofKind = 0; // z otworami (dziedziniec, boisko stadionu) – dach płaski
 	const push = (x, y, z, nx, ny, nz, kind, u, v, wc = wall, rc = roof) => {
@@ -163,6 +165,8 @@ export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chi
 			}
 			const top = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([du, dv]) => { const [x, , z] = corner(du, dv, 0); return push(x, y1, z, 0, 1, 0, 2, x, z, BRICK, CHIMNEY_TOP); });
 			b.idx.push(top[0], top[2], top[1], top[0], top[3], top[2]);
+			const [sx, , sz] = corner(0, 0, 0);
+			chimneyTop = [sx, y1, sz];
 		}
 		// szczyty (trójkąty ścian pod dachem)
 		for (const end of [-1, 1]) {
@@ -181,6 +185,7 @@ export function addBuilding(b, pts, base, wallH, roofKind, wall, roof, seed, chi
 		for (const q of [pts, ...holes]) for (let i = 0; i < q.length; i += 2) push(q[i], top, q[i + 1], 0, 1, 0, 2, q[i], q[i + 1]);
 		for (const t of tris) b.idx.push(start + t[0], start + t[2], start + t[1]);
 	}
+	return chimneyTop;
 }
 
 /**
@@ -303,6 +308,7 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts =
 	};
 	let count = 0;
 	const beacons = []; // światła przeszkodowe: [x, y, z] (y – bezwzględnie, nad poziomem morza)
+	const smoke = []; // źródła dymu i pary: [x, y, z, rodzaj, promień wylotu] (src/smoke.js)
 	const structures = { chimney: 0, cooling: 0, tank: 0 };
 	// stadiony: obrys z dużym otworem (boisko) albo typ 8 – części budynków w ich obrysie to trybuny (beton bez okien;
 	// kafle OpenMapTiles nie mają rodzaju budynku i wysokie trybuny wyglądały jak bloki mieszkalne)
@@ -391,6 +397,10 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts =
 			// komin ceglany (niższe, starsze) albo betonowy; od 100 m – pasy przeszkodowe (biało-czerwone, w cieniowaniu)
 			const striped = sk === 'chimney' && wallH >= 100;
 			if (sk === 'cooling') addCoolingTower(b, cx, cz, Math.sqrt(area / Math.PI), base, wallH, concrete);
+			// część kominów dymi (wysokie – elektrownie, ciepłownie – częściej), większość chłodni paruje
+			const active = (seed * 7.3) % 1;
+			if (sk === 'cooling' && active < 0.75) smoke.push(cx, base + wallH, cz, SMOKE.steam, Math.sqrt(area / Math.PI) * coolingProfile(1));
+			else if (sk === 'chimney' && active < (wallH >= 100 ? 0.7 : 0.35)) smoke.push(cx, base + wallH, cz, SMOKE.chimney, Math.sqrt(area / Math.PI) * 0.6);
 			else {
 				const wall = sk === 'chimney' && wallH < 90 && seed < 0.5 ? [0.34, 0.15, 0.1] : sk === 'tank' ? [0.6, 0.6, 0.58] : concrete;
 				addBuilding(b, pts, base, wallH, 0, wall, sk === 'chimney' ? [0.02, 0.02, 0.02] : [0.4, 0.4, 0.39], seed);
@@ -423,7 +433,8 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts =
 		const first = b.count;
 		// komin: domy jednorodzinne, ok. 85% (z tej samej liczby losowej – kolejne losowania bez zmian)
 		const rs = r();
-		addBuilding(b, pts, base, wallH, roofKind, wall, roof, rs, type === 0 && (rs * 9.7) % 1 < 0.85, holes);
+		const ct = addBuilding(b, pts, base, wallH, roofKind, wall, roof, rs, type === 0 && (rs * 9.7) % 1 < 0.85, holes);
+		if (ct && (rs * 31.1) % 1 < 0.4) smoke.push(ct[0], ct[1], ct[2], SMOKE.house, 0.8); // część domów pali w piecu (zimą)
 		// okna nocą: domy i bloki często, usługi i urzędy rzadziej, przemysł rzadko, gospodarcze – nigdy
 		const lightP = [1, 1.1, 0, 0.25, 0.6, 0.45, 0.15, 0.7][type];
 		for (let i = first; i < b.count; i++) b.light.push(lightP, seed);
@@ -491,5 +502,5 @@ export function buildBuildingTiles(buildings, heightAt, half = Infinity, parts =
 		count++;
 	}
 
-	return { tiles: [...tiles.values()], count, structures, beacons };
+	return { tiles: [...tiles.values()], count, structures, beacons, smoke: new Float32Array(smoke) };
 }

@@ -8,7 +8,7 @@ import { tileToLocal, clipLine, clipRing } from './tiles.js';
 import { ringArea } from './mvt.js';
 import { roadInfo, buildingInfo, landmarkInfo, partInfo, num } from './osmtags.js';
 
-export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'parts', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places'];
+export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'parts', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places', 'cemeteries', 'solar', 'aerialways', 'pistes', 'landuse', 'aeroways'];
 const RAIL = { rail: 0, light_rail: 0, preserved: 0, narrow_gauge: 1, disused: 2, abandoned: 3 };
 const WATERWAY = { river: 12, canal: 6, stream: 2.5, ditch: 1.2, drain: 1.2 };
 const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
@@ -18,7 +18,7 @@ const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
  * treeRows, stations, crossings, platforms, cover: [{ cls, rings }] (woda), places } – współrzędne w decymetrach.
  */
 export function convertLotTile(tile, z, x, y, opts) {
-	const out = { roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [] };
+	const out = { roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [], cemeteries: [], solar: [], aerialways: [], pistes: [], construction: [], runways: [], taxiways: [], aprons: [] };
 	const L = tile.layers;
 	const ext = Object.values(L)[0]?.extent ?? 4096;
 	const T = tileToLocal(z, x, y, ext, opts.center);
@@ -124,6 +124,27 @@ export function convertLotTile(tile, z, x, y, opts) {
 	for (const f of L.crossings?.features ?? []) {
 		const m = point(f);
 		if (m) out.crossings.push([yes(f.props['crossing:barrier']) ? 1 : 0, [Math.round(m[0] * 10), Math.round(m[1] * 10)]]);
+	}
+	// cmentarze: obrysy zewnętrzne w dm (znicze – src/calendar.js)
+	for (const f of L.cemeteries?.features ?? []) if (f.type === 3) for (const ring of f.geom) { const cl = ringArea(ring) > 0 && clipRing(ring, ext); if (cl) out.cemeteries.push(dm(cl)); }
+	// obrysy zewnętrzne (dm) – farmy fotowoltaiczne, place budowy (dźwigi); wyciągi: [rodzaj 0 – krzesełkowy / gondola,
+	// 1 – orczyk], trasy: [oświetlona, linia lub obrys, 1 – obrys]
+	const outer = (f, fn) => { if (f.type === 3) for (const ring of f.geom) { const cl = ringArea(ring) > 0 && clipRing(ring, ext); if (cl) fn(dm(cl)); } };
+	for (const f of L.solar?.features ?? []) outer(f, (c) => out.solar.push(c));
+	// lotniska: pasy i drogi kołowania – [szerokość dm, linia dm], płyty postojowe – obrysy
+	for (const f of L.aeroways?.features ?? []) {
+		const a = f.props.aeroway, w = num(String(f.props.width ?? '').replace(/\s*m$/, ''));
+		if (a === 'runway' && f.type === 2) lines(f, (c) => out.runways.push([Math.round((w ?? 45) * 10), c]));
+		else if (a === 'taxiway' && f.type === 2) lines(f, (c) => out.taxiways.push([Math.round((w ?? 18) * 10), c]));
+		else if (a === 'apron') outer(f, (c) => out.aprons.push(c));
+	}
+	for (const f of L.landuse?.features ?? []) if (f.props.landuse === 'construction') outer(f, (c) => out.construction.push(c));
+	const DRAG = new Set(['drag_lift', 't-bar', 'j-bar', 'platter', 'rope_tow']);
+	for (const f of L.aerialways?.features ?? []) lines(f, (c) => out.aerialways.push([DRAG.has(f.props.aerialway) ? 1 : 0, c]));
+	for (const f of L.pistes?.features ?? []) {
+		const lit = yes(f.props['piste:lit']) || yes(f.props.lit) ? 1 : 0;
+		if (f.type === 2) lines(f, (c) => out.pistes.push([lit, c, 0]));
+		else outer(f, (c) => out.pistes.push([lit, c, 1]));
 	}
 	for (const f of L.places?.features ?? []) {
 		const m = point(f), p = f.props;

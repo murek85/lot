@@ -197,13 +197,13 @@ async function objectsMsg(e) {
 		const rails = railArrays(d.osm.rails, hAt).mesh;
 		const bridges = bridgeArrays(d.osm, hAt);
 		const details = detailArrays(d.osm, hAt, coverAt, COVER, Infinity, (x * 7919 + y) % 100000);
-		const landmarks = landmarkArrays(d.osm.landmarks ?? [], hAt, recipes, d.osm.buildings);
+		const landmarks = landmarkArrays(d.osm.landmarks ?? [], hAt, recipes, d.osm.buildings, d.osm);
 		const transfer = [];
 		const take = (o) => { for (const v of Object.values(o)) if (ArrayBuffer.isView(v)) transfer.push(v.buffer); };
 		for (const t of tiles) take(t);
 		for (const o of [roads, rivers, rails, bridges, details, details.pylons, landmarks.body, landmarks.rotor]) take(o);
 		self.postMessage({
-			type: 'objects', req, key, origin, buildings: { tiles, count: b.count, structures: b.structures, beacons: b.beacons },
+			type: 'objects', req, key, origin, buildings: { tiles, count: b.count, structures: b.structures, beacons: b.beacons, smoke: b.smoke },
 			roads, rivers: { mesh: rivers, lines: [] }, rails: { mesh: rails, lines: [] }, bridges, details, landmarks, ms: performance.now() - t0,
 		}, transfer);
 	} catch (err) {

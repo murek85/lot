@@ -99,7 +99,10 @@ export class Atmosphere {
 		this.u.viewH.value = this.u.Rg.value + Math.max(0.002, cameraY / 1000);
 		const r = this.renderer;
 		const prev = r.getRenderTarget();
-		if (this.dirty) {
+		// tablice stałe liczone raz – ale przez pierwsze ~2 s co klatkę: przy starcie potoki kompilują się w tle i pierwszy
+		// przebieg bywa pominięty (tablica zostawała czarna – menu wyglądało jak noc, aż zmiana pogody ją przeliczyła)
+		this.warm = (this.warm ?? 0) + 1;
+		if (this.dirty || this.warm < 120) {
 			this._pass(this.transmittanceQuad, this.transmittanceRT);
 			this._pass(this.multiQuad, this.multiRT);
 			this.dirty = false;

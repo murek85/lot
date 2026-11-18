@@ -60,7 +60,8 @@
 			"treeRows": 0,
 			"stations": 67,
 			"crossings": 0,
-			"platforms": 2735
+			"platforms": 2735,
+			"cemeteries": 384
 		}
 	},
 	"places": [
@@ -5538,5 +5539,5 @@
 			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
 		}
 	],
-	"baked": "2026-11-05T13:11:22.435Z"
+	"baked": "2026-11-18T13:50:01.609Z"
 }

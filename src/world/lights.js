@@ -10,6 +10,8 @@ import { rng } from '../clouds/noise3d.js';
 import { lampPositions, windowsLit } from '../citylights.js';
 import { gridHeightAt } from './streamer.js';
 import { COVER } from '../gen/terrain.js';
+import { SignalLights, signalPositions } from '../signals.js';
+import { CalendarLights, candlePositions, festivePositions, festiveOn } from '../calendar.js';
 
 const SPACING = 34, DENSE = 50;
 const SIZE = 2816, RES = 512, CELL = SIZE / RES, STEP = 128; // okno plam światła (jak okno gruntu)
@@ -36,6 +38,38 @@ export function chunkLamps(ch) {
 	};
 	const out = [];
 	const r = rng(9090 + (ch.x * 7919 + ch.y) % 100000);
+	// lotniska: światła krawędzi pasa co 60 m (białe), progi (zielone) i końce (czerwone), światła podejścia na
+	// przedłużeniu osi (~900 m, co 30 m), krawędzie dróg kołowania (niebieskie); rodzaje 3–6, bez plam na ziemi
+	const inside = (x, z) => x >= f.x0 && x < f.x0 + f.w && z >= f.z0 && z < f.z0 + f.h;
+	const put = (x, z, kind, dy = 0.6) => { if (inside(x, z)) out.push(x, gridHeightAt(ch, x, z) + dy, z, kind); };
+	for (const [w10, c] of ch.osm.runways ?? []) {
+		const p = [];
+		for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10);
+		if (p.length < 4) continue;
+		const hw = w10 / 20 + 1;
+		for (const [x, z] of lampPositions(densify(p, 20), 30, hw)) put(x, z, 3);
+		for (const [end, nxt] of [[0, 2], [p.length - 2, p.length - 4]]) {
+			const ex = p[end], ez = p[end + 1], dx = ex - p[nxt], dz = ez - p[nxt + 1], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
+			for (let k = -4; k <= 4; k++) { put(ex - uz * k * hw / 4, ez + ux * k * hw / 4, 4); put(ex - uz * k * hw / 4 - ux * 3, ez + ux * k * hw / 4 - uz * 3, 5); }
+			for (let d = 60; d <= 900; d += 30) put(ex + ux * d, ez + uz * d, 3, 1.5);
+		}
+	}
+	for (const [w10, c] of ch.osm.taxiways ?? []) {
+		const p = [];
+		for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10);
+		if (p.length >= 4) for (const [x, z] of lampPositions(densify(p, 20), 25, Math.min(12, w10 / 20) + 0.5)) put(x, z, 6, 0.4);
+	}
+	// oświetlone trasy zjazdowe (zimą): maszty co ~45 m – wzdłuż linii trasy po obu stronach albo po obrysie
+	for (const [lit, c, poly] of ch.osm.pistes ?? []) {
+		if (!lit) continue;
+		const p = [];
+		for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10);
+		if (p.length < 4) continue;
+		for (const [x, z] of lampPositions(densify(p, 20), poly ? 45 : 30, poly ? 0 : 18)) {
+			if (x < f.x0 || x >= f.x0 + f.w || z < f.z0 || z >= f.z0 + f.h) continue;
+			out.push(x, gridHeightAt(ch, x, z) + 10, z, 2);
+		}
+	}
 	for (const [cls, w10, , bridge, , c] of ch.osm.roads) {
 		if (cls < 1 || cls > 4) continue;
 		const p = [];
@@ -69,7 +103,7 @@ export function farLamps(ch) {
 export class WorldLights {
 	constructor() {
 		this.U = {
-			street: uniform(0), windows: uniform(0), glow: uniform(0), winGlow: uniform(1), camXZ: uniform(new Vector2()),
+			street: uniform(0), windows: uniform(0), glow: uniform(0), winGlow: uniform(1), festive: uniform(0), camXZ: uniform(new Vector2()),
 			org: uniform(new Vector2(1e9, 1e9)), // róg okna plam światła (poza oknem – bez światła)
 		};
 		this.uniforms = this.U;
@@ -121,6 +155,10 @@ export class WorldLights {
 		this.sprite.count = 0;
 		this.sprite.frustumCulled = false;
 		this.sprite.renderOrder = 15;
+		this.signals = new SignalLights();
+		this.sprite.add(this.signals.createSprite(this.U.glow, this.U.camXZ, pixelAngle));
+		this.calendar = new CalendarLights();
+		this.sprite.add(this.calendar.createSprite(this.U.glow, this.U.camXZ, pixelAngle));
 		return this.sprite;
 	}
 
@@ -136,12 +174,18 @@ export class WorldLights {
 	}
 
 	/** Godzina, wysokość słońca, adaptacja oka, kamera (jak w regionach) + latarnie nowych kafli i okno plam. */
-	update(hour, sunY, adapt, camera) {
+	update(hour, sunY, adapt, camera, day = 180) {
+		this.calendar?.update(day, hour);
+		// sezon narciarski (XII–III): reflektory tras – przebudowa poświat i plam światła
+		const winter = day >= 335 || day <= 80;
+		if (winter !== this.winter) { this.winter = winter; this.glowDirty = true; this.glowAt = 0; if (this.ox !== null) this.dirty = [[this.ox, this.ox + SIZE, this.oz, this.oz + SIZE]]; }
+		this.U.festive.value = festiveOn(day);
 		const dusk = Math.min(1, Math.max(0, (0.03 - sunY) / 0.06));
 		this.U.street.value = dusk;
 		this.U.windows.value = windowsLit(hour) * Math.min(1, Math.max(0, (0.12 - sunY) / 0.15));
 		this.U.glow.value = dusk * adapt;
 		this.U.winGlow.value = adapt;
+		this.signals?.update(hour);
 		const cx = camera.position.x, cz = camera.position.z;
 		this.U.camXZ.value.set(cx, cz);
 		const t0 = performance.now();
@@ -150,7 +194,9 @@ export class WorldLights {
 			this.queue.sort((a, b) => Math.hypot(b.frame.x0 - cx, b.frame.z0 - cz) - Math.hypot(a.frame.x0 - cx, a.frame.z0 - cz));
 			while (this.queue.length && performance.now() - t0 < 2) {
 				const ch = this.queue.pop();
-				this.lamps.set(ch.key, { frame: ch.frame, data: chunkLamps(ch) });
+				const data = chunkLamps(ch), hAt = (x, z) => gridHeightAt(ch, x, z);
+				const cal = new Float32Array(festivePositions(data, candlePositions(ch.osm.cemeteries ?? [], hAt)));
+				this.lamps.set(ch.key, { frame: ch.frame, data, sig: signalPositions(ch.osm.roads, ch.osm.buildings, hAt), cal });
 				this.glowDirty = true;
 				this.markRect(ch.frame.x0 - 20, ch.frame.x0 + ch.frame.w + 20, ch.frame.z0 - 20, ch.frame.z0 + ch.frame.h + 20);
 			}
@@ -161,7 +207,9 @@ export class WorldLights {
 			let n = 0;
 			const put = (data, i) => {
 				P[n * 3] = data[i]; P[n * 3 + 1] = data[i + 1]; P[n * 3 + 2] = data[i + 2];
-				if (data[i + 3]) { C[n * 3] = 0.85; C[n * 3 + 1] = 0.9; C[n * 3 + 2] = 1.0; } else { C[n * 3] = 1.0; C[n * 3 + 1] = 0.62; C[n * 3 + 2] = 0.28; }
+				if (data[i + 3] === 2 && !this.winter) return; // reflektory tras narciarskich – tylko zimą
+				const AIR = [null, null, null, [1, 0.93, 0.8], [0.15, 1, 0.35], [1, 0.08, 0.04], [0.2, 0.35, 1]][data[i + 3]];
+				if (AIR) { C[n * 3] = AIR[0]; C[n * 3 + 1] = AIR[1]; C[n * 3 + 2] = AIR[2]; } else if (data[i + 3]) { C[n * 3] = 0.85; C[n * 3 + 1] = 0.9; C[n * 3 + 2] = 1.0; } else { C[n * 3] = 1.0; C[n * 3 + 1] = 0.62; C[n * 3 + 2] = 0.28; }
 				n++;
 			};
 			const near = new Set();
@@ -177,6 +225,8 @@ export class WorldLights {
 				for (let i = 0; i < data.length && n < CAP; i += 4) if (!covered(data[i], data[i + 2])) put(data, i);
 			}
 			this.sprite.count = n;
+			this.signals.set([...this.lamps.values()].map((l) => l.sig));
+			this.calendar.set([...this.lamps.values()].map((l) => l.cal));
 			this.pos.needsUpdate = this.col.needsUpdate = true;
 			this.glowDirty = false;
 			this.glowAt = performance.now();
@@ -205,9 +255,10 @@ export class WorldLights {
 
 	/** Nowy początek układu w (dx, dz) – wielokrotność SIZE (okno plam zostaje ważne): latarnie i róg okna. */
 	shift(dx, dz) {
-		for (const data of [...[...this.lamps.values()].map((l) => l.data), ...this.far.values()]) for (let i = 0; i < data.length; i += 4) { data[i] -= dx; data[i + 2] -= dz; }
+		for (const data of [...[...this.lamps.values()].flatMap((l) => [l.data, l.sig]), ...this.far.values()]) for (let i = 0; i < data.length; i += 4) { data[i] -= dx; data[i + 2] -= dz; }
 		if (this.ox !== null) { this.ox -= dx; this.oz -= dz; this.U.org.value.set(this.ox, this.oz); }
 		this.dirty = this.dirty.map(([a, b, c, d]) => [a - dx, b - dx, c - dz, d - dz]);
+		for (const { cal } of this.lamps.values()) for (let i = 0; i < cal.length; i += 5) { cal[i] -= dx; cal[i + 2] -= dz; }
 		this.glowDirty = true;
 		this.glowAt = 0;
 	}
@@ -225,6 +276,7 @@ export class WorldLights {
 			if (f.x0 > xb + 40 || f.x0 + f.w < xa - 40 || f.z0 > zb + 40 || f.z0 + f.h < za - 40) continue;
 			for (let k = 0; k < data.length; k += 4) {
 				const x = data[k], z = data[k + 2];
+				if ((data[k + 3] === 2 && !this.winter) || data[k + 3] >= 3) continue; // światła lotnisk – bez plam na ziemi
 				if (x < xa - 40 || x > xb + 40 || z < za - 40 || z > zb + 40) continue;
 				const fx = x / CELL - 0.5, fz = z / CELL - 0.5, ci = Math.floor(fx), cj = Math.floor(fz);
 				for (let j = Math.max(j0, cj - 3); j <= Math.min(j1 - 1, cj + 4); j++) for (let i = Math.max(i0, ci - 3); i <= Math.min(i1 - 1, ci + 4); i++) {

@@ -146,7 +146,7 @@ layers:
     min_zoom: 14
     include_when:
       power: generator
-      man_made: [chimney, mineshaft, water_tower, tower, mast, communications_tower]
+      man_made: [chimney, mineshaft, water_tower, tower, mast, communications_tower, crane]
     attributes: &landmark_attrs
     - key: power
     - key: generator:source
@@ -218,6 +218,76 @@ layers:
       landuse: [residential, commercial, retail, industrial, garages, construction, railway]
     attributes:
     - key: landuse
+- id: aeroways
+  # lotniska: pasy startowe (linie z szerokością, wielokąty), drogi kołowania, płyty postojowe
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      aeroway: [runway, taxiway]
+    attributes: &aero_attrs
+    - key: aeroway
+    - key: width
+    - key: ref
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      aeroway: [apron, runway]
+    attributes: *aero_attrs
+- id: solar
+  # farmy fotowoltaiczne (elektrownie i pola paneli) – połyskujące pola (src/gen/details)
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      plant:source: solar
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      generator:source: solar
+- id: aerialways
+  # wyciągi narciarskie i kolejki linowe
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      aerialway: [chair_lift, gondola, cable_car, mixed_lift, drag_lift, t-bar, j-bar, platter, rope_tow]
+    attributes:
+    - key: aerialway
+- id: pistes
+  # trasy zjazdowe (zimą – oświetlone nocą, gdy piste:lit / lit)
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      piste:type: downhill
+    attributes: &piste_attrs
+    - key: piste:lit
+    - key: lit
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      piste:type: downhill
+    attributes: *piste_attrs
+- id: cemeteries
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      landuse: cemetery
+  - source: osm
+    geometry: polygon
+    min_zoom: 14
+    include_when:
+      amenity: grave_yard
 - id: wood
   features:
   - source: osm

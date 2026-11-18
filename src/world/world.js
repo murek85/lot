@@ -97,7 +97,7 @@ export function createWorld(region, scene, atmo, clouds, plane, worldShadow, lig
 	R.fine.value = win.tex; R.fineSize.value = WINDOW_SIZE; R.fineReach.value = WINDOW_SIZE / 2 - 128 - WINDOW_SIZE / WINDOW_RES;
 	R.coarse.value = relief.tex; R.coarseSize.value = RELIEF_SIZE; R.coarseReach.value = RELIEF_REACH;
 	const base = uniform(0);
-	const forest = createForest(region, atmo, clouds, terrain, null, worldShadow, plane, { tex: win.tex, size: WINDOW_SIZE, base, relief: R });
+	const forest = createForest(region, atmo, clouds, terrain, null, worldShadow, plane, { tex: win.tex, size: WINDOW_SIZE, base, relief: R, org: win.org });
 	view.U.treesFar.value = forest.uniforms.dist.value; // teren w zasięgu drzew (3D i odległych) pokazuje dno lasu
 	// sieć ruchu (drogi, tory, chodniki) z kafli wokół samolotu – przebudowa w osobnym wątku co ~2 km lotu
 	let hold = null; // punkt doczytywania na czas wczytywania nowego miejsca

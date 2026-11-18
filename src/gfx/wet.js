@@ -5,6 +5,8 @@ import { valueNoise } from './noise.js';
 
 /** Zmoczenie 0..1: narasta w deszczu (~20 s), schnie po nim (~2 min) – ustawiane w src/main.js. */
 export const wetness = uniform(0);
+/** Natężenie padającego deszczu 0..1 (kręgi na wodzie) – ustawia main.js. */
+export const rainRate = uniform(0);
 
 /** Barwa mokrej powierzchni: porous – jak mocno woda ją przyciemnia (asfalt ~0,45, dachówka ~0,3, ziemia ~0,25). */
 export const wetAlbedo = (albedo, porous) => albedo.mul(float(1).sub(wetness.mul(porous)));

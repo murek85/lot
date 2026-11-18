@@ -136,3 +136,25 @@ test('An-2 leci najwolniej w hangarze, Orlik najszybciej', async () => {
 	assert.equal(Math.min(...all.map((P) => P.minSpeed)), AIRCRAFT.an2.flight.minSpeed);
 	assert.equal(Math.max(...all.map((P) => P.maxSpeed)), AIRCRAFT.orlik.flight.maxSpeed);
 });
+
+test('ruch w tle: liniowce przelatują, podejście schodzi 3° do progu, łodzie trzymają się wody', async () => {
+	const { AirSim, airTargets } = await import('../src/traffic/air.js');
+	const { BoatSim, boatTargets } = await import('../src/traffic/boats.js');
+	assert.ok(airTargets({ day: 180, hour: 13, sunY: 0.6, wind: 2, cover: 0.3 }).glider > 0);
+	assert.equal(airTargets({ day: 20, hour: 13, sunY: 0.3, wind: 2, cover: 0.3 }).glider, 0);
+	const sim = new AirSim({ groundAt: () => 0, seed: 7 });
+	sim.runways = [{ x: 0, z: 0, ux: 1, uz: 0, len: 2500 }];
+	sim.targets = { airliner: 0, light: 0, heli: 0, glider: 0, balloon: 0 };
+	sim.random = () => 0.1; // zawsze podejście
+	sim.spawn('airliner', { x: 0, z: 0 });
+	const a = sim.agents[0];
+	assert.equal(a.mode, 'approach');
+	for (let t = 0; t < 120; t++) sim.step(1, { x: 0, z: 0 });
+	const d = -a.x;
+	assert.ok(Math.abs(a.y - d * Math.tan((3 * Math.PI) / 180)) < 5 || a.y < 1, 'na ścieżce schodzenia');
+	// łódź: woda dla x < 500, brzeg dalej – nie wypływa na ląd
+	const boats = new BoatSim({ groundAt: () => 0, coverAt: (x) => (Math.abs(x) < 500 ? 'water' : 'grass'), radius: 400 });
+	boats.targets = boatTargets(180, 0.6);
+	for (let t = 0; t < 600; t++) boats.step(0.5, { x: 0, z: 0 });
+	assert.ok(boats.boats.length > 0 && boats.boats.every((b) => Math.abs(b.x) < 500));
+});

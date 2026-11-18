@@ -13,7 +13,7 @@ import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
 import { COL } from './gfx/palette.js';
 import { CASTER_LAYER, CASTER_NEAR } from './shadows.js';
 import { reliefShadow } from './world/reliefshade.js';
-import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset } from './gfx/ground.js';
+import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset, seasonLeaves } from './gfx/ground.js';
 
 const EARTH_R = 6371000;
 const SPACING = 5;
@@ -134,14 +134,18 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const h2 = hash22(gcell);
 			const xz = cell.add(0.15).add(h2.mul(0.7)).mul(SPACING);
 			const uvR = regionUv(xz);
-			const inside = win ? float(1) : step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
+			// otwarty świat: tylko w oknie gruntu (widok swobodny – okno idzie za celem, drzewa za kamerą; poza oknem tekstura
+			// adresowana w kółko podsuwała gęstość lasu z innego miejsca – drzewa na jeziorach)
+			const wq = win?.org ? xz.sub(win.org) : null;
+			const inside = win ? (wq ? step(40, wq.x).mul(step(wq.x, win.size - 40)).mul(step(40, wq.y)).mul(step(wq.y, win.size - 40)) : float(1)) : step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
 			const pxz = xz.add(worldOffset);
 			const fw = forestCover(forestTex, uvR, pxz);
 			const gh = heightAt(xz); // wysokość n.p.m. – w górach drzewostany nieregularne (src/gfx/stand.js)
 			const st = forestStand(pxz, gh);
 			// z danymi OSM drzewa omijają prawdziwe drogi (maska), bez nich – wymyślone dukty na granicach oddziałów
 			const notLane = win ? step(forestTex.sample(uvR).level(0).b, 0.4) : maskTex ? step(maskTex.sample(uvR).level(0).r, 0.4) : step(4, st.toEdge);
-			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(notLane).mul(inside);
+			const dry = win ? step(forestTex.sample(uvR).level(0).a, 0.3) : float(1); // otwarty świat: nie na wodzie (kanał A okna)
+			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(notLane).mul(inside).mul(dry);
 			// zasięg: bliski poziom do `near`, daleki od `near` do `far` (te same komórki – bez przeskoków drzew)
 			const d = length(xz.sub(U.cam));
 			const band = isNear ? step(d, U.near) : step(U.near, d).mul(step(d, U.far));
@@ -203,7 +207,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			If(type.greaterThan(1.5).and(part.greaterThan(0.5)).and(twig.lessThan(bareTrees.mul(0.55))), () => { Discard(); });
 			// sosny ciemniejsze i chłodniejsze, liściaste jaśniejsze – ale bez jaskrawości
 			// liściaste: liście pory roku, jesienią część drzew (los niezależny od jasności) żółknie, zimą nagie
-			const leaves = mix(SEASON.leaf, SEASON.autumnLeaf, step(fract(tint.mul(7.31)), SEASON.autumn));
+			const leaves = seasonLeaves(tint);
 			const crown = select(type.greaterThan(1.5), mix(leaves.mul(1.6), vec3(...BARE).mul(1.6), bareTrees), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
 				.mul(mix(float(0.8), float(1.2), tint));
 			const bark = vec3(0.09, 0.055, 0.035);
@@ -281,9 +285,14 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const pxz = xz.add(worldOffset);
 			const uvR = regionUv(xz);
 			// gęstość lasu i wysokość: okno gruntu (blisko) albo zgrubne okno rzeźby (dalej); w regionie – jego tekstury
-			let fw = forestCover(forestTex, uvR, pxz), gh = heightAt(xz), ok = float(1);
+			let fw = forestCover(forestTex, uvR, pxz), gh = heightAt(xz), ok = float(1), inFineW = null;
 			if (R) {
-				const inFine = max(abs(xz.x.sub(R.fineC.x)), abs(xz.y.sub(R.fineC.y))).lessThan(R.fineReach);
+				// okno gruntu (gęstość lasu z kafli) tylko tam, gdzie naprawdę sięga – dalej zgrubne okno rzeźby
+				const wq = win?.org ? xz.sub(win.org) : null;
+				const inWin = wq ? wq.x.greaterThan(40).and(wq.x.lessThan(win.size - 40)).and(wq.y.greaterThan(40)).and(wq.y.lessThan(win.size - 40)) : null;
+				const inFine0 = max(abs(xz.x.sub(R.fineC.x)), abs(xz.y.sub(R.fineC.y))).lessThan(R.fineReach);
+				const inFine = inWin ? inFine0.and(inWin) : inFine0;
+				inFineW = inFine;
 				const c = R.coarse.sample(xz.div(R.coarseSize)).level(0);
 				fw = select(inFine, fw, smoothstep(0.35, 0.65, c.r));
 				gh = select(inFine, gh, c.g.add(R.coarseBase));
@@ -292,7 +301,8 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 				ok = step(0.002, uvR.x).mul(step(uvR.x, 0.998)).mul(step(0.002, uvR.y)).mul(step(uvR.y, 0.998));
 			}
 			const st = forestStand(pxz, gh);
-			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(ok);
+			const dry = R && win ? select(inFineW, step(forestTex.sample(uvR).level(0).a, 0.3), float(1)) : float(1);
+			const keep = step(hash12(gcell.add(3.7)), fw.mul(0.97)).mul(st.clear.oneMinus()).mul(ok).mul(dry);
 			const d = length(xz.sub(U.cam));
 			// pasmo: od 0,86 jego początku (przenikanie z bliższymi drzewami) do końca (przenikanie z dalszymi albo z koronami
 			// terenu)
@@ -332,7 +342,7 @@ export function createForest(region, atmo, clouds, terrain, roadMask = null, wor
 			const qx = vQuad.x, qy = vQuad.y.mul(2).sub(1.1).div(0.9);
 			const r2d = qx.mul(qx).add(qy.mul(qy));
 			If(r2d.greaterThan(1).or(interleavedGradientNoise(screenCoordinate.xy).greaterThan(fade)), () => { Discard(); });
-			const leaves = mix(SEASON.leaf, SEASON.autumnLeaf, step(fract(tint.mul(7.31)), SEASON.autumn));
+			const leaves = seasonLeaves(tint);
 			const crown = select(type.greaterThan(1.5), mix(leaves.mul(1.6), vec3(...BARE).mul(1.6), bareTrees), select(type.greaterThan(0.5), COL.pineYoung.mul(2.4), COL.pineOld.mul(2.9)))
 				.mul(mix(float(0.8), float(1.2), tint));
 			// normalna kuli: z boku czworokąta, z góry i ku kamerze

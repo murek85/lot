@@ -285,6 +285,7 @@ export class ChunkView {
 		for (const o of ch.objs.list) { o.parent?.remove(o); o.geometry?.dispose(); }
 		ch.objs = null;
 		this.beacons.remove(ch.key);
+		this.smoke?.remove(ch.key);
 		this.stats.objectChunks--;
 	}
 
@@ -315,6 +316,7 @@ export class ChunkView {
 			const m = d.details.trees;
 			for (let i = 0; i < m.length; i += 16) { m[i + 12] -= p.x; m[i + 14] -= p.z; }
 			for (const b of [...d.buildings.beacons, ...d.landmarks.beacons]) { b[0] -= p.x; b[2] -= p.z; }
+			for (const a of [d.buildings.smoke, d.landmarks.smoke]) for (let i = 0; i < a.length; i += 5) { a[i] -= p.x; a[i + 2] -= p.z; }
 			sh(d.landmarks.body.pos);
 			sh(d.landmarks.rotor.top);
 		}
@@ -352,6 +354,8 @@ export class ChunkView {
 		const lm = landmarksFromArrays(d.landmarks, ...A, this.shared.landmarks);
 		list.push(...lm.objects, ...lm.shadowCasters);
 		this.beacons.set(ch.key, [...d.buildings.beacons, ...d.landmarks.beacons]);
+		// dym i para (src/smoke.js – zestaw podpina main.js)
+		this.smoke?.set(ch.key, Float32Array.of(...d.buildings.smoke, ...d.landmarks.smoke));
 		// budynki: geometria z wątku, materiały wspólne dla wszystkich kafli
 		if (d.buildings.tiles.length) {
 			const b = buildingMeshes(d.buildings.tiles, d.buildings, this.atmo, this.clouds, this.plane, this.worldShadow, this.buildingShared);
@@ -459,6 +463,7 @@ export class ChunkView {
 			}
 		}
 		this.beacons.shift(dx, dz);
+		this.smoke?.shift(dx, dz);
 	}
 
 	/** Wysokość podłogi: poniżej najniższego wczytanego terenu. */

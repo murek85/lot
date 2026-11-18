@@ -74,7 +74,7 @@ export function roadCrossings(roads, buildings, max = 400) {
 					const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
 					if (placed.some(([x, z]) => Math.hypot(x - mx, z - mz) < APART)) continue;
 					placed.push([mx, mz]);
-					out.push({ pts: dir > 0 ? [...a, ...b] : [...b, ...a], width: r[1] / 10 });
+					out.push({ pts: dir > 0 ? [...a, ...b] : [...b, ...a], width: r[1] / 10, at: [kx / 10, kz / 10], major: r[0] <= 2 });
 					if (out.length >= max) return out;
 				}
 			}

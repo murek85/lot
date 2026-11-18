@@ -3,7 +3,8 @@
 // położeniu okna leży w nim. Przesunięcie okna przepisuje tylko pasy, które z niego wypadły, a nowy kafel – swój
 // prostokąt. Kanały: R – gęstość lasu (z rastra pokrycia kafla, dwuliniowo), G – wysokość terenu względem `base`
 // (na trójkątach siatki kafla), B – maska dróg, torów i cieków (drzewa ich omijają).
-import { DataTexture, RGBAFormat, HalfFloatType, LinearFilter, RepeatWrapping, DataUtils } from 'three/webgpu';
+import { DataTexture, RGBAFormat, HalfFloatType, LinearFilter, RepeatWrapping, DataUtils, Vector2 } from 'three/webgpu';
+import { uniform } from 'three/tsl';
 import { COVER } from '../gen/terrain.js';
 import { COVER_RES, MASK_RES } from './chunkdata.js';
 import { gridHeightAt } from './streamer.js';
@@ -21,7 +22,19 @@ export function forestDensity(ch, x, z) {
 	const i = Math.min(R - 2, Math.floor(u)), j = Math.min(R - 2, Math.floor(v)), a = u - i, b = v - j;
 	const F = (k) => (c[k] === COVER.forest ? 1 : 0);
 	const k = j * R + i;
+	// na wodzie bez drzew (pojedyncze piksele lasu w jeziorach z rastra pokrycia rozlewały się na taflę)
+	const W = (q) => c[q] === COVER.water;
+	if (W(Math.round(v) * R + Math.round(u))) return 0;
+	const f4 = F(k) + F(k + 1) + F(k + R) + F(k + R + 1), w4 = W(k) + W(k + 1) + W(k + R) + W(k + R + 1);
+	if (w4 >= 2 && f4 <= 1) return 0;
 	return (F(k) * (1 - a) + F(k + 1) * a) * (1 - b) + (F(k + R) * (1 - a) + F(k + R + 1) * a) * b;
+}
+
+/** Klasa pokrycia najbliższego piksela rastra kafla. */
+function coverAtPx(ch, x, z) {
+	const f = ch.frame, R = COVER_RES;
+	const i = Math.min(R - 1, Math.max(0, Math.floor(((x - f.x0) / f.w) * R))), j = Math.min(R - 1, Math.max(0, Math.floor(((z - f.z0) / f.h) * R)));
+	return ch.cover[j * R + i];
 }
 
 export class GroundWindow {
@@ -35,6 +48,7 @@ export class GroundWindow {
 		this.tex.needsUpdate = true;
 		this.base = 0;
 		this.ox = null; // lewy górny róg okna (m, wielokrotność STEP)
+		this.org = uniform(new Vector2(1e9, 1e9)); // ten róg w shaderach – poza oknem tekstura (w kółko) pokazuje inne miejsce
 		this.oz = null;
 		this.dirty = [];
 		this.stats = { ms: 0, texels: 0 };
@@ -49,6 +63,7 @@ export class GroundWindow {
 		if (this.ox === null || Math.abs(nx - this.ox) >= SIZE || Math.abs(nz - this.oz) >= SIZE) {
 			// pierwsze ustawienie albo skok – całe okno od nowa, poziom odniesienia wysokości z punktu środka
 			this.ox = nx; this.oz = nz;
+			this.org.value.set(nx, nz);
 			this.base = this.streamer.heightAt(x, z);
 			this.dirty = [[nx, nx + SIZE, nz, nz + SIZE]];
 		} else if (nx !== this.ox || nz !== this.oz) {
@@ -58,6 +73,7 @@ export class GroundWindow {
 			if (nz > this.oz) this.dirty.push([nx, nx + SIZE, this.oz + SIZE, nz + SIZE]);
 			if (nz < this.oz) this.dirty.push([nx, nx + SIZE, nz, this.oz]);
 			this.ox = nx; this.oz = nz;
+			this.org.value.set(nx, nz);
 		}
 		if (!this.dirty.length) return;
 		const t0 = performance.now();
@@ -72,6 +88,7 @@ export class GroundWindow {
 	shift(dx, dz) {
 		if (this.ox === null) return;
 		this.ox -= dx; this.oz -= dz;
+		this.org.value.set(this.ox, this.oz);
 		this.dirty = this.dirty.map(([a, b, c, d]) => [a - dx, b - dx, c - dz, d - dz]);
 	}
 
@@ -97,12 +114,13 @@ export class GroundWindow {
 				const f = ch?.frame;
 				if (!f || x < f.x0 || x >= f.x0 + f.w || z < f.z0 || z >= f.z0 + f.h) ch = st.chunkAt(x, z);
 				n++;
-				if (!ch) { d[k] = H0; d[k + 1] = H0; d[k + 2] = H0; continue; }
+				if (!ch) { d[k] = H0; d[k + 1] = H0; d[k + 2] = H0; d[k + 3] = H0; continue; }
 				const g = ch.frame;
 				const mi = Math.min(M - 1, Math.floor(((x - g.x0) / g.w) * M)), mj = Math.min(M - 1, Math.floor(((z - g.z0) / g.h) * M));
 				d[k] = toHalf(forestDensity(ch, x, z));
 				d[k + 1] = toHalf(gridHeightAt(ch, x, z) - this.base);
 				d[k + 2] = toHalf(ch.mask ? ch.mask[mj * M + mi] / 255 : 0);
+				d[k + 3] = toHalf(coverAtPx(ch, x, z) === COVER.water ? 1 : 0); // A – woda (bez drzew)
 			}
 		}
 		return n;

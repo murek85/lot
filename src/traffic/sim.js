@@ -177,6 +177,7 @@ export class TrafficSim {
 				const gap = lead.s - a.s - (lead.len + a.len) / 2;
 				v = Math.min(v, Math.max(0, (gap - 4) / 1.4));
 			}
+			a.brake = v < a.v - 0.3; // światła stopu
 			a.v += (v - a.v) * Math.min(1, dt * (v < a.v ? 3 : 0.8));
 			a.s += a.v * dt;
 			// koniec krawędzi – następna

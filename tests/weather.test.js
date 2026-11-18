@@ -79,3 +79,26 @@ test('poranna mgła w dolinach: świt przy ciszy, jesienią najwięcej, wiatr i 
 	assert.equal(valleyFog(6.5, 'autumn', 0, 'storm'), 0);
 	assert.ok(valleyFog(9, 'autumn', 0, 'clear') < valleyFog(7, 'autumn', 0, 'clear')); // rozwiewa się z nagrzewaniem
 });
+
+test('kalendarz: paleta z dnia roku – rzepak kwitnie w maju, jesienią złoto i czerwień, zimą nagie drzewa', async () => {
+	const { paletteForDay, SEASON_PALETTE } = await import('../src/weather/seasons.js');
+	// w dniach z menu – paleta pory roku
+	assert.deepEqual(paletteForDay(121).crops.rapeseed, SEASON_PALETTE.spring.crops.rapeseed);
+	assert.ok(paletteForDay(138).crops.rapeseed[0] > paletteForDay(180).crops.rapeseed[0] * 2);
+	assert.ok(paletteForDay(290).autumn > 0.5 && paletteForDay(180).autumn === 0);
+	assert.ok(paletteForDay(15).bare === 1 && paletteForDay(200).bare === 0 && paletteForDay(325).bare > 0.5);
+	// przez Nowy Rok bez skoku
+	assert.ok(Math.abs(paletteForDay(365).grass[1] - paletteForDay(1).grass[1]) < 0.02);
+});
+
+test('kalendarz: znicze 1 listopada, iluminacje w grudniu, fajerwerki o północy sylwestrowej', async () => {
+	const { candlesOn, festiveOn } = await import('../src/calendar.js');
+	const { fireworksRate } = await import('../src/fireworks.js');
+	assert.equal(candlesOn(305, 20), 1);
+	assert.ok(candlesOn(200, 20) < 0.1);
+	assert.equal(festiveOn(355), 1);
+	assert.equal(festiveOn(200), 0);
+	assert.equal(fireworksRate(1, 0.1), 1);
+	assert.equal(fireworksRate(180, 0.1), 0);
+	assert.ok(fireworksRate(365, 23.8) > 0);
+});

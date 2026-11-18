@@ -2,21 +2,21 @@
 // (pola w pasach z koleinami, bory z koronami drzew i duktami, zabudowa, woda z odbiciem nieba), oświetlone
 // fizycznie: światło słońca po przejściu przez atmosferę, światło nieba, cienie rzeźby i ścian lasu.
 // Poza regionem ciągnie się płaski „świat zastępczy” z tym samym materiałem – zakrzywiony jak Ziemia aż po horyzont.
-import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset } from './gfx/ground.js';
+import { cityLight, snowCover, bareTrees, BARE, SEASON, worldOffset, seasonLeaves } from './gfx/ground.js';
 import {
 	Mesh, Group, PlaneGeometry, BufferGeometry, Float32BufferAttribute, MeshBasicNodeMaterial, Vector2, DataTexture, RGBAFormat,
 	UnsignedByteType, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter,
 } from 'three/webgpu';
 import {
 	Fn, float, vec2, vec3, vec4, ivec2, uniform, texture, textureLoad, varying, positionLocal, cameraPosition, Loop, If, int,
-	max, min, clamp, abs, mix, smoothstep, normalize, dot, length, floor, fract, sin, cos, pow, exp, reflect, fwidth, select, step,
+	max, min, clamp, abs, mix, smoothstep, normalize, dot, length, floor, fract, sin, cos, pow, exp, reflect, fwidth, select, step, atan,
 } from 'three/tsl';
 import { valueNoise, fbm, voronoi, hash12, hash22 } from './gfx/noise.js';
 import { waveMap } from './gfx/waves.js';
 import { COL } from './gfx/palette.js';
 import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
 import { TREE_WIND } from './forest.js';
-import { wetness } from './gfx/wet.js';
+import { wetness, rainRate } from './gfx/wet.js';
 
 const EARTH_R = 6371000;
 
@@ -266,7 +266,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			// dukt: pas ~4 m na granicy oddziału, z pokryciem zależnym od wielkości piksela (bez migotania z daleka)
 			const laneW = float(2.0);
 			const lane = src.hasOsm ? float(0) : smoothstep(laneW.sub(footprint.mul(0.5)), laneW.add(footprint.mul(0.5)), toEdge).oneMinus().mul(min(1, laneW.mul(2).div(footprint)));
-			const crown = mix(mix(COL.pineOld, COL.pineYoung, young), mix(mix(SEASON.leaf, SEASON.autumnLeaf, step(hash12(sid.add(31.7)), SEASON.autumn)), vec3(...BARE), bareTrees), leafy).mul(mix(float(0.85), float(1.15), hash12(sid.add(7.7))));
+			const crown = mix(mix(COL.pineOld, COL.pineYoung, young), mix(seasonLeaves(hash12(sid.add(31.7)).div(7.31)), vec3(...BARE), bareTrees), leafy).mul(mix(float(0.85), float(1.15), hash12(sid.add(7.7))));
 			const size = mix(float(4.2), float(7.5), leafy).mul(mix(float(1), float(0.55), young));
 			const detail = float(1).sub(smoothstep(size.mul(0.25), size.mul(0.9), footprint));
 			// z daleka: zwarty łan koron z niejednorodnością (luki, kępy) zamiast płaskiego koloru
@@ -441,19 +441,32 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const tt = src.U.time;
 			// poziom szczegółów fal z wielkości piksela – bez migotania z daleka
 			const lvl = (tile) => max(0, footprint.mul(256 / tile).log2());
+			// fale z wiatru (TREE_WIND): pole fal obrócone pod wiatr, płynie z nim; przy ciszy – prawie lustro, przy
+			// silnym wietrze – wyższa fala i białe grzywy
+			const wv = TREE_WIND.v, ws = length(wv), windK = smoothstep(0.5, 13, ws);
+			const wa = atan(wv.y, wv.x.add(1e-4)), wc = cos(wa), wsn = sin(wa);
+			const flow = float(0.35).add(ws.mul(0.09));
 			const wave = (tile, vel, rot) => {
 				const c = Math.cos(rot), s = Math.sin(rot);
-				const q = vec2(xz.x.mul(c).sub(xz.y.mul(s)), xz.x.mul(s).add(xz.y.mul(c))).div(tile).add(vec2(vel[0], vel[1]).mul(tt));
-				const g = wavesTex().sample(q).level(lvl(tile)).rg.mul(2).sub(1);
-				return vec2(g.x.mul(c).add(g.y.mul(s)), g.y.mul(c).sub(g.x.mul(s)));
+				// obrót pod wiatr, potem stały obrót warstwy
+				const xw = vec2(xz.x.mul(wc).add(xz.y.mul(wsn)), xz.y.mul(wc).sub(xz.x.mul(wsn)));
+				const q = vec2(xw.x.mul(c).sub(xw.y.mul(s)), xw.x.mul(s).add(xw.y.mul(c))).div(tile).sub(vec2(vel[0], vel[1]).mul(tt).mul(flow));
+				const t4 = wavesTex().sample(q).level(lvl(tile));
+				const g0 = t4.rg.mul(2).sub(1);
+				const g = vec2(g0.x.mul(c).add(g0.y.mul(s)), g0.y.mul(c).sub(g0.x.mul(s)));
+				return { g: vec2(g.x.mul(wc).sub(g.y.mul(wsn)), g.y.mul(wc).add(g.x.mul(wsn))), h: t4.b };
 			};
 			// wiatr w plamach: gładkie „lustra” i zmarszczone pasy („kocie łapy”)
 			const gust = smoothstep(0.35, 0.75, valueNoise(xz.div(420).add(vec2(tt.mul(0.012), tt.mul(0.004)))));
-			const amp = mix(float(0.25), float(1.15), gust);
-			const slope = wave(46, [0.010, 0.004], 0).mul(0.09)
-				.add(wave(13, [-0.022, 0.03], 1.1).mul(0.07))
-				.add(wave(3.3, [0.08, -0.05], 2.3).mul(0.05).mul(float(1).sub(smoothstep(0.4, 3, footprint))))
-				.mul(amp);
+			const amp = mix(float(0.25), float(1.15), gust).mul(mix(float(0.18), float(1.7), windK));
+			const w1 = wave(46, [0.030, 0.004], 0), w2 = wave(13, [0.05, -0.012], 0.5), w3 = wave(3.3, [0.14, 0.03], 2.3);
+			let slope = w1.g.mul(0.09).add(w2.g.mul(0.07)).add(w3.g.mul(0.05).mul(float(1).sub(smoothstep(0.4, 3, footprint)))).mul(amp);
+			// deszcz: kręgi od kropel (komórki 1,6 m, każda w swojej fazie), z bliska
+			const rc = xz.div(1.6), rcell = floor(rc), rhs = hash22(rcell), rph = fract(tt.mul(0.9).add(rhs.x.mul(7)));
+			const rd = length(fract(rc).sub(rhs.mul(0.6).add(0.2))).mul(1.6);
+			const ring = sin(rd.sub(rph.mul(1.2)).mul(18)).mul(float(1).sub(rph)).mul(smoothstep(rph.mul(1.2).add(0.15), rph.mul(1.2), rd));
+			const rippleK = rainRate.mul(float(1).sub(smoothstep(0.15, 0.8, footprint)));
+			slope = slope.add(fract(rc).sub(rhs.mul(0.6).add(0.2)).div(max(rd, 0.05)).mul(ring).mul(0.35).mul(rippleK));
 			const wn = normalize(vec3(slope.x.negate(), 1, slope.y.negate()));
 			const V = normalize(cameraPosition.sub(p));
 			const R = reflect(V.negate(), wn);
@@ -481,11 +494,24 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const Tw = exp(vec3(0.45, 0.11, 0.08).mul(depthM).mul(-1.6));
 			const light = sunE.mul(max(0, sun.y)).mul(shadow).add(skyE).div(Math.PI);
 			const bottom = vec3(0.13, 0.11, 0.07).mul(Tw);
-			const scatter = vec3(0.004, 0.011, 0.012).mul(vec3(1).sub(Tw));
+			// zawiesina jezior niżu – bardziej zielonkawo-szaro niż w morzu
+			const scatter = vec3(0.007, 0.014, 0.012).mul(vec3(1).sub(Tw));
 			const body = bottom.add(scatter).mul(light);
 			// piana i mokry pas na linii brzegu
 			const foam = float(1).sub(smoothstep(0.4, 2.2, shoreM)).mul(smoothstep(0.45, 0.8, valueNoise(xz.div(2.2).add(tt.mul(0.3))))).mul(0.5);
-			const water = body.mul(float(1).sub(F)).add(reflected.mul(F)).add(spec).add(vec3(0.6).mul(light).mul(foam));
+			// białe grzywy na grzbietach fal przy silnym wietrze (w podmuchach)
+			const capsN = smoothstep(0.5, 0.78, valueNoise(xz.div(23).add(vec2(tt.mul(0.25), tt.mul(-0.17)))));
+			const caps = smoothstep(0.8, 0.95, w2.h.mul(0.5).add(w1.h.mul(0.3)).add(w3.h.mul(0.2))).mul(smoothstep(0.55, 1, windK)).mul(capsN).mul(gust.mul(0.6).add(0.4)).mul(0.7);
+			// nocą odbicia latarni z brzegu: promień odbity sięga wysokości lampy (~7 m) w odległości 7/tg – tam plama światła
+			const lampAt = p.add(vec3(R.x, 0, R.z).div(max(1e-3, length(R.xz))).mul(clamp(float(7).div(max(tanR, 0.01)), 0, 400)));
+			const lamps = cityLight(lampAt).mul(F.mul(4).add(0.15)).mul(float(1).sub(occ.mul(0.5)));
+			let water = body.mul(float(1).sub(F)).add(reflected.mul(F)).add(spec).add(vec3(0.6).mul(light).mul(foam.add(caps))).add(lamps);
+			// zima: przy mrozie (śnieg na ziemi) jeziora zamarzają – najpierw płytkie przy brzegu, duże tafle później;
+			// lód szary z odbłyskiem nieba, na nim płaty śniegu
+			const freeze = smoothstep(0.55, 0.9, snowCover).mul(float(1).sub(smoothstep(120, 700, shoreM.add(valueNoise(xz.div(140)).mul(200)))));
+			const snowOnIce = smoothstep(0.35, 0.7, valueNoise(xz.div(30)).mul(0.6).add(valueNoise(xz.div(7)).mul(0.4)));
+			const ice = mix(vec3(0.32, 0.36, 0.4), vec3(0.78, 0.8, 0.84), snowOnIce).div(Math.PI).mul(sunE.mul(max(0, sun.y)).mul(shadow).add(skyE)).add(sky.mul(0.04));
+			water = mix(water, ice, freeze);
 			color.assign(mix(color, water, wWater));
 		});
 		return color;

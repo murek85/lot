@@ -5,6 +5,7 @@ import { decodeTile } from '../gen/mvt.js';
 import { tileToLocal, tilePointLonLat } from '../gen/tiles.js';
 import { convertTile, rasterizePolygon, COVER_PRIORITY, UNSET } from '../gen/convert.js';
 import { convertLotTile, LOT_LAYERS } from '../gen/lottiles.js';
+import { pointInRing } from '../buildgeo.js';
 import { COVER } from '../gen/terrain.js';
 import { lonToTileX, latToTileY, terrariumHeight } from '../geo.js';
 
@@ -92,11 +93,11 @@ export function gridNormals(H, dx, dz, G = GRID) {
  * pokrycia COVER_RES² w układzie kafla (wiersz 0 – północ). origin – { lon, lat } początku układu.
  */
 export function chunkObjects(buf, x, y, origin, Z = CHUNK_Z) {
-	const out = { roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], places: [] };
+	const out = { roads: [], rails: [], buildings: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], places: [], cemeteries: [] };
 	const cover = new Uint8Array(COVER_RES * COVER_RES).fill(UNSET);
 	if (buf && buf.byteLength) {
 		const r = convertTile(decodeTile(buf, Z === CHUNK_Z ? LAYERS : FAR_LAYERS), Z, x, y, { center: origin, half: 1e9, buildings: Z === CHUNK_Z ? 'all' : 'none' });
-		for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms', 'places']) out[k] = r[k];
+		for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms', 'places', 'cemeteries']) out[k] = r[k];
 		// wielokąty pokrycia z metrów świata z powrotem do układu kafla (−2048…2048), rastrowanie z ważnością klas
 		const F = chunkFrame(x, y, origin, Z);
 		for (const c of r.cover) {
@@ -137,6 +138,21 @@ export function chunkMask(osm, frame) {
 	for (const r of osm.roads) line(r[5], r[1] / 20);
 	for (const r of osm.rails) line(r[4], 2.2);
 	for (const [w10, c] of osm.waterways) { const w = Math.min(60, w10 / 10); line(c, w / 2 + (w >= 8 ? 7 : w >= 2 ? 3 : 1) - 3); }
+	// przecinki: wyciągi (pas ~20 m) i trasy zjazdowe (linie – pas ~40 m, obrysy – całe wnętrze)
+	for (const [, c] of osm.aerialways ?? []) line(c, 7);
+	const fill = (c) => {
+		let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+		for (let i = 0; i < c.length; i += 2) { x0 = Math.min(x0, c[i]); x1 = Math.max(x1, c[i]); z0 = Math.min(z0, c[i + 1]); z1 = Math.max(z1, c[i + 1]); }
+		const i0 = Math.max(0, Math.floor((x0 / 10 - frame.x0) / cx)), i1 = Math.min(n - 1, Math.floor((x1 / 10 - frame.x0) / cx));
+		const j0 = Math.max(0, Math.floor((z0 / 10 - frame.z0) / cz)), j1 = Math.min(n - 1, Math.floor((z1 / 10 - frame.z0) / cz));
+		for (let j = j0; j <= j1; j++) for (let k = i0; k <= i1; k++) {
+			if (pointInRing(c, (frame.x0 + (k + 0.5) * cx) * 10, (frame.z0 + (j + 0.5) * cz) * 10)) mask[j * n + k] = 255;
+		}
+	};
+	for (const [, c, poly] of osm.pistes ?? []) if (poly) fill(c); else line(c, 17);
+	// farmy fotowoltaiczne i place budowy – bez drzew
+	for (const c of [...(osm.solar ?? []), ...(osm.construction ?? []), ...(osm.aprons ?? [])]) fill(c);
+	for (const [w10, c] of [...(osm.runways ?? []), ...(osm.taxiways ?? [])]) line(c, w10 / 20 + 15);
 	return mask;
 }
 
@@ -226,6 +242,10 @@ export function shiftOsm(osm, dx, dz) {
 	for (const p of osm.power ?? []) sh(p[1]);
 	for (const r of osm.treeRows ?? []) sh(r[0]);
 	for (const c of osm.crossings ?? []) sh(c[1]);
+	for (const c of osm.cemeteries ?? []) sh(c);
+	for (const c of [...(osm.solar ?? []), ...(osm.construction ?? []), ...(osm.aprons ?? [])]) sh(c);
+	for (const a of [...(osm.runways ?? []), ...(osm.taxiways ?? [])]) sh(a[1]);
+	for (const a of [...(osm.aerialways ?? []), ...(osm.pistes ?? [])]) sh(a[1]);
 	for (const p of osm.places) { p.x -= dx; p.z -= dz; }
 }
 

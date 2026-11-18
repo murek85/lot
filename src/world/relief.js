@@ -30,6 +30,10 @@ function forestAt(ch, x, z) {
 	const i = Math.min(R - 2, Math.floor(u)), j = Math.min(R - 2, Math.floor(v)), a = u - i, b = v - j;
 	const F = (k) => (c[k] === COVER.forest ? 1 : 0);
 	const k = j * R + i;
+	// na wodzie bez drzew (jak w oknie gruntu, src/world/window.js: forestDensity)
+	const W = (q) => c[q] === COVER.water;
+	if (W(Math.round(v) * R + Math.round(u))) return 0;
+	if (W(k) + W(k + 1) + W(k + R) + W(k + R + 1) >= 2 && F(k) + F(k + 1) + F(k + R) + F(k + R + 1) <= 1) return 0;
 	return (F(k) * (1 - a) + F(k + 1) * a) * (1 - b) + (F(k + R) * (1 - a) + F(k + R + 1) * a) * b;
 }
 

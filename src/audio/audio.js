@@ -362,6 +362,12 @@ export class GameAudio {
 		} else if (species === 'buzzard') {
 			t({ type: 'sawtooth', f: 2600, f2: 1500, dur: 0.75, gain: 0.03 * g, attack: 0.05 });
 			t({ f: 2600, f2: 1500, dur: 0.75, gain: 0.05 * g, attack: 0.05 });
+		} else if (species === 'goose') {
+			// gęgot klucza: krótkie nosowe „ga-ga” wielu ptaków
+			for (let i = 0; i < 4 + Math.floor(Math.random() * 5); i++) t({ type: 'square', f: 420 + Math.random() * 120, f2: 360, dur: 0.12, gain: 0.025 * g, at: i * 0.18 + Math.random() * 0.1, attack: 0.01 });
+		} else if (species === 'crane') {
+			// klangor żurawi: donośne, trąbiące „kruu”
+			for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) t({ type: 'sawtooth', f: 880, f2: 820, dur: 0.35, gain: 0.03 * g, at: i * 0.5 + Math.random() * 0.2, attack: 0.03 });
 		} else if (species === 'gull') {
 			for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) t({ type: 'triangle', f: 1450, f2: 850, dur: 0.32, gain: 0.07 * g, at: i * 0.4, attack: 0.02 });
 		} else {

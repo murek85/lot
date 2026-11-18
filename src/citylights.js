@@ -7,6 +7,8 @@ import { uniform, texture, vec3, float, uv, dot, exp, max, mix, cameraPosition, 
 import { densify } from './roads.js';
 import { onGround } from './gfx/ground.js';
 import { rng } from './clouds/noise3d.js';
+import { SignalLights, signalPositions } from './signals.js';
+import { CalendarLights, candlePositions, festivePositions, festiveOn } from './calendar.js';
 
 const RES = 4096; // tekstura plam światła (≈11 m na piksel w regionie 46 km)
 const SPACING = 34; // odstęp latarni (m)
@@ -106,11 +108,14 @@ export function createCityLights(osm, region) {
 		windows: uniform(0), // odsetek zapalonych okien
 		glow: uniform(0), // jasność poświat latarni (z adaptacją oka)
 		winGlow: uniform(1), // jasność okien (z adaptacją oka)
+		festive: uniform(0), // iluminacje świąteczne (okna z kolorowymi światełkami)
 		camXZ: uniform(new Vector2()),
 	};
+	let signals = null, calendar = null;
 	const STREET_E = 0.5; // natężenie pod latarnią (księżyc w pełni po wzmocnieniu ≈ 0,05)
 	return {
 		lamps, uniforms: U, texture: tex,
+		get calendar() { return calendar; },
 		/** Natężenie światła latarni na ziemi w punkcie p (świat). */
 		groundLight(p) {
 			const st = p.xz.div(size).add(0.5);
@@ -142,15 +147,25 @@ export function createCityLights(osm, region) {
 			sprite.count = n;
 			sprite.frustumCulled = false;
 			sprite.renderOrder = 15;
+			signals = new SignalLights();
+			sprite.add(signals.createSprite(U.glow, U.camXZ, pixelAngle));
+			const hAt = (x, z) => (Math.abs(x) < half && Math.abs(z) < half ? terrain.meshHeightAt(x, z) : NaN);
+			signals.set([signalPositions(osm.roads, osm.buildings, hAt)]);
+			calendar = new CalendarLights();
+			sprite.add(calendar.createSprite(U.glow, U.camXZ, pixelAngle));
+			calendar.set([festivePositions(lamps.flatMap(([x, z, k], i) => [x, pos[i * 3 + 1], z, k]), candlePositions(osm.cemeteries ?? [], hAt))]);
 			return sprite;
 		},
 		/** Godzina lokalna, wysokość słońca (sun.y), adaptacja oka (≤ 1 nocą), kamera. */
-		update(hour, sunY, adapt, camera) {
+		update(hour, sunY, adapt, camera, day = 180) {
+			calendar?.update(day, hour);
+			U.festive.value = festiveOn(day);
 			const dusk = Math.min(1, Math.max(0, (0.03 - sunY) / 0.06));
 			U.street.value = dusk;
 			U.windows.value = windowsLit(hour) * Math.min(1, Math.max(0, (0.12 - sunY) / 0.15));
 			U.glow.value = dusk * adapt;
 			U.winGlow.value = adapt;
+			signals?.update(hour);
 			U.camXZ.value.set(camera.position.x, camera.position.z);
 		},
 	};

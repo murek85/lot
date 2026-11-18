@@ -28,7 +28,7 @@ export async function pool(list, n, fn, signal) {
 	await Promise.all(Array.from({ length: Math.min(n, list.length) }, worker));
 }
 
-const empty = () => ({ roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [] });
+const empty = () => ({ roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], cemeteries: [] });
 
 /**
  * Miejsca startu: podane z nazwy (regiony wbudowane – z odmianą gen/instr, kolejność jak na liście) albo wybrane
@@ -94,7 +94,7 @@ export async function buildRegion(params, io) {
 				out.buildings = own.buildings;
 				osm.parts.push(...own.parts);
 			}
-			for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms']) for (const o of out[k]) osm[k].push(o);
+			for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms', 'cemeteries']) for (const o of out[k]) osm[k].push(o);
 			for (const c of out.cover) rasterizePolygon(cover, coverRes, size, c.rings, c.cls, COVER_PRIORITY);
 			allPlaces.push(...out.places);
 		}

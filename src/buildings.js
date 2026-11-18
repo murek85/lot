@@ -21,8 +21,8 @@ export { buildBuildingTiles, minRect, polygonArea2, addBuilding, addCoolingTower
 const EARTH_R = 6371000;
 export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null, shared = null) {
 	const terrainH = (x, z) => terrain.meshHeightAt(x, z);
-	const { tiles, count, structures, beacons } = buildBuildingTiles(osm.buildings, terrainH, region.size / 2 - 30, osm.parts ?? []);
-	return buildingMeshes(tiles, { count, structures, beacons }, atmo, clouds, plane, worldShadow, shared);
+	const { tiles, count, structures, beacons, smoke } = buildBuildingTiles(osm.buildings, terrainH, region.size / 2 - 30, osm.parts ?? []);
+	return buildingMeshes(tiles, { count, structures, beacons, smoke }, atmo, clouds, plane, worldShadow, shared);
 }
 
 /**
@@ -30,7 +30,7 @@ export function createBuildings(osm, region, terrain, atmo, clouds, plane, world
  * materiały kafli otwartego świata.
  */
 export function buildingMeshes(tiles, info, atmo, clouds, plane, worldShadow = null, shared = null) {
-	const { count, structures, beacons } = info;
+	const { count, structures, beacons, smoke } = info;
 	// shared – wspólne materiały (kafle otwartego świata: jeden shader na wszystkie kafle)
 	const material = shared?.material ?? makeMaterial(atmo, clouds, plane, worldShadow);
 	const shadowMaterial = shared?.shadowMaterial ?? makeShadowMaterial(material.userData.camXZ);
@@ -63,6 +63,7 @@ export function buildingMeshes(tiles, info, atmo, clouds, plane, worldShadow = n
 		count,
 		structures,
 		beacons,
+		smoke,
 		material, shadowMaterial,
 		dispose() { for (const m of [...meshes, ...shadowCasters]) m.geometry.dispose(); },
 		/** Czerwone światła przeszkodowe na kominach i chłodniach – nocą, migające; jeden sprite z instancjami. */
@@ -184,7 +185,10 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 			.mul(step(0.34, cellU)).mul(step(cellU, 0.66)).mul(hasWin).mul(step(buv.y, 3));
 		const doorC = mix(vec3(0.16, 0.1, 0.06), vec3(0.22, 0.24, 0.26), step(0.5, hash12(vec2(col, seedB.add(2.1)))));
 		const winNoDoor = win.mul(float(1).sub(step(hash12(vec2(col, seedB.add(5.5))), select(isBlock.greaterThan(0.5), float(0.07), float(0.12))).mul(step(buv.y, 3))));
-		const wallAlb = mix(mix(facade.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(2)))), glass, winNoDoor.mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin))), doorC, isDoor.mul(detail));
+		// witryny na parterze: usługi/handel (light.x = 0,6) i co trzeci blok (lokale użytkowe); szyld nad witrynami
+		const isShop = step(0.58, light.x).mul(step(light.x, 0.62)).max(isBlock.mul(step(hash12(vec2(seedB, 4.4)), 0.3))).mul(hasWin);
+		const shopWin = isShop.mul(step(buv.y, 3)).mul(step(0.06, cellU)).mul(step(cellU, 0.94)).mul(step(0.1, cellV)).mul(step(cellV, 0.72)).mul(isDoor.oneMinus());
+		const wallAlb = mix(mix(facade.mul(mix(float(0.9), float(1.05), valueNoise(vWorld.xz.add(worldOffset).div(2)))), glass, winNoDoor.max(shopWin).mul(detail).add(float(0.18).mul(detail.oneMinus()).mul(hasWin))), doorC, isDoor.mul(detail));
 		// --- dachy spadziste: u – metry wzdłuż kalenicy, v – metry wzdłuż spadku od okapu; rodzaj 1 (okap) → 1,4 (kalenica)
 		const onSlope = clamp(kind.sub(1).div(0.4), 0, 1);
 		const seed = light.y;
@@ -249,11 +253,39 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const cellId = vec2(floor(buv.x.div(3.1)), floor(buv.y.div(3)));
 		const hw = hash12(cellId.add(vec2(light.y.mul(913.7), light.y.mul(271.3))));
 		const on = step(hw, CU.windows.mul(light.x)).mul(step(1, buv.y)).mul(step(kind, 0.5));
+		// barwa: żarówka, ciepła biel, LED, świetlówka, telewizor (migocze), rzadko kolorowe LED-y; budynek ma swój
+		// charakter (nowsze – chłodniej), biura i hale – świetlówki i LED-y
 		const tone = hash12(cellId.add(vec2(light.y.mul(57.1), 3.3)));
-		const wcol = mix(vec3(1.0, 0.68, 0.36), vec3(0.62, 0.72, 1.0), step(0.86, tone)).mul(mix(float(0.55), float(1.1), tone));
+		const bt = hash12(vec2(light.y.mul(31.7), 8.1));
+		const isWork = step(0.58, light.x).mul(step(light.x, 0.62)).max(step(0.2, light.x).mul(step(light.x, 0.3)));
+		const t = clamp(mix(tone, tone.mul(0.35).add(0.5), isWork).add(bt.sub(0.5).mul(0.3)), 0, 1);
+		const accent = hash12(cellId.add(vec2(light.y.mul(11.3), 9.9)));
+		const accentC = select(accent.lessThan(0.4), vec3(0.85, 0.35, 1.0), select(accent.lessThan(0.7), vec3(1.0, 0.32, 0.24), vec3(0.45, 1.0, 0.6)));
+		const wcol = select(t.lessThan(0.32), vec3(1.0, 0.58, 0.26), select(t.lessThan(0.58), vec3(1.0, 0.78, 0.5), select(t.lessThan(0.76), vec3(0.95, 0.92, 0.82),
+			select(t.lessThan(0.88), vec3(0.78, 0.9, 1.0), select(t.lessThan(0.965), vec3(0.42, 0.56, 1.0), accentC)))));
+		const isTv = step(0.88, t).mul(step(t, 0.965));
+		const flicker = mix(float(1), hash12(vec2(floor(time.mul(7)), hw.mul(97.3))).mul(0.7).add(0.45), isTv);
+		const bright = mix(float(0.5), float(1.15), hash12(cellId.add(vec2(light.y.mul(7.7), 1.1)))).mul(flicker);
+		// klatki schodowe w blokach: pion okien co 9 kolumn, piętra zapalają się i gasną (czujnik ruchu)
+		const stairs = isBlock.mul(step(kind, 0.5)).mul(step(fract(col.add(floor(bt.mul(9))).div(9)), 0.05)).mul(step(1, buv.y))
+			.mul(step(hash12(vec2(floorN, floor(time.div(17).add(hash12(vec2(floorN, seedB)).mul(5))).add(seedB))), 0.45));
 		// z bliska – kształt okna; z daleka – średnia (okna zajmują ~18% ściany)
 		const shape = winNoDoor.mul(detail).add(float(0.18).mul(detail.oneMinus()));
-		return lit.add(wcol.mul(on.mul(shape).mul(1.3).mul(CU.winGlow)));
+		// grudzień: w części okien kolorowe światełka (migoczą, każde okno w swoim rytmie)
+		const fh = hash12(cellId.add(vec2(light.y.mul(19.3), 4.7)));
+		const festC = select(fh.lessThan(0.3), vec3(1, 0.65, 0.2), select(fh.lessThan(0.5), vec3(1, 0.15, 0.1), select(fh.lessThan(0.7), vec3(0.25, 0.45, 1), select(fh.lessThan(0.85), vec3(0.2, 1, 0.35), vec3(1, 0.3, 0.9)))));
+		const festWin = step(fh, CU.festive.mul(0.12)).mul(step(1, buv.y)).mul(step(kind, 0.5)).mul(CU.street)
+			.mul(step(0.3, fract(time.mul(0.6).add(fh.mul(29)))).mul(0.6).add(0.4));
+		const windows = wcol.mul(on.mul(bright)).add(vec3(0.75, 0.95, 0.85).mul(stairs.mul(CU.street).mul(0.8))).add(festC.mul(festWin));
+		// witryny i szyldy (świecą, gdy palą się latarnie; część lokali ciemna)
+		const shopOn = isShop.mul(CU.street).mul(step(hash12(vec2(col, seedB.add(8.8))), 0.75)).mul(step(kind, 0.5));
+		const shopC = mix(vec3(1.0, 0.93, 0.8), vec3(0.85, 0.93, 1.0), step(0.5, bt)).mul(1.4);
+		const sh = hash12(vec2(floor(buv.x.div(9)), seedB.add(6.6)));
+		const signC = select(sh.lessThan(0.25), vec3(1.0, 0.12, 0.1), select(sh.lessThan(0.45), vec3(0.15, 0.45, 1.0), select(sh.lessThan(0.6), vec3(0.2, 1.0, 0.35),
+			select(sh.lessThan(0.75), vec3(1.0, 0.75, 0.1), select(sh.lessThan(0.9), vec3(1.0, 0.3, 0.85), vec3(1.0))))));
+		const sign = step(2.3, buv.y).mul(step(buv.y, 2.8)).mul(step(sh, 0.7)).mul(detail).add(float(0.06).mul(detail.oneMinus()).mul(step(buv.y, 3)));
+		const shops = shopC.mul(shopWin.mul(detail).add(float(0.25).mul(detail.oneMinus()).mul(step(buv.y, 3)))).add(signC.mul(sign).mul(2.2));
+		return lit.add(windows.mul(shape).add(shops.mul(shopOn)).mul(1.3).mul(CU.winGlow));
 	})();
 	return m;
 }

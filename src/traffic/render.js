@@ -45,9 +45,11 @@ function vehicleGeometry(id) {
 	return b;
 }
 
-/** Jeden rodzaj pojazdu: siatka z instancjami (do max sztuk); atrybuty instancji aktualizowane co klatkę. */
-function makeKind(id, cap, atmo, clouds, plane, camXZ) {
-	const b = vehicleGeometry(id);
+/**
+ * Jeden rodzaj pojazdu: siatka z instancjami (do max sztuk); atrybuty instancji aktualizowane co klatkę. b – bryła
+ * (GeoBuilder; kolor 1,1,1 – barwa instancji), domyślnie pojazd id; używane też dla zwierząt (src/fauna/animals.js).
+ */
+export function makeKind(id, cap, atmo, clouds, plane, camXZ, b = vehicleGeometry(id)) {
 	const g = new InstancedBufferGeometry();
 	g.setAttribute('position', new BufferAttribute(new Float32Array(b.pos), 3));
 	g.setAttribute('normal', new BufferAttribute(new Float32Array(b.nrm), 3));
@@ -94,13 +96,15 @@ function makeKind(id, cap, atmo, clouds, plane, camXZ) {
 function makeLights(cap, camXZ, pixelAngle) {
 	const pos = new InstancedBufferAttribute(new Float32Array(cap * 3), 3);
 	const col = new InstancedBufferAttribute(new Float32Array(cap * 3), 3);
-	pos.setUsage(35048); col.setUsage(35048);
+	const size = new InstancedBufferAttribute(new Float32Array(cap), 1); // mnożnik rozmiaru (plama reflektorów na jezdni – duża)
+	pos.setUsage(35048); col.setUsage(35048); size.setUsage(35048);
 	const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
 	const center = instancedBufferAttribute(pos), color = instancedBufferAttribute(col);
 	const world = onGround(center, camXZ);
 	m.positionNode = world;
 	const dist = length(cameraPosition.sub(world));
-	const s = max(float(1.4), dist.mul(pixelAngle).mul(6.5)).min(40);
+	const k = instancedBufferAttribute(size);
+	const s = max(float(1.4).mul(k), dist.mul(pixelAngle).mul(6.5)).min(40);
 	m.scaleNode = vec2(s, s);
 	const q = uv().sub(0.5).mul(2);
 	const r2 = dot(q, q);
@@ -111,13 +115,13 @@ function makeLights(cap, camXZ, pixelAngle) {
 	sprite.count = 0;
 	sprite.frustumCulled = false;
 	sprite.renderOrder = 15;
-	return { sprite, pos, col };
+	return { sprite, pos, col, size };
 }
 
 export function createTrafficView(sim, atmo, clouds, plane, pixelAngle, cap = 3000) {
 	const camXZ = uniform(new Vector2());
 	const kinds = VEHICLES.map((v) => makeKind(v.id, cap, atmo, clouds, plane, camXZ));
-	const lights = makeLights(cap * 4, camXZ, pixelAngle);
+	const lights = makeLights(cap * 5, camXZ, pixelAngle);
 	const objects = [...kinds.map((k) => k.mesh), lights.sprite];
 	return {
 		objects,
@@ -127,18 +131,22 @@ export function createTrafficView(sim, atmo, clouds, plane, pixelAngle, cap = 30
 			camXZ.value.set(camera.position.x, camera.position.z);
 			const n = kinds.map(() => 0);
 			let L = 0;
-			const lp = lights.pos.array, lc = lights.col.array;
+			const lp = lights.pos.array, lc = lights.col.array, ls = lights.size.array;
 			for (const a of sim.agents) {
 				const k = kinds[a.type], i = n[a.type]++;
 				k.pos.array.set([a.x, a.y, a.z], i * 3);
 				k.dir.array.set([a.hx, a.hz], i * 2);
 				k.col.array.set(a.color, i * 3);
-				if (night > 0.01 && L + 4 <= cap * 4) {
-					// reflektory na przodzie, tylne na tyle; ±0,6 szerokości w bok
+				if (night > 0.01 && L + 5 <= cap * 5) {
+					// reflektory na przodzie (LED-owe chłodniejsze), tylne na tyle – przy hamowaniu jaśniejsze; ±0,32 szerokości
+					// w bok; plama świateł na jezdni ~9 m przed autem (duży, słaby sprite tuż nad asfaltem)
 					const rx = -a.hz, rz = a.hx, h = a.len / 2, sw = a.width * 0.32, y = a.y + 0.75;
-					for (const [along, side, c] of [[h, sw, [1, 0.92, 0.75]], [h, -sw, [1, 0.92, 0.75]], [-h, sw, [0.9, 0.04, 0.02]], [-h, -sw, [0.9, 0.04, 0.02]]]) {
-						lp.set([a.x + a.hx * along + rx * side, y, a.z + a.hz * along + rz * side], L * 3);
-						lc.set(along > 0 ? c : c.map((v) => v * 0.55), L * 3);
+					const head = (a.color[0] * 7 + a.color[2] * 3) % 1 < 0.35 ? [0.85, 0.92, 1] : [1, 0.9, 0.7];
+					const tail = a.brake ? [1, 0.06, 0.03] : [0.5, 0.02, 0.01];
+					for (const [along, side, c, k, dy] of [[h, sw, head, 1, 0], [h, -sw, head, 1, 0], [-h, sw, tail, 1, 0], [-h, -sw, tail, 1, 0], [h + 8, 0, head.map((v) => v * 0.035), 4, -0.55]]) {
+						lp.set([a.x + a.hx * along + rx * side, y + dy, a.z + a.hz * along + rz * side], L * 3);
+						lc.set(c, L * 3);
+						ls[L] = k;
 						L++;
 					}
 				}
@@ -150,7 +158,7 @@ export function createTrafficView(sim, atmo, clouds, plane, pixelAngle, cap = 30
 			});
 			lights.sprite.count = L;
 			lights.sprite.visible = L > 0;
-			for (const at of [lights.pos, lights.col]) { at.needsUpdate = true; at.clearUpdateRanges?.(); at.addUpdateRange?.(0, L * 3); }
+			for (const at of [lights.pos, lights.col, lights.size]) { at.needsUpdate = true; at.clearUpdateRanges?.(); at.addUpdateRange?.(0, L * at.itemSize); }
 		},
 	};
 }

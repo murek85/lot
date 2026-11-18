@@ -13,9 +13,9 @@ import { createBridges } from './bridges.js';
 import { createDetails } from './details.js';
 import { WORLD_ID, worldStart, worldRegion, createWorld, trimTileCache, REBASE_AT, REBASE_STEP } from './world/world.js';
 import { WorldLights } from './world/lights.js';
-import { setTerrainUniforms, setCityLights, snowCover, bareTrees, setSeason } from './gfx/ground.js';
-import { wetness } from './gfx/wet.js';
-import { seasonPalette } from './weather/seasons.js';
+import { setTerrainUniforms, setCityLights, snowCover, setSeason } from './gfx/ground.js';
+import { wetness, rainRate } from './gfx/wet.js';
+import { paletteForDay } from './weather/seasons.js';
 import { createCityLights } from './citylights.js';
 import { createPost } from './post.js';
 import { Clouds } from './clouds/clouds.js';
@@ -29,6 +29,8 @@ import { Precipitation } from './weather/precip.js';
 import { buildRoadGraph, edgeGrid } from './traffic/graph.js';
 import { TrafficSim, trafficByHour } from './traffic/sim.js';
 import { createTrafficView } from './traffic/render.js';
+import { SmokeSet } from './smoke.js';
+import { Fireworks, fireworksRate } from './fireworks.js';
 import { TrainSim } from './traffic/trains.js';
 import { createTrainView } from './traffic/trainview.js';
 import { BirdSim, speciesWeights } from './fauna/birds.js';
@@ -36,6 +38,9 @@ import { createBirdView } from './fauna/birdview.js';
 import { BirdDots } from './fauna/birddots.js';
 import { PeopleSim, peopleByHour } from './fauna/people.js';
 import { createPeopleView } from './fauna/peopleview.js';
+import { AnimalSim, createAnimalView, animalWeights } from './fauna/animals.js';
+import { AirSim, createAirView, airTargets } from './traffic/air.js';
+import { BoatSim, createBoatView, boatTargets } from './traffic/boats.js';
 import { weatherById, seasonWeather, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt, valleyFog } from './weather/weather.js';
 import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
@@ -199,6 +204,17 @@ async function start() {
 		scene.add(...view.objects);
 		people = { sim, view };
 	}
+	// zwierzęta: krowy na pastwiskach, sarny na skrajach lasów – z niska (src/fauna/animals.js)
+	const animalSim = new AnimalSim({ groundAt: (x, z) => terrain.meshHeightAt(x, z), coverAt, radius: 1500 });
+	const animals = { sim: animalSim, view: createAnimalView(animalSim, atmo, clouds, plane) };
+	scene.add(...animals.view.objects);
+	// ruch w tle: inne statki powietrzne (src/traffic/air.js) i łodzie (src/traffic/boats.js)
+	const airSim = new AirSim({ groundAt: (x, z) => terrain.meshHeightAt(x, z) });
+	const air = { sim: airSim, view: createAirView(airSim, atmo, clouds, plane, atmo.u.pixelAngle), runwaysAt: 0 };
+	scene.add(...air.view.objects);
+	const boatSim = new BoatSim({ groundAt: (x, z) => terrain.meshHeightAt(x, z), coverAt });
+	const boats = { sim: boatSim, view: createBoatView(boatSim, atmo, clouds, plane) };
+	scene.add(...boats.view.objects);
 	// ruch kolejowy: pociągi na torach regionu, postoje na stacjach (src/traffic/trains.js)
 	let trains = null;
 	if (simOsm?.rails?.length || world) {
@@ -214,9 +230,48 @@ async function start() {
 	const precip = new Precipitation(atmo.u.pixelAngle);
 	// odległe ptaki jako punkty – nakładka po wygładzaniu
 	const birdDots = new BirdDots(birdSim, atmo, atmo.u.pixelAngle);
+	// dym z kominów, para z chłodni, zimą dym z domów (src/smoke.js) – w tej samej nakładce co ptaki
+	const smoke = new SmokeSet(atmo, atmo.u.pixelAngle);
+	if (world) world.view.smoke = smoke;
+	else if (buildings?.smoke) smoke.set('region', buildings.smoke);
+	// fajerwerki w noc sylwestrową (src/fireworks.js) – też w nakładce
+	const fireworks = new Fireworks(atmo.u.pixelAngle);
+	const overlay = { scene: birdDots.scene, build: (d, p) => { birdDots.build(d, p); smoke.build(d, p, birdDots.scene); fireworks.build(d, p, birdDots.scene); air.view.build(d, p, birdDots.scene); } };
+	/**
+	 * Końce pasów startowych z wczytanych kafli: odcinki pasów (przycięte do kafli) – koniec to punkt bez sąsiedniego
+	 * odcinka w promieniu 10 m; kierunek lądowania – do wnętrza pasa.
+	 */
+	const runwayEnds = () => {
+		const segs = [];
+		for (const ch of world.streamer.chunks.values()) for (const [, c] of ch.osm?.runways ?? []) if (c.length >= 4) segs.push(c);
+		const ends = [];
+		for (const c of segs) for (const [i, j] of [[0, 2], [c.length - 2, c.length - 4]]) ends.push({ x: c[i] / 10, z: c[i + 1] / 10, nx: c[j] / 10, nz: c[j + 1] / 10, c });
+		const out = [];
+		for (const e of ends) {
+			if (ends.some((o) => o !== e && o.c !== e.c && Math.hypot(o.x - e.x, o.z - e.z) < 10)) continue;
+			const dx = e.nx - e.x, dz = e.nz - e.z, l = Math.hypot(dx, dz) || 1;
+			out.push({ x: e.x, z: e.z, ux: dx / l, uz: dz / l, len: 2500 });
+		}
+		return out;
+	};
+	/** Miejsca startu fajerwerków: latarnie w zabudowie do ~6 km od kamery (najwyżej kilkaset). */
+	const fireworkSites = () => {
+		const c = camera.position, out = [];
+		if (worldLights) {
+			for (const { data } of worldLights.lamps.values()) for (let i = 0; i < data.length; i += 4 * 7) {
+				if (Math.hypot(data[i] - c.x, data[i + 2] - c.z) < 6000) out.push([data[i], data[i + 1], data[i + 2]]);
+			}
+		} else if (cityLights?.lamps) {
+			for (let i = 0; i < cityLights.lamps.length; i += 7) {
+				const [x, z] = cityLights.lamps[i];
+				if (Math.hypot(x - c.x, z - c.z) < 6000) out.push([x, terrain.meshHeightAt(x, z), z]);
+			}
+		}
+		return out;
+	};
 	// przebiegi z nakładkami czyszczone przezroczyście (krycie w kanale alfa); obraz końcowy i tak jest nieprzezroczysty
 	renderer.setClearColor(0x000000, 0);
-	const post = createPost(renderer, scene, camera, atmo, clouds, precip, birdDots);
+	const post = createPost(renderer, scene, camera, atmo, clouds, precip, overlay);
 
 	const view = new ViewCamera(camera, canvas, (x, z) => region.heightAt(x, z));
 	// start nad pierwszym miejscem regionu (Tuchola), z widokiem na północny zachód
@@ -380,6 +435,7 @@ async function start() {
 	// ================= stan gry i menu =================
 	// menu – samolot krąży na autopilocie, kamera kinowo go okrąża; flying – lot; paused – symulacja stoi; crashed
 	let game = 'menu';
+	const MENU_HOUR = 13; // tło menu: wczesne popołudnie
 	let lastStart = null; // do „Leć ponownie” i klawisza R: plan albo zapis
 	let autosaveAt = 0, crashAt = 0, escHintUntil = 0;
 	const timeName = () => TIMES.reduce((a, b) => (Math.abs(b.hour - state.hour) < Math.abs(a.hour - state.hour) ? b : a));
@@ -388,13 +444,14 @@ async function start() {
 	let lastRunning = env.timeSpeed !== 'stop' ? env.timeSpeed : 'x1';
 	// pogoda w locie: śnieg na ziemi narasta powoli (cel), burza – harmonogram błyskawic, bieżące uderzenie
 	const wx = { snowTarget: 0, wetTarget: 0, storm: lightning(), strike: null, thunder: [], wind: { x: 0, z: 0, speed: 0 } };
+	let seasonDay = -1; // dzień roku, dla którego ustawiono paletę pory roku
 	const setEnvironment = (kind, id, instant = false) => {
 		env[kind] = id;
 		if (kind === 'time') state.hour = (TIMES.find((t) => t.id === id) ?? TIMES[1]).hour;
 		if (kind === 'season') {
 			state.day = (SEASONS.find((t) => t.id === id) ?? SEASONS[1]).day;
-			bareTrees.value = id === 'winter' ? 1 : 0;
-			setSeason(seasonPalette(id)); // uprawy, trawa i liście pory roku
+			setSeason(paletteForDay(state.day)); // uprawy, trawa, liście i nagie drzewa – z dnia roku (src/weather/seasons.js)
+			seasonDay = state.day;
 		}
 		if (kind === 'timeSpeed' && id !== 'stop') lastRunning = id;
 		if (kind === 'weather' || kind === 'season') {
@@ -412,9 +469,11 @@ async function start() {
 		}
 		syncPanel();
 	};
-	const applyPlanEnv = (p) => {
+	/** Pogoda i pora z planu; inMenu – tło menu zawsze w dzień (godzina z planu obowiązuje od startu lotu). */
+	const applyPlanEnv = (p, inMenu = false) => {
 		setEnvironment('time', p.time); setEnvironment('season', p.season); setEnvironment('weather', p.weather, true); setEnvironment('wind', p.wind ?? 'light');
 		setEnvironment('timeSpeed', p.timeSpeed ?? 'x1');
+		if (inMenu) { state.hour = MENU_HOUR; syncPanel(); }
 	};
 	const applySetting = (k, v) => {
 		settings[k] = v;
@@ -611,7 +670,7 @@ async function start() {
 		else switchAircraftInMenu(plan.aircraft);
 		flight = startAt(plan.place, 380);
 		flight.speed = plane.spec.flight.cruise;
-		applyPlanEnv(plan);
+		applyPlanEnv(plan, true);
 		setMode('plane');
 		menu.from = {};
 		menu.show('home');
@@ -644,7 +703,7 @@ async function start() {
 			plan = { ...p };
 			save('plan', plan);
 			if (game === 'menu') {
-				applyPlanEnv(plan);
+				applyPlanEnv(plan, true);
 				if (plan.aircraft !== plane.type) switchAircraftInMenu(plan.aircraft);
 				if (placeChanged) { flight = startAt(plan.place, 380); flight.speed = plane.spec.flight.cruise; }
 			}
@@ -681,7 +740,7 @@ async function start() {
 	ownAreas.then((a) => { areas = a; });
 	const menu = new GameMenu($('menu'), menuApi);
 	for (const [k, v] of Object.entries(settings)) applySetting(k, v);
-	applyPlanEnv(plan);
+	applyPlanEnv(plan, true);
 	plane.setAircraft(plan.aircraft);
 	flight = startAt(plan.place, 380);
 	flight.speed = plane.spec.flight.cruise;
@@ -833,8 +892,13 @@ async function start() {
 		camera.updateMatrixWorld();
 		for (const p of places) { p.x -= dx; p.z -= dz; } // miejsca startu (też w opisie położenia)
 		if (target) { target.x -= dx; target.z -= dz; }
+		for (const g of animals.sim.groups) { g.x -= dx; g.z -= dz; for (const a of g.animals) { a.x -= dx; a.z -= dz; } }
+		for (const a of air.sim.agents) { a.x -= dx; a.z -= dz; if (a.cx !== undefined) { a.cx -= dx; a.cz -= dz; } }
+		air.sim.runways = []; air.runwaysAt = 0;
+		for (const b of boats.sim.boats) { b.x -= dx; b.z -= dz; }
 		for (const g of birds.sim.groups) {
 			g.x -= dx; g.z -= dz; g.tx -= dx; g.tz -= dz;
+			if (g.vee) { g.vee.x -= dx; g.vee.z -= dz; }
 			if (g.thermal) { g.thermal.x -= dx; g.thermal.z -= dz; }
 			for (const b of g.birds) { b.x -= dx; b.z -= dz; }
 		}
@@ -1036,15 +1100,12 @@ async function start() {
 		const t = timer.getElapsed();
 		// zegar gry: w locie płynie z wybranym tempem (pauza, menu i wczytywanie – stoi)
 		const rate = (TIME_SPEEDS.find((s) => s.id === env.timeSpeed) ?? TIME_SPEEDS[1]).rate;
-		if (game === 'flying' && rate > 0 && !playing) {
-			const c = advanceClock(state.hour, state.day, dt, rate);
+		// odtwarzanie ▶ w panelu: 0,25 h na sekundę (×900); po północy – następny dzień (też suwak daty)
+		if ((game === 'flying' && rate > 0) || playing) {
+			const c = advanceClock(state.hour, state.day, dt, playing ? 900 : rate);
 			state.hour = c.hour;
-			state.day = c.day;
-		}
-		if (playing) {
-			state.hour = (state.hour + dt * 0.25) % 24;
-			$('hour').value = state.hour;
-			$('hour-v').textContent = hhmm(state.hour);
+			if (c.day !== state.day) { $('day').value = c.day; $('day').dispatchEvent(new Event('input')); }
+			if (playing) { $('hour').value = state.hour; $('hour-v').textContent = hhmm(state.hour); }
 		}
 		const p = sunPosition(state.day, state.hour - UTC_OFFSET, center.lat, center.lon);
 		sun.set(...sunDirection(p.azimuth, p.elevation));
@@ -1140,8 +1201,13 @@ async function start() {
 		clouds.u.ambient.value = 0.5 + flash * 1.2;
 		const daylight = Math.min(1, Math.max(0.03, sun.y * 3 + 0.2)) * (W.storm ? 0.55 : W.precip ? 0.8 : 1);
 		const pr = W.precip;
+		rainRate.value = pr?.type === 'rain' ? pr.rate : 0; // kręgi kropel na wodzie
 		post.veil.value = pr ? pr.rate * (pr.type === 'snow' ? 0.4 : W.storm ? 0.45 : 0.3) : 0;
 		post.veilColor.value.setRGB(0.42 * daylight, 0.44 * daylight, 0.48 * daylight);
+		// tęcza: słońce nisko (poniżej 42°) i nad horyzontem, w deszczu (nie w burzy) albo zaraz po nim, gdy jeszcze mokro
+		const lowSun = Math.min(1, Math.max(0, sun.y / 0.06)) * Math.min(1, Math.max(0, (0.66 - sun.y) / 0.08));
+		const rainNow = pr?.type === 'rain' && !W.storm ? 0.6 : 0, after = !pr ? Math.max(0, (wetness.value - 0.25) / 0.75) : 0;
+		post.rainbow.value = lowSun * Math.max(rainNow, after);
 		precip.update(game === 'paused' ? 0 : dt, camera, {
 			type: pr?.type ?? null, rate: pr?.rate ?? 0, wind: windNow, flash, bolt,
 			light: [0.5 * daylight, 0.53 * daylight, 0.58 * daylight].map((v) => v * (pr?.type === 'snow' ? 1.6 : 1)),
@@ -1186,6 +1252,7 @@ async function start() {
 		// ptaki: gatunki z pory dnia, roku i pogody; płoszy je samolot, zderzenie – dźwięk i komunikat
 		if (settings.birds !== false) {
 			birds.sim.weights = speciesWeights({ sunY: sun.y, day: state.day, hour: state.hour, weather: W });
+			birds.sim.day = state.day;
 			birds.sim.density = 1;
 			const pp = plane.model.position;
 			const fwd = game === 'flying' || game === 'menu' ? { x: pp.x, y: pp.y, z: pp.z } : null;
@@ -1202,6 +1269,14 @@ async function start() {
 				}
 			}
 		} else { birds.view.objects.forEach((o) => (o.visible = false)); if (birdDots.sprite) birdDots.sprite.visible = false; }
+		// zwierzęta: gdy kamera niżej niż ~700 m nad ziemią
+		{
+			const cp = camera.position, agl = cp.y - groundAt(cp.x, cp.z);
+			animals.sim.weights = agl < 700 ? animalWeights(state.day, state.hour, sun.y) : { cow: 0, deer: 0 };
+			const pp = plane.model.position;
+			if (game !== 'paused' && game !== 'loading') animals.sim.step(dt, { x: cp.x, z: cp.z }, game === 'flying' ? { x: pp.x, y: pp.y, z: pp.z } : null);
+			animals.view.update(camera);
+		}
 		// piesi: gdy kamera nisko (poniżej ~350 m nad ziemią); gwar w pobliżu
 		let crowd = 0;
 		if (people) {
@@ -1248,7 +1323,28 @@ async function start() {
 		else if (mode === 'cockpit') cockpitCam.update(plane.model, flight, dt, t, rpm);
 		else view.update(dt);
 		const night = Math.min(1, Math.max(0, (0.06 - sun.y) / 0.16));
-		cityLights?.update(state.hour, sun.y, Math.min(1, 2.4 / renderer.toneMappingExposure), camera);
+		cityLights?.update(state.hour, sun.y, Math.min(1, 2.4 / renderer.toneMappingExposure), camera, state.day);
+		// pora roku z kalendarza: zmiana dnia (upływ czasu, suwak daty) – nowa paleta pól i drzew
+		if (state.day !== seasonDay) { seasonDay = state.day; setSeason(paletteForDay(state.day)); }
+		// dym z domów: w sezonie grzewczym – zimą cały dzień, jesienią i wczesną wiosną rano i wieczorem
+		const hh = state.hour, dd = state.day, coldHours = hh < 9 || hh > 16 ? 1 : 0.3;
+		fireworks.update(game === 'paused' ? 0 : dt, camera, fireworksRate(dd, hh), fireworkSites);
+		{
+			// statki powietrzne: rodzaje z pory i pogody; końce pasów z kafli (co 5 s); smugi przy pogodnym niebie
+			const live = game !== 'paused' && game !== 'loading', pp = plane.model.position;
+			if (world && t > air.runwaysAt) { air.runwaysAt = t + 5; air.sim.runways = runwayEnds(); }
+			air.sim.targets = airTargets({ day: dd, hour: hh, sunY: sun.y, wind: wx.wind.speed, cover: state.cover, precip: !!W.precip, storm: !!W.storm });
+			air.sim.wind = wx.wind;
+			if (live) air.sim.step(dt, { x: pp.x, z: pp.z });
+			air.view.night.value = night;
+			air.view.update(camera, W.precip || state.cover > 0.85 ? 0 : 1 - state.cover * 0.6, wx.wind);
+			// łodzie – z niska (do ~1,5 km nad ziemią)
+			const cp = camera.position;
+			boats.sim.targets = cp.y - groundAt(cp.x, cp.z) < 1500 ? boatTargets(dd, sun.y) : { sail: 0, motor: 0, barge: 0 };
+			if (live) boats.sim.step(dt, { x: cp.x, z: cp.z });
+			boats.view.update(camera);
+		}
+		smoke.update(camera, env.season === 'winter' || dd >= 335 || dd <= 60 ? 1 : dd >= 285 || dd <= 110 ? 0.6 * coldHours : 0);
 		plane.updateAfterCamera(camera, flight, t, dt, { rpm, hour: state.hour, night, cockpit: game !== 'menu' && mode === 'cockpit', controls, viewportH: renderer.domElement.height, exposure: renderer.toneMappingExposure });
 		// tilt-shift: ostry pas na samolocie (albo na środku kadru w widoku swobodnym)
 		const ts = post.tiltShift.uniforms;
@@ -1409,7 +1505,7 @@ async function start() {
 		out.sort((a, b) => a - b);
 		return out[n >> 1];
 	};
-	window.__lot = { gpuTime, jumpTo, setEnvironment, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { gpuTime, jumpTo, setEnvironment, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, smoke, fireworks, animals, air, boats, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {
