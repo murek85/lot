@@ -65,6 +65,7 @@ import { createPeopleView } from './fauna/peopleview.js';
 import { AnimalSim, createAnimalView, animalWeights } from './fauna/animals.js';
 import { AirSim, createAirView, airTargets } from './traffic/air.js';
 import { BoatSim, createBoatView, boatTargets } from './traffic/boats.js';
+import { TransitSim, createTransitView } from './traffic/transit.js';
 import { weatherById, seasonWeather, effectiveWind, windVector, windFrom, turbulence, lightning, flashAt, valleyFog } from './weather/weather.js';
 import { stallAmount } from './audio/mix.js';
 import { aircraftById } from './plane/aircraft.js';
@@ -251,6 +252,9 @@ async function start() {
 	const boatSim = new BoatSim({ groundAt: (x, z) => terrain.meshHeightAt(x, z), coverAt });
 	const boats = { sim: boatSim, view: createBoatView(boatSim, atmo, clouds, plane) };
 	scene.add(...boats.view.objects);
+	const transitSim = new TransitSim({ groundAt: (x, z) => terrain.meshHeightAt(x, z) });
+	const transit = { sim: transitSim, view: createTransitView(transitSim, atmo, clouds, plane), at: 0 };
+	scene.add(...transit.view.objects);
 	// ruch kolejowy: pociągi na torach regionu, postoje na stacjach (src/traffic/trains.js)
 	let trains = null;
 	if (simOsm?.rails?.length || world) {
@@ -293,6 +297,32 @@ async function start() {
 			out.push({ x: e.x, z: e.z, ux: dx / l, uz: dz / l, len: 2500 });
 		}
 		return out;
+	};
+	/**
+	 * Torowiska i przystanki w promieniu ~4 km od kamery: z kafli otwartego świata albo z danych regionu; kierunek
+	 * autobusu – wzdłuż najbliższego odcinka drogi.
+	 */
+	const refreshTransit = () => {
+		const c = camera.position, R = 4000, sets = world ? [...world.streamer.chunks.values()].map((ch) => ch.osm).filter(Boolean) : region.osm ? [region.osm] : [];
+		const lines = [], stops = [];
+		for (const o of sets) {
+			for (const l of o.trams ?? []) if (Math.hypot(l[0] / 10 - c.x, l[1] / 10 - c.z) < R) lines.push(l.map((v) => v / 10));
+			const near = (o.busStops ?? []).filter(([x, z]) => Math.hypot(x / 10 - c.x, z / 10 - c.z) < 1600);
+			if (!near.length) continue;
+			const roads = o.roads.filter((r) => r[0] <= 4 && Math.hypot(r[5][0] / 10 - c.x, r[5][1] / 10 - c.z) < 2500);
+			for (const [sx, sz] of near) {
+				let best = 400, hx = 1, hz = 0, px = sx / 10, pz = sz / 10;
+				for (const r of roads) for (let i = 2; i < r[5].length; i += 2) {
+					const ax = r[5][i - 2] / 10, az = r[5][i - 1] / 10, bx = r[5][i] / 10, bz = r[5][i + 1] / 10, dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1;
+					const k = Math.max(0, Math.min(1, ((sx / 10 - ax) * dx + (sz / 10 - az) * dz) / L2)), qx = ax + dx * k, qz = az + dz * k;
+					const d2 = (qx - sx / 10) ** 2 + (qz - sz / 10) ** 2;
+					if (d2 < best) { best = d2; const l = Math.sqrt(L2); hx = dx / l; hz = dz / l; px = qx; pz = qz; }
+				}
+				stops.push({ x: (px + sx / 10) / 2, z: (pz + sz / 10) / 2, hx, hz }); // autobus między osią drogi a przystankiem
+			}
+		}
+		transit.sim.setTracks(lines);
+		transit.sim.stops = stops;
 	};
 	/** Miejsca startu fajerwerków: latarnie w zabudowie do ~6 km od kamery (najwyżej kilkaset). */
 	const fireworkSites = () => {
@@ -936,6 +966,7 @@ async function start() {
 		for (const a of air.sim.agents) { a.x -= dx; a.z -= dz; if (a.cx !== undefined) { a.cx -= dx; a.cz -= dz; } }
 		air.sim.runways = []; air.runwaysAt = 0;
 		for (const b of boats.sim.boats) { b.x -= dx; b.z -= dz; }
+		transit.sim.trams.length = 0; transit.sim.tracks = []; transit.sim.stops = []; transit.at = 0; // torowiska od nowa w nowym układzie
 		for (const g of birds.sim.groups) {
 			g.x -= dx; g.z -= dz; g.tx -= dx; g.tz -= dz;
 			if (g.vee) { g.vee.x -= dx; g.vee.z -= dz; }
@@ -1248,6 +1279,21 @@ async function start() {
 		const lowSun = Math.min(1, Math.max(0, sun.y / 0.06)) * Math.min(1, Math.max(0, (0.66 - sun.y) / 0.08));
 		const rainNow = pr?.type === 'rain' && !W.storm ? 0.6 : 0, after = !pr ? Math.max(0, (wetness.value - 0.25) / 0.75) : 0;
 		post.rainbow.value = lowSun * Math.max(rainNow, after);
+		// przelotne ulewy w oddali: przy dużym zachmurzeniu bez opadu u nas, latem po południu i przy umiarkowanym;
+		// czasem błysk w nich (daleka burza) i cichy grzmot
+		const summerPm = state.day > 140 && state.day < 250 && state.hour > 13 && state.hour < 20;
+		const showers = pr ? 0 : state.cover > 0.6 ? 1 : summerPm && state.cover > 0.35 ? 0.6 : 0;
+		post.showers.value = showers;
+		if (showers > 0 && live && !wx.far && Math.random() < dt / 14) wx.far = { t: 0, flickers: [0, 0.09 + Math.random() * 0.1] };
+		if (wx.far) {
+			wx.far.t += dt;
+			post.showerFlash.value = flashAt(wx.far.t, wx.far.flickers, 3500) / exposureNow * 0.35;
+			if (wx.far.t > 1.2) { if (Math.random() < 0.5) audio.event('thunder', 14000); wx.far = null; }
+		} else post.showerFlash.value = 0;
+		// złota godzina: słońce nisko (0–14°) – cieplej i trochę bardziej nasycenie
+		const golden = Math.min(1, Math.max(0, (sun.y + 0.02) / 0.06)) * (1 - Math.min(1, Math.max(0, (sun.y - 0.08) / 0.17)));
+		post.grade.value.setRGB(1 + 0.07 * golden, 1 + 0.01 * golden, 1 - 0.07 * golden);
+		post.saturation.value = 1.08 + 0.1 * golden;
 		precip.update(game === 'paused' ? 0 : dt, camera, {
 			type: pr?.type ?? null, rate: pr?.rate ?? 0, wind: windNow, flash, bolt,
 			light: [0.5 * daylight, 0.53 * daylight, 0.58 * daylight].map((v) => v * (pr?.type === 'snow' ? 1.6 : 1)),
@@ -1323,7 +1369,9 @@ async function start() {
 			const cp = camera.position;
 			const agl = cp.y - groundAt(cp.x, cp.z);
 			const low = settings.people === false ? 0 : Math.min(1, Math.max(0, (350 - agl) / 250));
-			people.sim.density = peopleByHour(state.hour) * (pr ? (pr.type === 'snow' ? 0.4 : W.storm ? 0.15 : 0.6) : 1);
+			// weekend (sobota, niedziela) – 10–20 tłumniej na deptakach i rynkach
+			const dow = new Date(Date.UTC(YEAR, 0, state.day)).getUTCDay(), weekend = (dow === 0 || dow === 6) && state.hour > 10 && state.hour < 20 ? 1.7 : 1;
+			people.sim.density = peopleByHour(state.hour) * weekend * (pr ? (pr.type === 'snow' ? 0.4 : W.storm ? 0.15 : 0.6) : 1);
 			if (low > 0 || people.sim.agents.length) {
 				if (game !== 'paused' && game !== 'loading') people.sim.step(dt, { x: cp.x, z: cp.z }, low);
 				people.view.update(camera, pr?.type === 'rain');
@@ -1378,6 +1426,11 @@ async function start() {
 			if (live) air.sim.step(dt, { x: pp.x, z: pp.z });
 			air.view.night.value = night;
 			air.view.update(camera, W.precip || state.cover > 0.85 ? 0 : 1 - state.cover * 0.6, wx.wind);
+			// komunikacja miejska: torowiska i przystanki z kafli / regionu (co 5 s), tramwaje 5–23, autobusy 6–22
+			if (t > transit.at) { transit.at = t + 5; refreshTransit(); }
+			transit.sim.active = hh > 5 && hh < 23;
+			if (live) transit.sim.step(dt, { x: camera.position.x, z: camera.position.z });
+			transit.view.update(camera);
 			// łodzie – z niska (do ~1,5 km nad ziemią)
 			const cp = camera.position;
 			boats.sim.targets = cp.y - groundAt(cp.x, cp.z) < 1500 ? boatTargets(dd, sun.y) : { sail: 0, motor: 0, barge: 0 };
@@ -1546,7 +1599,7 @@ async function start() {
 		out.sort((a, b) => a - b);
 		return out[n >> 1];
 	};
-	window.__lot = { gpuTime, jumpTo, setEnvironment, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, smoke, fireworks, animals, air, boats, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
+	window.__lot = { gpuTime, jumpTo, setEnvironment, get jumpState() { return { jumping, busy }; }, world, shiftOrigin: world ? shiftOrigin : null, birdDots, get minimap() { return minimap; }, people, birds, trains, traffic, audio, precip, renderer, camera, view, atmo, terrain, region, state, post, bench, clouds, frame, plane, chase, forest, roads, buildings, worldShadow, rails, rivers, bridges, details, cityLights, smoke, fireworks, animals, air, boats, transit, get moon() { return moon; }, cockpitCam, setMode, get mode() { return mode; }, menu, get game() { return game; }, get flight() { return flight; } };
 }
 
 start().catch((e) => {

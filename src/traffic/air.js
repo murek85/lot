@@ -9,7 +9,7 @@ import {
 } from 'three/tsl';
 import { GeoBuilder } from '../gfx/lit.js';
 import { makeKind } from './render.js';
-import { onGround } from '../gfx/ground.js';
+import { onGround, towardCamera } from '../gfx/ground.js';
 import { valueNoise } from '../gfx/noise.js';
 import { aircraftModel } from '../gen/aircraftgeo.js';
 
@@ -174,7 +174,7 @@ export function createAirView(sim, atmo, clouds, plane, pixelAngle, cap = 24) {
 				const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, depthTest: false });
 				Object.assign(m, { blending: CustomBlending, blendEquation: AddEquation, blendSrc: OneFactor, blendDst: OneFactor, blendSrcAlpha: ZeroFactor, blendDstAlpha: OneFactor });
 				const P = instancedBufferAttribute(lp), C = instancedBufferAttribute(lc);
-				const world = onGround(P, camXZ);
+				const world = onGround(towardCamera(P), camXZ);
 				m.positionNode = world;
 				const dist = length(cameraPosition.sub(world));
 				const s = max(float(0.6), dist.mul(pixelAngle).mul(3)).min(200);

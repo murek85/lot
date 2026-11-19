@@ -69,7 +69,9 @@
 			"pistes": 1,
 			"runways": 15,
 			"taxiways": 61,
-			"aprons": 21
+			"aprons": 21,
+			"trams": 1947,
+			"busStops": 4902
 		}
 	},
 	"places": [
@@ -5547,5 +5549,5 @@
 			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
 		}
 	],
-	"baked": "2026-11-19T09:57:27.452Z"
+	"baked": "2026-11-19T10:12:37.266Z"
 }

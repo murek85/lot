@@ -5,7 +5,7 @@
 import { Sprite, SpriteNodeMaterial, AdditiveBlending, InstancedBufferAttribute } from 'three/webgpu';
 import { float, vec3, uv, dot, exp, max, cameraPosition, length, instancedBufferAttribute, clamp, fract, step, select, time, uniform, smoothstep } from 'three/tsl';
 import { roadCrossings } from './gen/crossings.js';
-import { onGround } from './gfx/ground.js';
+import { onGround, towardCamera } from './gfx/ground.js';
 
 const CYCLE = 36; // s
 
@@ -56,7 +56,7 @@ export class SignalLights {
 	/** Sprite poświat; glow – uniform jasności (zmierzch × adaptacja), camXZ – do krzywizny. */
 	createSprite(glow, camXZ, pixelAngle) {
 		const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
-		const world = onGround(instancedBufferAttribute(this.pos), camXZ);
+		const world = onGround(towardCamera(instancedBufferAttribute(this.pos)), camXZ);
 		m.positionNode = world;
 		const dist = length(cameraPosition.sub(world));
 		const s = max(float(0.8), dist.mul(pixelAngle).mul(4)).min(30);

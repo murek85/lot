@@ -2,8 +2,8 @@
 // powietrzna z fizycznej atmosfery, poranna mgła w dolinach (otwarty świat), gradacja, wygładzanie czasowe TRAA (drgająca kamera + historia klatek),
 // wyostrzenie (RCAS – oddaje detale rozmyte przez TRAA), poświata jasnych świateł (bloom), efekt miniatury
 // (tilt-shift), opady i błyskawice (osobna scena, po wygładzaniu) i na końcu tone mapping.
-import { RenderPipeline, TempNode, NodeUpdateType, Color } from 'three/webgpu';
-import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length, abs, clamp, smoothstep, acos, dot, fract } from 'three/tsl';
+import { RenderPipeline, TempNode, NodeUpdateType, Color, Matrix4 } from 'three/webgpu';
+import { pass, mrt, output, velocity, Fn, uv, vec3, vec4, If, normalize, uniform, getViewPosition, luminance, mix, max, float, select, exp, length, abs, clamp, smoothstep, acos, dot, fract, vec2, time, convertToTexture } from 'three/tsl';
 import { RELIEF } from './world/reliefshade.js';
 import { worldOffset } from './gfx/ground.js';
 import { valueNoise } from './gfx/noise.js';
@@ -52,6 +52,10 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 	const fog = uniform(0);
 	// tęcza 0..1 (deszcz przy niskim słońcu i zaraz po deszczu) – łuk 42° wokół punktu przeciwsłonecznego, wtórny 51°
 	const rainbow = uniform(0);
+	// przelotne ulewy na horyzoncie 0..1 (smugi deszczu pod chmurami w oddali) i błysk w nich (daleka burza)
+	const showers = uniform(0), showerFlash = uniform(0);
+	// złota godzina: cieplejsza i nasycona barwa przy nisko stojącym słońcu (mnożnik RGB)
+	const grade = uniform(new Color(1, 1, 1));
 
 	/**
 	 * Mgła radiacyjna w obniżeniach terenu (otwarty świat): grunt w punkcie p leży `under` metrów pod poziomem okolicy
@@ -112,23 +116,54 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 			const where = select(d.lessThanEqual(0.0), float(1), float(1).sub(exp(length(offset).mul(-1 / 1500))));
 			out.addAssign(bow.mul(luminance(out)).mul(rainbow).mul(where).mul(0.45));
 		}
+		// ulewy w oddali: kolumny deszczu (w azymucie) od horyzontu do podstawy chmur, w smugach; błysk w kolumnach
+		{
+			// kierunek poziomy na okręgu (bez szwu na ±180°)
+			const hz = normalize(vec2(dir.x, dir.z).add(vec2(1e-5, 0)));
+			const colN = smoothstep(0.42, 0.7, valueNoise(hz.mul(4.5).add(vec2(time.mul(0.004), 0))));
+			const band = smoothstep(-0.03, -0.005, dir.y).mul(float(1).sub(smoothstep(0.035, 0.07, dir.y)));
+			const streak = valueNoise(vec2(hz.x.mul(380).add(hz.y.mul(170)), dir.y.mul(25).add(time.mul(0.6)))).mul(0.5).add(0.5);
+			const farOnly = select(d.lessThanEqual(0.0), float(1), smoothstep(5000, 9000, length(offset)));
+			const shaft = colN.mul(band).mul(streak).mul(farOnly).mul(showers);
+			out.assign(mix(out, veilColor.mul(0.7), shaft.mul(0.75)));
+			out.addAssign(vec3(0.7, 0.75, 1).mul(showerFlash).mul(colN).mul(band.add(smoothstep(0.05, 0.12, dir.y).oneMinus().mul(0.4))).mul(0.5));
+		}
 		// zasłona opadu: rośnie z odległością (niebo – pełna), błysk rozświetla
 		const far = select(d.lessThanEqual(0.0), float(1), float(1).sub(exp(length(offset).mul(-1 / 2500))));
 		out.assign(mix(out, veilColor, far.mul(veil)));
 		out.addAssign(vec3(0.75, 0.8, 1).mul(flash).mul(mix(float(0.35), float(1), select(d.lessThanEqual(0.0), float(1), cloud.a.oneMinus().mul(0.5).add(0.3)))));
 		// gradacja: trochę nasycenia (w świetle liniowym, przed tone mappingiem)
+		out.mulAssign(grade);
 		const lum = luminance(out);
 		return vec4(max(vec3(0), mix(vec3(lum), out, saturation)), 1);
 	});
 
-	const aa = traa(composite(), depth, vel, camera);
+	// wektory ruchu z ruchu kamery: piksel (z głębi) rzutowany macierzą kamery z poprzedniej klatki. Prędkości
+	// z obiektów (MRT) były błędne – three liczy poprzednią pozycję z surowej geometrii, bez positionNode (krzywizna
+	// Ziemi, drzewa i budynki ustawiane w shaderze) – setki pikseli przy stojącej kamerze, TRAA odrzucało historię
+	// i drobne szczegóły iskrzyły. Ruchome obiekty dostają ruch kamery (najwyżej lekka smuga za autem).
+	const prevVP = uniform(new Matrix4());
+	const camVel = convertToTexture(Fn(() => {
+		const st = uv();
+		const d = depth.sample(st).r;
+		const off = camWorld.mul(vec4(getViewPosition(st, d, projInv), 0)).xyz;
+		const clipPrev = select(d.lessThanEqual(0.0), prevVP.mul(vec4(normalize(off), 0)), prevVP.mul(vec4(camPos.add(off), 1)));
+		const ndcPrev = clipPrev.xy.div(clipPrev.w);
+		const ndcCur = vec2(st.x.mul(2).sub(1), st.y.oneMinus().mul(2).sub(1));
+		return vec4(ndcCur.sub(ndcPrev), 0, 1);
+	})());
+	const aa = traa(composite(), depth, camVel, camera);
+	let lastVP = null;
 	// wyostrzenie z adaptacją do kontrastu (0 – najmocniej, 2 – wcale; ustawienie „Wyostrzenie obrazu”)
 	const sharpness = uniform(1);
-	const sharp = sharpen(aa, sharpness);
+	const exposure = uniform(1);
+	// wyostrzenie bez jasnych punktów: latarnie i odblaski (po ekspozycji jaśniejsze od ~bieli) z obrazu
+	// niewyostrzonego – RCAS robił z dalekich świateł ostre, migoczące piksele
+	const sharp0 = sharpen(aa, sharpness);
+	const sharp = vec4(mix(sharp0.rgb, aa.rgb, smoothstep(0.5, 1.2, luminance(aa.rgb).mul(exposure))), 1);
 	// poświata: tylko to, co po ekspozycji jaśniejsze od bieli (odblask słońca na wodzie, światła miast i reflektory
 	// nocą, błyskawice) – obraz przemnożony przez bieżącą ekspozycję (tone mapping jest na końcu, w rendererze),
 	// więc próg działa tak samo w południe i w nocy; wynik z powrotem w jednostkach sceny
-	const exposure = uniform(1);
 	const glowStrength = uniform(0.3);
 	const glow = bloom(sharp.rgb.mul(exposure), glowStrength, 0.55, 1.0);
 	glow.smoothWidth.value = 0.6;
@@ -153,14 +188,21 @@ export function createPost(renderer, scene, camera, atmo, clouds, precip = null,
 	 * jednej klatki są błędne (three trzyma poprzednie macierze kamery u siebie), więc lepiej nie sięgać do historii.
 	 * TRAA zaczyna od nowa przy zmianie rozmiaru – udajemy ją, psując zapamiętany rozmiar historii.
 	 */
-	const resetHistory = () => { if (aa._historyRenderTarget) aa._historyRenderTarget.width = 0; };
+	const resetHistory = () => { if (aa._historyRenderTarget) aa._historyRenderTarget.width = 0; lastVP = null; };
 	/** Ustawienia obrazu: glow 0..2 (poświata, 0 – wyłączona), sharp 0..1 (wyostrzenie, 0 – wyłączone). */
 	const setLook = ({ glow: g, sharp: sh }) => {
 		if (g !== undefined) glowStrength.value = 0.3 * g;
 		if (sh !== undefined) sharpness.value = 2 - 2 * sh;
 	};
 	return {
-		pipeline, scenePass, saturation, flash, veil, veilColor, fog, rainbow, tiltShift: ts, resetHistory, setLook,
-		render: () => { exposure.value = renderer.toneMappingExposure; pipeline.render(); },
+		pipeline, scenePass, saturation, flash, veil, veilColor, fog, rainbow, showers, showerFlash, grade, tiltShift: ts, resetHistory, setLook,
+		render: () => {
+			exposure.value = renderer.toneMappingExposure;
+			camera.updateMatrixWorld();
+			const cur = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+			prevVP.value.copy(lastVP ?? cur);
+			pipeline.render();
+			lastVP = cur;
+		},
 	};
 }

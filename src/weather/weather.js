@@ -122,7 +122,8 @@ const FOG_SEASON = { spring: 0.75, summer: 0.55, autumn: 1, winter: 0.6 };
  * hour – godzina, season – id pory roku, wind – prędkość wiatru (m/s), weather – id pogody.
  */
 export function valleyFog(hour, season, wind, weather) {
-	const morning = smooth(4, 5.5, hour) * (1 - smooth(7.5, 10, hour));
+	// rano mgła radiacyjna, wieczorem (po zachodzie) – lżejsza mgiełka zbierająca się w obniżeniach
+	const morning = Math.max(smooth(4, 5.5, hour) * (1 - smooth(7.5, 10, hour)), 0.45 * smooth(20, 21.5, hour) * (1 - smooth(23, 24, hour)));
 	const calm = 1 - smooth(2.5, 6.5, wind);
 	return Math.min(1, morning * calm * (FOG_WEATHER[weather] ?? 0.6) * (FOG_SEASON[season] ?? 0.6));
 }

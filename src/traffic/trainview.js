@@ -10,7 +10,7 @@ import {
 	length, cameraPosition, step, abs, fract,
 } from 'three/tsl';
 import { GeoBuilder } from '../gfx/lit.js';
-import { onGround, cityLight, cityUniforms } from '../gfx/ground.js';
+import { onGround, cityLight, cityUniforms, towardCamera } from '../gfx/ground.js';
 import { CARS } from './trains.js';
 
 const A = [1, 1, 1], B = [1, 1, 0], WIN = [0, 0, 1], DARK = [0.06, 0.06, 0.065], ROOF = [0.28, 0.29, 0.3], BOGIE = [0.05, 0.05, 0.05];
@@ -134,7 +134,7 @@ function makeLights(cap, camXZ, pixelAngle) {
 	const col = new InstancedBufferAttribute(new Float32Array(cap * 3), 3);
 	pos.setUsage(35048); col.setUsage(35048);
 	const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
-	const world = onGround(instancedBufferAttribute(pos), camXZ);
+	const world = onGround(towardCamera(instancedBufferAttribute(pos)), camXZ);
 	m.positionNode = world;
 	const s = max(float(1.6), length(cameraPosition.sub(world)).mul(pixelAngle).mul(7)).min(45);
 	m.scaleNode = vec2(s, s);

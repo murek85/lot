@@ -158,3 +158,30 @@ test('ruch w tle: liniowce przelatują, podejście schodzi 3° do progu, łodzie
 	for (let t = 0; t < 600; t++) boats.step(0.5, { x: 0, z: 0 });
 	assert.ok(boats.boats.length > 0 && boats.boats.every((b) => Math.abs(b.x) < 500));
 });
+
+test('komunikacja miejska: tramwaj jedzie po torze i przechodzi na następny odcinek, autobus stoi na przystanku', async () => {
+	const { TransitSim } = await import('../src/traffic/transit.js');
+	const sim = new TransitSim({ groundAt: () => 0, seed: 3 });
+	// dwa odcinki toru stykające się w (1000, 0)
+	sim.setTracks([[0, 0, 500, 0, 1000, 0], [1000, 0, 1000, 800]]);
+	sim.stops = [{ x: 0, z: 50, hx: 1, hz: 0 }];
+	for (let t = 0; t < 400; t++) sim.step(0.5, { x: 0, z: 0 });
+	assert.ok(sim.trams.length >= 1);
+	for (const a of sim.trams) assert.ok(Math.abs(a.z) < 1 || Math.abs(a.x - 1000) < 1, 'tramwaj na torze');
+	// przystanek: autobus ~12% czasu
+	let seen = 0;
+	for (let t = 0; t < 2400; t++) { sim.step(0.5, { x: 0, z: 0 }); seen += sim.buses.length; }
+	assert.ok(seen > 100 && seen < 1000, `autobus na przystanku ${seen}`);
+});
+
+test('komunikacja miejska: odświeżenie tych samych torowisk nie kasuje tramwajów', async () => {
+	const { TransitSim } = await import('../src/traffic/transit.js');
+	const sim = new TransitSim({ groundAt: () => 0, seed: 5 });
+	const lines = () => [[0, 0, 1500, 0], [1500, 0, 1500, 1500]];
+	sim.setTracks(lines());
+	for (let t = 0; t < 100; t++) sim.step(0.5, { x: 0, z: 0 });
+	const n = sim.trams.length;
+	assert.ok(n > 0);
+	sim.setTracks(lines());
+	assert.equal(sim.trams.length, n);
+});

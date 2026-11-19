@@ -8,7 +8,7 @@ import { tileToLocal, clipLine, clipRing } from './tiles.js';
 import { ringArea } from './mvt.js';
 import { roadInfo, buildingInfo, landmarkInfo, partInfo, num } from './osmtags.js';
 
-export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'parts', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places', 'cemeteries', 'solar', 'aerialways', 'pistes', 'landuse', 'aeroways'];
+export const LOT_LAYERS = ['roads', 'rails', 'platforms', 'buildings', 'parts', 'waterways', 'water', 'power', 'landmarks', 'tree_rows', 'stations', 'crossings', 'places', 'cemeteries', 'solar', 'aerialways', 'pistes', 'landuse', 'aeroways', 'trams'];
 const RAIL = { rail: 0, light_rail: 0, preserved: 0, narrow_gauge: 1, disused: 2, abandoned: 3 };
 const WATERWAY = { river: 12, canal: 6, stream: 2.5, ditch: 1.2, drain: 1.2 };
 const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
@@ -18,7 +18,7 @@ const yes = (v) => v != null && v !== 'no' && v !== '0' && v !== 'false';
  * treeRows, stations, crossings, platforms, cover: [{ cls, rings }] (woda), places } – współrzędne w decymetrach.
  */
 export function convertLotTile(tile, z, x, y, opts) {
-	const out = { roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [], cemeteries: [], solar: [], aerialways: [], pistes: [], construction: [], runways: [], taxiways: [], aprons: [] };
+	const out = { roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], landmarks: [], treeRows: [], stations: [], crossings: [], platforms: [], cover: [], places: [], cemeteries: [], solar: [], aerialways: [], pistes: [], construction: [], runways: [], taxiways: [], aprons: [], trams: [], busStops: [] };
 	const L = tile.layers;
 	const ext = Object.values(L)[0]?.extent ?? 4096;
 	const T = tileToLocal(z, x, y, ext, opts.center);
@@ -131,6 +131,11 @@ export function convertLotTile(tile, z, x, y, opts) {
 	// 1 – orczyk], trasy: [oświetlona, linia lub obrys, 1 – obrys]
 	const outer = (f, fn) => { if (f.type === 3) for (const ring of f.geom) { const cl = ringArea(ring) > 0 && clipRing(ring, ext); if (cl) fn(dm(cl)); } };
 	for (const f of L.solar?.features ?? []) outer(f, (c) => out.solar.push(c));
+	// tramwaje: linie torowisk (dm), przystanki autobusowe: [x, z] (dm), z wnętrza kafla
+	for (const f of L.trams?.features ?? []) {
+		if (f.type === 2 && !yes(f.props.tunnel)) lines(f, (c) => out.trams.push(c));
+		else if (f.type === 1) { const m = point(f); if (m) out.busStops.push([Math.round(m[0] * 10), Math.round(m[1] * 10)]); }
+	}
 	// lotniska: pasy i drogi kołowania – [szerokość dm, linia dm], płyty postojowe – obrysy
 	for (const f of L.aeroways?.features ?? []) {
 		const a = f.props.aeroway, w = num(String(f.props.width ?? '').replace(/\s*m$/, ''));

@@ -5,7 +5,7 @@
 import { Sprite, SpriteNodeMaterial, AdditiveBlending, DataTexture, RedFormat, UnsignedByteType, LinearFilter, RepeatWrapping, InstancedBufferAttribute, Vector2 } from 'three/webgpu';
 import { uniform, texture, vec3, float, uv, dot, exp, max, cameraPosition, length, instancedBufferAttribute, clamp, step } from 'three/tsl';
 import { densify } from '../roads.js';
-import { onGround } from '../gfx/ground.js';
+import { onGround, towardCamera } from '../gfx/ground.js';
 import { rng } from '../clouds/noise3d.js';
 import { lampPositions, windowsLit } from '../citylights.js';
 import { gridHeightAt } from './streamer.js';
@@ -143,14 +143,18 @@ export class WorldLights {
 		this.pos.setUsage(35048); this.col.setUsage(35048);
 		const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
 		const center = instancedBufferAttribute(this.pos), color = instancedBufferAttribute(this.col);
-		const world = onGround(center, this.U.camXZ);
+		// ~1,2% odległości ku kamerze (wzdłuż promienia – na ekranie bez zmian): z daleka poświata nie chowa się za
+		// grubszym terenem dalekiego planu (drganie kamery TAA zasłaniało ją co klatkę – migotanie)
+		const world = onGround(towardCamera(center), this.U.camXZ);
 		m.positionNode = world;
 		const dist = length(cameraPosition.sub(world));
-		const s = max(float(1.2), dist.mul(pixelAngle).mul(4)).min(80);
+		// z daleka szersza, miększa plamka (~7 px zamiast ~4) o tej samej łącznej jasności – bez iskrzenia pojedynczych
+			// pikseli pod wyostrzaniem i wygładzaniem czasowym
+			const s0 = max(float(1.2), dist.mul(pixelAngle).mul(4)), s = max(float(1.2), dist.mul(pixelAngle).mul(7)).min(400), dimS = s0.div(s).pow(2);
 		m.scaleNode = vec3(s, s, 1).xy;
 		const q = uv().sub(0.5).mul(2);
 		const r2 = dot(q, q);
-		const f = exp(r2.mul(-9)).add(float(0.06).div(r2.mul(12).add(1))).mul(clamp(float(1).sub(r2), 0, 1));
+		const f = exp(r2.mul(-6)).add(float(0.06).div(r2.mul(12).add(1))).mul(clamp(float(1).sub(r2), 0, 1)).mul(dimS).mul(0.67); // 0,67 – miększy rdzeń (−6 zamiast −9) ma 1,5× większą całkę
 		// powietrze gasi dalekie światła (~1/3 na 30 km) – łuna po horyzont, ale słabsza niż ulica pod samolotem
 		m.colorNode = color.mul(f.mul(this.U.glow).mul(1.6).mul(exp(dist.mul(-1 / 30000))));
 		this.sprite = new Sprite(m);

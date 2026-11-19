@@ -7,7 +7,7 @@ import {
 	Fn, float, vec2, vec3, floor, attribute, varying, positionLocal, uniform, max, mix, smoothstep, step, fract, dot, normalize,
 	cameraPosition, pow, select, fwidth, instancedBufferAttribute, uv, exp, clamp, length, time,
 } from 'three/tsl';
-import { onGround, cityLight, cityUniforms, worldOffset, snowCover } from './gfx/ground.js';
+import { onGround, cityLight, cityUniforms, worldOffset, snowCover, towardCamera } from './gfx/ground.js';
 import { hash12 } from './gfx/noise.js';
 import { valueNoise } from './gfx/noise.js';
 import { wetAlbedo, puddles, wetSheen } from './gfx/wet.js';
@@ -94,7 +94,7 @@ export function beaconMaterial(posAttr, phaseAttr, camXZ, pixelAngle) {
 	const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
 	const center = instancedBufferAttribute(posAttr);
 	const ph = instancedBufferAttribute(phaseAttr);
-	const world = onGround(center, camXZ);
+	const world = onGround(towardCamera(center), camXZ);
 	m.positionNode = world;
 	// z daleka nie mniejsze niż kilka pikseli – kominy widać z kilometrów jako czerwone punkty
 	const dist = length(cameraPosition.sub(world));
@@ -286,7 +286,10 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 			select(sh.lessThan(0.75), vec3(1.0, 0.75, 0.1), select(sh.lessThan(0.9), vec3(1.0, 0.3, 0.85), vec3(1.0))))));
 		const sign = step(2.3, buv.y).mul(step(buv.y, 2.8)).mul(step(sh, 0.7)).mul(detail).add(float(0.06).mul(detail.oneMinus()).mul(step(buv.y, 3)));
 		const shops = shopC.mul(shopWin.mul(detail).add(float(0.25).mul(detail.oneMinus()).mul(step(buv.y, 3)))).add(signC.mul(sign).mul(2.2));
-		return lit.add(windows.mul(shape).add(shops.mul(shopOn)).mul(1.3).mul(CU.winGlow));
+		// z daleka budynek mniejszy od piksela – świecące okna iskrzyły przy drganiu kamery (TAA); wygaszane do ~35%
+		// (łunę miasta dają poświaty latarni)
+		const farWin = float(1).sub(smoothstep(5000, 20000, length(cameraPosition.sub(vWorld))).mul(0.65));
+		return lit.add(windows.mul(shape).add(shops.mul(shopOn)).mul(1.3).mul(CU.winGlow).mul(farWin));
 	})();
 	return m;
 }

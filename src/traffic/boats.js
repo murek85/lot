@@ -7,13 +7,14 @@ import { GeoBuilder } from '../gfx/lit.js';
 import { makeKind } from './render.js';
 
 const rng = (seed) => { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; }; };
-export const BOAT_KINDS = { sail: { speed: 3, look: 25 }, motor: { speed: 9, look: 40 }, barge: { speed: 3, look: 90 } };
-const HULLS = { sail: [[0.9, 0.9, 0.88], [0.15, 0.25, 0.5], [0.6, 0.1, 0.08]], motor: [[0.92, 0.92, 0.9], [0.1, 0.12, 0.15], [0.7, 0.55, 0.1]], barge: [[0.12, 0.13, 0.15], [0.35, 0.12, 0.08]] };
+export const BOAT_KINDS = { sail: { speed: 3, look: 25 }, motor: { speed: 9, look: 40 }, barge: { speed: 3, look: 90 }, ship: { speed: 5, look: 400 } };
+// ship – statek wycieczkowy / prom: tylko na dużych wodach (woda ~400 m dookoła)
+const HULLS = { ship: [[0.9, 0.9, 0.88], [0.2, 0.25, 0.4]], sail: [[0.9, 0.9, 0.88], [0.15, 0.25, 0.5], [0.6, 0.1, 0.08]], motor: [[0.92, 0.92, 0.9], [0.1, 0.12, 0.15], [0.7, 0.55, 0.1]], barge: [[0.12, 0.13, 0.15], [0.35, 0.12, 0.08]] };
 
 /** Ile łodzi teraz: dzień roku, słońce (sun.y). */
 export function boatTargets(day, sunY) {
 	const summer = day >= 125 && day <= 265 && sunY > 0.05;
-	return { sail: summer ? 8 : 0, motor: summer ? 4 : 0, barge: day >= 60 && day <= 340 ? 2 : 0 };
+	return { sail: summer ? 8 : 0, motor: summer ? 4 : 0, barge: day >= 60 && day <= 340 ? 2 : 0, ship: day >= 100 && day <= 290 && sunY > 0 ? 2 : 0 };
 }
 
 export class BoatSim {
@@ -24,7 +25,7 @@ export class BoatSim {
 		this.radius = opts.radius ?? 3000;
 		this.random = rng(opts.seed ?? 99);
 		this.boats = [];
-		this.targets = { sail: 0, motor: 0, barge: 0 };
+		this.targets = { sail: 0, motor: 0, barge: 0, ship: 0 };
 	}
 
 	water(x, z) { return this.coverAt(x, z) === 'water'; }
@@ -40,7 +41,7 @@ export class BoatSim {
 	}
 
 	step(dt, c) {
-		const count = { sail: 0, motor: 0, barge: 0 };
+		const count = { sail: 0, motor: 0, barge: 0, ship: 0 };
 		for (const b of this.boats) count[b.kind]++;
 		for (const k of Object.keys(BOAT_KINDS)) for (let i = 0; i < 3 && count[k] < this.targets[k]; i++) { const n = this.boats.length; this.spawn(k, c); if (this.boats.length > n) count[k]++; }
 		const r = this.random, R2 = (this.radius * 1.3) ** 2, keep = [];
@@ -79,6 +80,13 @@ function boatGeometry(kind) {
 		box(-1.1, 1.1, -0.2, 0.8, -3, 3.2, P);
 		box(-0.8, 0.8, 0.8, 1.6, -1.2, 0.8, WH);
 		wake(1.8, 45, 12);
+	} else if (kind === 'ship') {
+		box(-5.5, 5.5, -0.6, 2.4, -24, 22, P); // kadłub
+		box(-4.6, 4.6, 2.4, 5, -18, 12, WH); // pokład pasażerski
+		box(-4.7, 4.7, 3.2, 4.2, -17.5, 11.5, [0.05, 0.06, 0.08]); // okna
+		box(-3.6, 3.6, 5, 7.2, -10, 6, WH); // górny pokład
+		box(-1, 1, 7.2, 10, -6, -3, [0.6, 0.1, 0.08]); // komin
+		wake(10, 90, 25);
 	} else {
 		box(-5, 5, -0.5, 1.6, -40, 38, P);
 		box(-4.6, 4.6, 1.6, 2.4, -32, 30, [0.3, 0.25, 0.18]); // ładunek
@@ -95,7 +103,7 @@ export function createBoatView(sim, atmo, clouds, plane, cap = 64) {
 		objects: Object.values(kinds).map((k) => k.mesh),
 		update(camera) {
 			camXZ.value.set(camera.position.x, camera.position.z);
-			const n = { sail: 0, motor: 0, barge: 0 };
+			const n = { sail: 0, motor: 0, barge: 0, ship: 0 };
 			for (const b of sim.boats) {
 				const k = kinds[b.kind], i = n[b.kind];
 				if (i >= cap) continue;

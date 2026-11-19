@@ -29,7 +29,7 @@ export async function pool(list, n, fn, signal) {
 }
 
 // warstwy brane z własnych kafli gry (io.lotTile) – OpenMapTiles ich nie ma
-const LOT_EXTRA = ['landmarks', 'solar', 'construction', 'aerialways', 'pistes', 'runways', 'taxiways', 'aprons'];
+const LOT_EXTRA = ['landmarks', 'solar', 'construction', 'aerialways', 'pistes', 'runways', 'taxiways', 'aprons', 'trams', 'busStops'];
 const empty = () => ({ roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], cemeteries: [], ...Object.fromEntries(LOT_EXTRA.map((k) => [k, []])) });
 
 /**

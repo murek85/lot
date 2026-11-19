@@ -245,6 +245,7 @@ export function shiftOsm(osm, dx, dz) {
 	for (const c of osm.cemeteries ?? []) sh(c);
 	for (const c of [...(osm.solar ?? []), ...(osm.construction ?? []), ...(osm.aprons ?? [])]) sh(c);
 	for (const a of [...(osm.runways ?? []), ...(osm.taxiways ?? [])]) sh(a[1]);
+	for (const c of [...(osm.trams ?? []), ...(osm.busStops ?? [])]) sh(c);
 	for (const a of [...(osm.aerialways ?? []), ...(osm.pistes ?? [])]) sh(a[1]);
 	for (const p of osm.places) { p.x -= dx; p.z -= dz; }
 }

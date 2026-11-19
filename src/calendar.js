@@ -4,7 +4,7 @@
 // poniżej natężenia z daty), bez przebudowy buforów przy zmianie dnia.
 import { Sprite, SpriteNodeMaterial, AdditiveBlending, InstancedBufferAttribute } from 'three/webgpu';
 import { float, vec3, uv, dot, exp, max, cameraPosition, length, instancedBufferAttribute, clamp, fract, step, select, time, uniform, sin, mix } from 'three/tsl';
-import { onGround } from './gfx/ground.js';
+import { onGround, towardCamera } from './gfx/ground.js';
 import { pointInRing } from './buildgeo.js';
 
 export const CAL = { candle: 0, festive: 1, piste: 2 }; // piste – reflektory tras narciarskich (regiony, zimą)
@@ -67,7 +67,7 @@ export class CalendarLights {
 
 	createSprite(glow, camXZ, pixelAngle) {
 		const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
-		const world = onGround(instancedBufferAttribute(this.pos), camXZ);
+		const world = onGround(towardCamera(instancedBufferAttribute(this.pos)), camXZ);
 		m.positionNode = world;
 		const P = instancedBufferAttribute(this.par), kind = P.x, seed = P.y;
 		const isCandle = kind.lessThan(0.5);

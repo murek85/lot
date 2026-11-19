@@ -1,7 +1,7 @@
 // Wspólne przekształcenie obiektów stojących na ziemi (drogi, tory, budynki, mosty, słupy, aleje): przesunięcie
 // o tyle, o ile przewyższenie rzeźby (suwak) podniosło teren w tym miejscu – sam obiekt zachowuje wysokość – oraz
 // krzywizna Ziemi względem kamery. Dzięki temu obiekty nie odrywają się od terenu przy zmianie przewyższenia.
-import { vec3, dot, texture, uniform, mix, step, fract } from 'three/tsl';
+import { vec3, dot, texture, uniform, mix, step, fract, cameraPosition } from 'three/tsl';
 import { Vector2, Color } from 'three/webgpu';
 import { seasonPalette } from '../weather/seasons.js';
 
@@ -77,6 +77,12 @@ export function onGround(p, camXZ) {
 let CL = null;
 export function setCityLights(cl) { CL = cl; }
 /** Natężenie światła latarni na ziemi w punkcie p (świat). */
+/**
+ * Poświata (sprite) przesunięta o ułamek odległości ku kamerze – wzdłuż promienia, więc na ekranie bez zmian. Z daleka
+ * nie chowa się za grubszym terenem dalekiego planu ani za ścianą, na której wisi (przy drganiu kamery TAA migotała).
+ */
+export const towardCamera = (p, k = 0.012) => p.add(cameraPosition.sub(p).mul(k));
+
 export function cityLight(p) { return CL ? CL.groundLight(p) : vec3(0); }
 /** Uniform odsetka zapalonych okien i jasności świecących elementów (dla budynków). */
 export function cityUniforms() { return CL ? CL.uniforms : null; }

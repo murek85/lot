@@ -47,6 +47,24 @@ layers:
     - key: bridge
     - key: tunnel
     - key: layer
+- id: trams
+  # torowiska tramwajowe (tramwaje jeżdżą ulicami miast) i przystanki autobusowe
+  features:
+  - source: osm
+    geometry: line
+    min_zoom: 14
+    include_when:
+      railway: tram
+    attributes:
+    - key: tunnel
+  - source: osm
+    geometry: point
+    min_zoom: 14
+    include_when:
+      highway: bus_stop
+    attributes:
+    - key: highway
+    - key: shelter
 - id: platforms
   features:
   - source: osm

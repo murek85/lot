@@ -498,7 +498,13 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const capsN = smoothstep(0.5, 0.78, valueNoise(xz.div(23).add(vec2(tt.mul(0.25), tt.mul(-0.17)))));
 			const caps = smoothstep(0.8, 0.95, w2.h.mul(0.5).add(w1.h.mul(0.3)).add(w3.h.mul(0.2))).mul(smoothstep(0.55, 1, windK)).mul(capsN).mul(gust.mul(0.6).add(0.4)).mul(0.7);
 			const lamps = lampReflection(p, R, F).mul(float(1).sub(occ.mul(0.5))); // nocą odbicia latarni z brzegu
-			let water = body.mul(float(1).sub(F)).add(reflected.mul(F)).add(spec).add(vec3(0.6).mul(light).mul(foam.add(caps))).add(lamps);
+			// przyboj na dużych wodach (morze, wielkie zalewy): wiatr ma rozbieg – pod wiatr od punktu daleko do brzegu –
+			// fale łamią się w kilku pasach biegnących ku brzegowi
+			const fetch = src.shoreM ? src.shoreM(xz.sub(wv.div(max(ws, 0.1)).mul(400))) : float(0);
+			const big = smoothstep(150, 500, fetch).mul(smoothstep(0.25, 0.8, windK));
+			const surfBand = smoothstep(0.55, 0.95, sin(shoreM.mul(0.45).add(tt.mul(1.3))).mul(0.5).add(0.5));
+			const surf = float(1).sub(smoothstep(3, 35, shoreM)).mul(surfBand).mul(big).mul(smoothstep(0.35, 0.7, valueNoise(xz.div(9).add(tt.mul(0.2))))).mul(0.8);
+			let water = body.mul(float(1).sub(F)).add(reflected.mul(F)).add(spec).add(vec3(0.6).mul(light).mul(foam.add(caps).add(surf))).add(lamps);
 			// zima: przy mrozie (śnieg na ziemi) jeziora zamarzają – najpierw płytkie przy brzegu, duże tafle później;
 			// lód szary z odbłyskiem nieba, na nim płaty śniegu
 			const freeze = smoothstep(0.55, 0.9, snowCover).mul(float(1).sub(smoothstep(120, 700, shoreM.add(valueNoise(xz.div(140)).mul(200)))));

@@ -10,7 +10,7 @@ import {
 	length, cameraPosition,
 } from 'three/tsl';
 import { GeoBuilder } from '../gfx/lit.js';
-import { onGround, cityLight, cityUniforms } from '../gfx/ground.js';
+import { onGround, cityLight, cityUniforms, towardCamera } from '../gfx/ground.js';
 import { VEHICLES } from './sim.js';
 
 const GLASS = [0.05, 0.06, 0.07], TYRE = [0.03, 0.03, 0.03], WHITE = [1, 1, 1];
@@ -100,7 +100,7 @@ function makeLights(cap, camXZ, pixelAngle) {
 	pos.setUsage(35048); col.setUsage(35048); size.setUsage(35048);
 	const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
 	const center = instancedBufferAttribute(pos), color = instancedBufferAttribute(col);
-	const world = onGround(center, camXZ);
+	const world = onGround(towardCamera(center), camXZ);
 	m.positionNode = world;
 	const dist = length(cameraPosition.sub(world));
 	const k = instancedBufferAttribute(size);
