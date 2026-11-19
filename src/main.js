@@ -27,7 +27,7 @@ import { createFlight, stepFlight, propRpm } from './plane/flight.js';
 import { GameAudio } from './audio/audio.js';
 import { Precipitation } from './weather/precip.js';
 import { buildRoadGraph, edgeGrid } from './traffic/graph.js';
-import { TrafficSim, trafficByHour } from './traffic/sim.js';
+import { TrafficSim, trafficByHour, trainsByHour } from './traffic/sim.js';
 import { createTrafficView } from './traffic/render.js';
 import { SmokeSet } from './smoke.js';
 import { landmarkArrays } from './gen/landmarkgeo.js';
@@ -844,6 +844,35 @@ async function start() {
 		camera.lookAt(camLook);
 		if (camera.fov !== 40 || camera.near !== 0.5) { camera.fov = 40; camera.near = 0.5; camera.updateProjectionMatrix(); }
 	};
+	// dźwięki otoczenia (src/audio/audio.js): tramwaj w pobliżu (dudnienie + dzwonek), syrena statku, wiatrak z bliska,
+	// świerszcze latem wieczorem nisko nad łąką lub polem
+	const ambient = { tram: 0, crickets: 0, turbine: 0, turbineRate: 0.7, bellAt: 0, hornAt: 0, turbAt: 0, turbD: Infinity };
+	const updateAmbient = (dt, t) => {
+		const cp = camera.position, d2 = (a) => Math.hypot(a.x - cp.x, (a.y ?? cp.y) - cp.y, a.z - cp.z);
+		let td = Infinity, tram = null;
+		for (const a of transit.sim.trams) { const d = d2(a); if (d < td) { td = d; tram = a; } }
+		ambient.tram = td < 600 ? Math.min(0.7, 70 / (td + 40)) * (tram && tram.v > 1 ? 1 : 0.3) : 0;
+		if (td < 250 && t > ambient.bellAt && Math.random() < dt / 9) { ambient.bellAt = t + 6; audio.event('tramBell', td); }
+		for (const b of boats.sim.boats) if (b.kind === 'ship') {
+			const d = d2(b);
+			if (d < 2000 && t > ambient.hornAt && Math.random() < dt / 40) { ambient.hornAt = t + 30; audio.event('shipHorn', d); }
+		}
+		// wiatraki: najbliższy w zasięgu ~600 m (co 2 s), szum przy obracających się łopatach (wiatr > 2,5 m/s)
+		if (t > ambient.turbAt) {
+			ambient.turbAt = t + 2;
+			let best = Infinity;
+			const lists = world ? [...world.streamer.chunks.values()].map((ch) => ch.osm?.landmarks ?? []) : [region.osm?.landmarks ?? []];
+			for (const l of lists) for (const [kind, x10, z10, h10] of l) if (kind === 0) best = Math.min(best, Math.hypot(x10 / 10 - cp.x, z10 / 10 - cp.z, cp.y - groundAt(x10 / 10, z10 / 10) - h10 / 10));
+			ambient.turbD = best;
+		}
+		const spin = Math.min(1, Math.max(0, (wx.wind.speed - 2.5) / 5.5));
+		ambient.turbine = ambient.turbD < 600 ? Math.min(1, 90 / (ambient.turbD + 30)) * spin : 0;
+		ambient.turbineRate = 0.35 + spin * 0.4; // ~3 łopaty × 14 obr./min
+		// świerszcze: lato (VI–VIII), od zmierzchu do północy, ciepło (bez opadu), kamera nisko nad łąką lub polem
+		const agl = cp.y - groundAt(cp.x, cp.z), cov = coverAt(cp.x, cp.z), h = state.hour;
+		const season = state.day > 160 && state.day < 245, evening = h > 19.5 || h < 1, dry = !['rain', 'storm', 'snow'].includes(env.weather);
+		ambient.crickets = season && evening && dry && (cov === 'grass' || cov === 'crop') ? Math.max(0, 1 - agl / 250) : 0;
+	};
 	const timer = new Timer();
 	let frames = 0, fpsTime = 0;
 	const compassCanvas = $('compass-c'), compassCtx = compassCanvas.getContext('2d');
@@ -1305,7 +1334,8 @@ async function start() {
 			const on = level > 0;
 			for (const o of traffic.view.objects) if (!on) o.visible = false;
 			if (on) {
-				traffic.sim.density = level * trafficByHour(state.hour) * (pr ? (pr.type === 'snow' ? 0.55 : 0.8) : 1);
+				const dw = new Date(Date.UTC(YEAR, 0, state.day)).getUTCDay();
+				traffic.sim.density = level * trafficByHour(state.hour, dw === 0 || dw === 6) * (pr ? (pr.type === 'snow' ? 0.55 : 0.8) : 1);
 				const c = mode === 'free' && game !== 'menu' ? view.target : plane.model.position;
 				if (game !== 'paused' && game !== 'loading') traffic.sim.step(dt, { x: c.x, z: c.z });
 				traffic.view.update(camera, cityLights ? cityLights.uniforms.street.value : 0);
@@ -1314,11 +1344,13 @@ async function start() {
 
 		// pociągi: wokół samolotu (w widoku swobodnym – celu kamery); dźwięk – najbliższy wagon i sygnały przy odjeździe
 		let trainNear = 0, trainSpeed = 0;
+		updateAmbient(dt, t);
 		if (trains) {
 			const on = settings.trains !== false;
 			for (const o of trains.view.objects) if (!on) o.visible = false;
 			if (on) {
 				const c = mode === 'free' && game !== 'menu' ? view.target : plane.model.position;
+				trains.sim.density = trainsByHour(state.hour); // nocą mało pociągów, szczyty rano i po południu
 				if (game !== 'paused' && game !== 'loading') trains.sim.step(dt, { x: c.x, z: c.z });
 				trains.view.update(camera);
 				const cp = camera.position;
@@ -1359,6 +1391,7 @@ async function start() {
 		{
 			const cp = camera.position, agl = cp.y - groundAt(cp.x, cp.z);
 			animals.sim.weights = agl < 700 ? animalWeights(state.day, state.hour, sun.y) : { cow: 0, deer: 0 };
+			animals.sim.evening = state.hour > 18; // krowy schodzą z pastwiska
 			const pp = plane.model.position;
 			if (game !== 'paused' && game !== 'loading') animals.sim.step(dt, { x: cp.x, z: cp.z }, game === 'flying' ? { x: pp.x, y: pp.y, z: pp.z } : null);
 			animals.view.update(camera);
@@ -1402,7 +1435,8 @@ async function start() {
 			distance: camera.position.distanceTo(plane.model.position),
 			weather: { rain: pr?.type === 'rain' ? pr.rate : 0, snow: pr?.type === 'snow' ? pr.rate : 0, wind: windNow.speed },
 			traffic: trafficNoise(),
-			train: trainNear, trainSpeed, crowd,
+			train: Math.max(trainNear, ambient.tram), trainSpeed: ambient.tram > trainNear ? 8 : trainSpeed, crowd,
+			crickets: ambient.crickets, turbine: ambient.turbine, turbineRate: ambient.turbineRate,
 		});
 		const simDt = game === 'paused' || game === 'loading' ? 0 : dt;
 		plane.update(flight, simDt, key, state.haze, rpm, controls, keyE, keyTint);
@@ -1429,6 +1463,7 @@ async function start() {
 			// komunikacja miejska: torowiska i przystanki z kafli / regionu (co 5 s), tramwaje 5–23, autobusy 6–22
 			if (t > transit.at) { transit.at = t + 5; refreshTransit(); }
 			transit.sim.active = hh > 5 && hh < 23;
+			transit.sim.night = !transit.sim.active;
 			if (live) transit.sim.step(dt, { x: camera.position.x, z: camera.position.z });
 			transit.view.update(camera);
 			// łodzie – z niska (do ~1,5 km nad ziemią)

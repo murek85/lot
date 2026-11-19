@@ -177,6 +177,30 @@ export class GameAudio {
 		this.chain(this.noise(), this.filter('bandpass', 700, 0.5), this.trafficGain, this.bus);
 		this.chain(this.noise(), this.filter('lowpass', 160, 0.7), this.gain(1.2), this.trafficGain);
 
+		// świerszcze (letnie wieczory nad łąkami i polami): wysoki ton w seriach cyknięć
+		this.cricketGain = this.gain(0);
+		const chirp = this.gain(0);
+		const cr = c.createOscillator();
+		cr.type = 'square';
+		cr.frequency.value = 4400;
+		this.chain(cr, this.filter('bandpass', 4400, 6), chirp, this.cricketGain, this.bus);
+		const chirpLfo = c.createOscillator();
+		chirpLfo.type = 'square';
+		chirpLfo.frequency.value = 23; // cyknięcia
+		const chirpSlow = c.createOscillator();
+		chirpSlow.frequency.value = 0.9; // serie
+		this.chain(chirpLfo, this.gain(0.5), chirp.gain);
+		this.chain(chirpSlow, this.gain(0.4), chirp.gain);
+		chirp.gain.value = 0.5;
+		// wiatrak z bliska: szum łopat („wuuch”) w rytmie przejść łopat obok wieży
+		this.turbineGain = this.gain(0);
+		const swoosh = this.gain(0.5);
+		this.chain(this.noise(), this.filter('bandpass', 420, 0.8), swoosh, this.turbineGain, this.bus);
+		this.swooshOsc = c.createOscillator();
+		this.swooshOsc.frequency.value = 0.7;
+		this.chain(this.swooshOsc, this.gain(0.5), swoosh.gain);
+		for (const o of [cr, chirpLfo, chirpSlow, this.swooshOsc]) o.start();
+
 		// toczenie po ziemi: niski szum i dudnienie
 		this.groundGain = this.gain(0);
 		this.chain(this.noise(), this.filter('lowpass', 140, 1.5), this.gain(2.2), this.groundGain, this.bus);
@@ -267,6 +291,11 @@ export class GameAudio {
 		set(this.windGain.gain, L.wind * 0.9);
 		set(this.groundGain.gain, L.ground * 0.6);
 		set(this.hornGain.gain, L.stall * 0.25);
+		// otoczenie spoza miksu warstw: świerszcze i wiatrak (0..1, z odległości – main.js)
+		const amb = this.vol.ambient * (s.view === 'cockpit' ? 0.25 : 1);
+		set(this.cricketGain.gain, (s.crickets ?? 0) * 0.02 * amb);
+		set(this.turbineGain.gain, (s.turbine ?? 0) * 0.5 * amb);
+		set(this.swooshOsc.frequency, Math.max(0.05, s.turbineRate ?? 0.7));
 	}
 
 	// ---------- zdarzenia ----------
@@ -322,6 +351,17 @@ export class GameAudio {
 			if (near > 0.6) this.burst({ type: 'highpass', f: 1200, f2: 300, q: 0.6, dur: 0.6, gain: 0.6 * g * near, attack: 0.003 });
 			this.burst({ f: 260 * (0.5 + near), f2: 45, q: 0.9, dur: 4 + 3 * (1 - near), gain: g, attack: 0.05 + (1 - near) * 0.4 });
 			this.burst({ f: 110, q: 1.4, dur: 5.5, gain: 0.8 * g, attack: 0.3 });
+			// echo od chmur i terenu: dalszy grzmot przetacza się dłużej (kilka cichszych odbić)
+			for (const [at, k] of [[1.6, 0.45], [3.4, 0.3], [5.5, 0.18]]) this.burstAt(at * (0.6 + (1 - near) * 0.8), { f: 140, f2: 50, q: 1, dur: 3.5, gain: g * k, attack: 0.4 });
+		} else if (name === 'tramBell') {
+			// dzwonek tramwaju: dwa krótkie metaliczne uderzenia
+			const g = Math.min(1, 80 / (strength + 40)) * v;
+			for (const at of [0, 0.28]) { this.tone({ type: 'triangle', f: 1180, f2: 1150, dur: 0.5, gain: 0.12 * g, at }); this.tone({ type: 'sine', f: 2950, dur: 0.3, gain: 0.05 * g, at }); }
+		} else if (name === 'shipHorn') {
+			// syrena statku: niski, długi ton
+			const g = Math.min(1, 600 / (strength + 300)) * v;
+			this.tone({ type: 'sawtooth', f: 146, f2: 144, dur: 2.6, gain: 0.07 * g, attack: 0.15 });
+			this.burst({ type: 'bandpass', f: 150, q: 3, dur: 2.6, gain: 0.2 * g, attack: 0.15 });
 		} else if (name === 'crash') {
 			this.burst({ f: 900, f2: 90, q: 0.8, dur: 2.4, gain: 1.6 * v }); // uderzenie
 			this.burst({ type: 'bandpass', f: 3200, f2: 700, q: 1.5, dur: 1.4, gain: 0.5 * v, attack: 0.02 }); // gięta blacha

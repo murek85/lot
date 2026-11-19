@@ -95,6 +95,8 @@ export class BirdSim {
 		const alt = rnd(r, S.alt[0], S.alt[1]);
 		const g = {
 			id, S, x, z, alt, birds: [], scared: 0,
+			// część stad szpaków i wron żeruje na polu – siedzą, zrywają się, gdy nadleci samolot
+			grounded: (id === 'starling' || id === 'crow') && cover === 'crop' && r() < 0.35,
 			// cel wędrówki (stado krąży po okolicy), u drapieżnika – środek komina termicznego
 			tx: x, tz: z, retarget: 0, thermal: S.thermal ? { x, z, r: rnd(r, 35, 80), w: (r() < 0.5 ? 1 : -1) * rnd(r, 0.08, 0.14) } : null,
 		};
@@ -116,6 +118,7 @@ export class BirdSim {
 			b.y = this.groundAt(b.x, b.z) + alt + (r() - 0.5) * 8;
 			if (g.thermal) { b.ang = (i / n) * Math.PI * 2; b.ty = b.y; }
 			if (g.vee) { b.slot = i; const p = veeSlot(g.vee, i, S.vee); b.x = p[0]; b.z = p[1]; }
+			if (g.grounded) { b.y = this.groundAt(b.x, b.z) + 0.15; b.vy = 0; b.vx *= 0.01; b.vz *= 0.01; Object.assign(b, { yaw: heading, bank: 0, pitch: 0, glide: 1, glideK: 1 }); }
 			g.birds.push(b);
 		}
 		this.groups.push(g);
@@ -143,6 +146,17 @@ export class BirdSim {
 			const n = g.birds.length || 1;
 			cx /= n; cy /= n; cz /= n; avx /= n; avz /= n;
 			g.x = cx; g.z = cz; g.y = cy;
+			// stado na polu: siedzi, dopóki samolot nie przeleci nisko w pobliżu (~350 m) – wtedy zrywa się i ucieka
+			if (g.grounded) {
+				if (plane && Math.hypot(plane.x - cx, (plane.y - cy) * 1.5, plane.z - cz) < 350) {
+					g.grounded = false; g.scared = 5;
+					this.events.push({ type: 'scare', species: g.id, x: cx, y: cy, z: cz });
+					for (const b of g.birds) { b.vy = 4 + r() * 3; b.vx = (r() - 0.5) * 6; b.vz = (r() - 0.5) * 6; }
+				} else {
+					if ((cx - center.x) ** 2 + (cz - center.z) ** 2 < R2) keep.push(g);
+					continue;
+				}
+			}
 			// płoszenie: samolot bliżej niż ~140 m od stada
 			if (plane) {
 				const d = Math.hypot(plane.x - cx, plane.y - cy, plane.z - cz);

@@ -17,9 +17,17 @@ const CAR_COLORS = [
 ];
 
 /** Natężenie ruchu wg godziny (0..1): szczyty rano i po południu, noc prawie pusto. */
-export function trafficByHour(h) {
+export function trafficByHour(h, weekend = false) {
 	const g = (c, w) => Math.exp(-(((h - c) / w) ** 2));
+	// weekend: bez porannego szczytu do pracy, ruch później i rozłożony (zakupy, wyjazdy)
+	if (weekend) return Math.min(1, 0.1 + 0.55 * g(13.5, 4.5) + 0.12 * g(19, 2));
 	return Math.min(1, 0.12 + 0.5 * g(13, 5.5) + 0.58 * g(7.5, 1.2) + 0.5 * g(16.5, 1.6) + 0.15 * g(20, 2));
+}
+
+/** Pociągi wg pory: nocą (0–4) mało (towarowe), szczyty rano i po południu. */
+export function trainsByHour(h) {
+	const g = (c, w) => Math.exp(-(((h - c) / w) ** 2));
+	return Math.min(1, 0.2 + 0.45 * g(12, 6) + 0.45 * g(7, 1.5) + 0.4 * g(16.5, 1.8) - 0.15 * g(2, 2));
 }
 
 /** Prosty generator liczb pseudolosowych (powtarzalny w testach). */

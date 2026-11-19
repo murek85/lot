@@ -360,7 +360,10 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 		});
 
 		If(wBare.greaterThan(0.002), () => {
-			albedo.addAssign(COL.sand.mul(mix(float(0.8), float(1.1), valueNoise(xz.div(25)))).mul(wBare));
+			// plaże nad morzem (piach tuż nad poziomem morza): jaśniejszy, suchy piach wydm, przy wodzie – ciemny, mokry pas
+			const beach = float(1).sub(smoothstep(2, 9, h)), wetSand = float(1).sub(smoothstep(0.25, 1.1, h));
+			const sand = COL.sand.mul(mix(float(0.8), float(1.1), valueNoise(xz.div(25)))).mul(mix(float(1), float(1.25), beach)).mul(mix(float(1), float(0.55), wetSand));
+			albedo.addAssign(sand.mul(wBare));
 		});
 		If(wWet.greaterThan(0.002), () => {
 			albedo.addAssign(mix(COL.wetland, COL.waterShallow, step(0.6, valueNoise(xz.div(20)))).mul(wWet));

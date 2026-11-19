@@ -26,6 +26,7 @@ export class AnimalSim {
 		this.random = rng(opts.seed ?? 777);
 		this.groups = [];
 		this.weights = { cow: 0, deer: 0 };
+		this.evening = false; // krowy wracają do zabudowań (obory)
 		this.t = 0;
 	}
 
@@ -62,16 +63,31 @@ export class AnimalSim {
 		const keep = [];
 		for (const g of this.groups) {
 			if (!this.weights[g.type] || (g.x - c.x) ** 2 + (g.z - c.z) ** 2 > R2) continue;
-			if (g.type === 'deer' && plane && g.scared <= 0 && Math.hypot(plane.x - g.x, plane.y - this.groundAt(g.x, g.z), plane.z - g.z) < 250) {
+			// sarny płoszy hałas silnika – samolot w promieniu ~450 m (niżej – dalej słychać)
+			if (g.type === 'deer' && plane && g.scared <= 0 && Math.hypot(plane.x - g.x, (plane.y - this.groundAt(g.x, g.z)) * 1.4, plane.z - g.z) < 450) {
 				g.scared = 8;
 				// ucieczka: od samolotu
 				const dx = g.x - plane.x, dz = g.z - plane.z, l = Math.hypot(dx, dz) || 1;
 				g.fx = dx / l; g.fz = dz / l;
 			}
 			if (g.scared > 0) g.scared -= dt;
+			// wieczór: stado krów idzie gęsiego do najbliższych zabudowań, tam znika (w oborze)
+			if (g.type === 'cow' && this.evening && !g.home) {
+				for (let r = 60; r <= 900 && !g.home; r += 60) for (let k = 0; k < 12; k++) {
+					const a = (k / 12) * Math.PI * 2, x = g.x + Math.cos(a) * r, z = g.z + Math.sin(a) * r;
+					if (this.coverAt(x, z) === 'built') { g.home = { x, z }; break; }
+				}
+				g.home ??= { x: g.x, z: g.z };
+			}
 			let cx = 0, cz = 0;
-			for (const a of g.animals) {
-				if (g.scared > 0) {
+			for (const [i, a] of g.animals.entries()) {
+				if (g.home) {
+					// gęsiego: każda krowa za poprzednią, pierwsza – do zabudowań
+					const lead = i ? g.animals[i - 1] : g.home, dx = lead.x - a.x, dz = lead.z - a.z, l = Math.hypot(dx, dz) || 1;
+					a.hx = dx / l; a.hz = dz / l;
+					a.v = i ? (l > 3.5 ? 0.9 : 0) : 0.8;
+					if (!i && l < 25) a.home = true;
+				} else if (g.scared > 0) {
 					a.hx += (g.fx - a.hx) * Math.min(1, dt * 4); a.hz += (g.fz - a.hz) * Math.min(1, dt * 4);
 					a.v = 11;
 				} else {
@@ -97,7 +113,8 @@ export class AnimalSim {
 				cx += a.x; cz += a.z;
 			}
 			g.x = cx / g.animals.length; g.z = cz / g.animals.length;
-			keep.push(g);
+			if (g.animals[0]?.home) g.animals.shift(); // pierwsza krowa weszła do obory
+			if (g.animals.length) keep.push(g);
 		}
 		this.groups = keep;
 	}

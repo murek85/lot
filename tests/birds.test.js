@@ -22,7 +22,7 @@ test('ptaki: gatunek z miejsca, wysokość nad terenem, stado trzyma się razem,
 	assert.ok(sim.groups.length > 4);
 	for (const g of sim.groups) {
 		assert.ok(SPECIES[g.id].cover.includes(g.x < -300 ? 'water' : g.x > 300 ? 'crop' : SPECIES[g.id].cover[0]) || Math.abs(g.x) < 600);
-		for (const b of g.birds) assert.ok(b.y >= 102 - 1e-6 && b.y < 100 + 450, `wysokość ${b.y}`);
+		if (!g.grounded) for (const b of g.birds) assert.ok(b.y >= 102 - 1e-6 && b.y < 100 + 450, `wysokość ${b.y}`); // stada na polu – na ziemi
 		if (SPECIES[g.id].flock && g.birds.length > 3) {
 			const spread = Math.max(...g.birds.map((b) => Math.hypot(b.x - g.x, b.z - g.z)));
 			assert.ok(spread < 120, `stado ${g.id} rozproszone na ${spread} m`);
@@ -98,4 +98,26 @@ test('zwierzęta: krowy latem w dzień na łące, sarny o zmierzchu przy lesie',
 	for (let t = 0; t < 300; t++) sim.step(0.5, { x: 0, z: 0 });
 	assert.ok(sim.agents.length > 0);
 	assert.ok(sim.agents.every((a) => a.type === 'cow' && a.x < 10), 'krowy zostają na łące');
+});
+
+test('stado na polu siedzi, dopóki nie nadleci samolot; krowy wieczorem idą do zabudowań', async () => {
+	const { BirdSim } = await import('../src/fauna/birds.js');
+	const sim = new BirdSim({ groundAt: () => 0, coverAt: () => 'crop', seed: 11 });
+	sim.weights = { starling: 1 };
+	let g;
+	for (let i = 0; i < 80 && !g; i++) { sim.spawn({ x: 0, z: 0 }); g = sim.groups.find((q) => q.grounded); }
+	assert.ok(g, 'stado na polu');
+	for (let t = 0; t < 30; t++) sim.step(0.1, { x: g.x, z: g.z }, { x: g.x + 2000, y: 300, z: g.z });
+	assert.ok(g.grounded && g.birds.every((b) => b.y < 1), 'siedzi');
+	sim.step(0.1, { x: g.x, z: g.z }, { x: g.x + 100, y: 60, z: g.z });
+	assert.ok(!g.grounded && sim.events.some((e) => e.type === 'scare'), 'zerwało się');
+	const { AnimalSim } = await import('../src/fauna/animals.js');
+	const a = new AnimalSim({ groundAt: () => 0, coverAt: (x) => (x > 300 ? 'built' : 'grass'), seed: 2 });
+	a.weights = { cow: 1, deer: 0 };
+	for (let t = 0; t < 20; t++) a.step(0.5, { x: 0, z: 0 });
+	const n0 = a.agents.length;
+	a.evening = true;
+	for (let t = 0; t < 4000; t++) a.step(0.5, { x: 0, z: 0 });
+	a.weights.cow = 0.0; // po zmroku nowe nie przychodzą
+	assert.ok(n0 > 0 && a.agents.length < n0, `krowy zeszły z pastwiska (${n0} → ${a.agents.length})`);
 });

@@ -154,6 +154,7 @@ export function landmarkArrays(list, heightAt, recipes = [], buildings = [], osm
 	solarPanels(body, osm.solar ?? [], heightAt);
 	for (const [drag, line] of osm.aerialways ?? []) skiLift(body, line, drag, heightAt);
 	airport(body, osm, heightAt);
+	streetFurniture(body, osm, heightAt);
 	// ręczne przepisy znanych budowli (src/gen/recipes.js)
 	buildRecipes(body, beacons, recipes, heightAt, buildings);
 	const F = (a) => new Float32Array(a);
@@ -300,6 +301,72 @@ function airport(body, osm, heightAt) {
 			const g = heightAt(x, z);
 			if (!Number.isFinite(g)) continue;
 			placeAircraft(body, big ? 'airliner' : 'light', x, z, g + 0.3, Math.floor(hash(z, x, 12) * 4) * (Math.PI / 2), LIVERY[Math.floor(hash(x, z, 13) * LIVERY.length)]);
+		}
+	}
+}
+
+const GLASS_W = [0.32, 0.38, 0.42], FRAME = [0.22, 0.23, 0.25], WOOD = [0.35, 0.22, 0.12], KIOSK = [0.62, 0.6, 0.52];
+
+/**
+ * Wiaty przystankowe (szyba z tyłu, daszek, ławka) wzdłuż najbliższej drogi, przy części przystanków kiosk albo słup
+ * ogłoszeniowy z afiszami. busStops – [x, z] (dm), roads – drogi kafla.
+ */
+function streetFurniture(body, osm, heightAt) {
+	const stops = osm.busStops ?? [];
+	if (!stops.length) return;
+	// siatka dróg (komórki 100 m) – region ma setki tysięcy dróg i tysiące przystanków
+	const grid = new Map(), C = 100;
+	for (const r of osm.roads ?? []) {
+		if (r[0] > 4) continue;
+		const c = r[5];
+		let last = null;
+		for (let i = 0; i < c.length; i += 2) {
+			const k = `${Math.floor(c[i] / 10 / C)},${Math.floor(c[i + 1] / 10 / C)}`;
+			if (k === last) continue;
+			last = k;
+			let l = grid.get(k);
+			if (!l) grid.set(k, (l = new Set()));
+			l.add(r);
+		}
+	}
+	for (const [sx10, sz10] of stops) {
+		const sx = sx10 / 10, sz = sz10 / 10;
+		// najbliższy odcinek drogi: kierunek i strona (wiata plecami do jezdni nie stoi – szyba od strony chodnika)
+		let best = 900, ux = 1, uz = 0, qx = sx, qz = sz;
+		const near = new Set(), gi = Math.floor(sx / C), gj = Math.floor(sz / C);
+		for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) for (const r of grid.get(`${gi + di},${gj + dj}`) ?? []) near.add(r);
+		for (const r of near) {
+			const c = r[5];
+			for (let i = 2; i < c.length; i += 2) {
+				const ax = c[i - 2] / 10, az = c[i - 1] / 10, dx = c[i] / 10 - ax, dz = c[i + 1] / 10 - az, L2 = dx * dx + dz * dz || 1;
+				const k = Math.max(0, Math.min(1, ((sx - ax) * dx + (sz - az) * dz) / L2)), px = ax + dx * k, pz = az + dz * k;
+				const d2 = (px - sx) ** 2 + (pz - sz) ** 2;
+				if (d2 < best) { best = d2; const l = Math.sqrt(L2); ux = dx / l; uz = dz / l; qx = px; qz = pz; }
+			}
+		}
+		if (best >= 900) continue; // przystanek bez drogi w promieniu 30 m
+		// normalna od drogi ku przystankowi; wiata 2,5 m za krawędzią jezdni
+		let nx = -uz, nz = ux;
+		if ((sx - qx) * nx + (sz - qz) * nz < 0) { nx = -nx; nz = -nz; }
+		const cx = qx + nx * 6, cz = qz + nz * 6, g = heightAt(cx, cz);
+		if (!Number.isFinite(g)) continue;
+		const P = (a, b) => [cx + ux * a + nx * b, cz + uz * a + nz * b];
+		const [b0x, b0z] = P(-2, 0.8), [b1x, b1z] = P(2, 0.8);
+		body.beam(b0x, b0z, b1x, b1z, 0.08, g, g + 2.3, GLASS_W); // szyba tylna
+		const [r0x, r0z] = P(-2.1, 0.2), [r1x, r1z] = P(2.1, 0.2);
+		body.beam(r0x, r0z, r1x, r1z, 1.6, g + 2.3, g + 2.45, FRAME); // daszek
+		for (const a of [-2, 2]) { const [x0, z0] = P(a, -0.4), [x1, z1] = P(a, 0.8); body.beam(x0, z0, x1, z1, 0.06, g, g + 2.3, GLASS_W); } // boki
+		const [l0x, l0z] = P(-1.3, 0.55), [l1x, l1z] = P(1.3, 0.55);
+		body.beam(l0x, l0z, l1x, l1z, 0.4, g + 0.42, g + 0.5, WOOD); // ławka
+		const h = hash(sx, sz, 21);
+		if (h < 0.15) { // kiosk obok wiaty
+			const [k0x, k0z] = P(4, 0.3), [k1x, k1z] = P(6.2, 0.3);
+			body.beam(k0x, k0z, k1x, k1z, 1.8, g, g + 2.4, KIOSK);
+			body.beam(k0x, k0z, k1x, k1z, 2.1, g + 2.4, g + 2.55, FRAME);
+		} else if (h < 0.27) { // słup ogłoszeniowy (walec z afiszami, daszek)
+			const [px, pz] = P(-4, 0.5);
+			body.tube(px, pz, g, g + 2.6, 0.55, 0.55, 10, [0.7, 0.55, 0.35], false);
+			body.tube(px, pz, g + 2.6, g + 2.85, 0.65, 0.2, 10, [0.15, 0.3, 0.2]);
 		}
 	}
 }

@@ -37,7 +37,8 @@ export class TransitSim {
 		this.stops = []; // przystanki: { x, z, hx, hz }
 		this.trams = [];
 		this.buses = [];
-		this.active = true; // w dzień i wieczorem
+		this.active = true; // w dzień i wieczorem (tramwaje; autobusy – co ~4 min)
+		this.night = false; // nocne autobusy: co ~30 min
 		this.t = 0;
 	}
 
@@ -92,10 +93,10 @@ export class TransitSim {
 		}
 		// autobusy: przystanki do ~1,5 km, autobus co ~4 min na ~30 s (faza z położenia przystanku)
 		this.buses.length = 0;
-		if (this.active) for (const s of this.stops) {
+		if (this.active || this.night) for (const s of this.stops) {
 			if (Math.hypot(s.x - c.x, s.z - c.z) > 1500) continue;
-			const ph = (this.t / 240 + hash(s.x, s.z)) % 1;
-			if (ph > 0.12) continue;
+			const period = this.active ? 240 : 1800, ph = (this.t / period + hash(s.x, s.z)) % 1;
+			if (ph > 30 / period) continue; // autobus stoi ~30 s
 			const col = [[0.75, 0.15, 0.1], [0.15, 0.3, 0.6], [0.85, 0.78, 0.2]][Math.floor(hash(s.z, s.x) * 3)];
 			this.buses.push({ x: s.x, z: s.z, y: this.groundAt(s.x, s.z), hx: s.hx, hz: s.hz, color: col });
 		}
