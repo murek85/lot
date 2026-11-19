@@ -7,7 +7,7 @@ import { float, vec3, uv, dot, exp, max, cameraPosition, length, instancedBuffer
 import { onGround } from './gfx/ground.js';
 import { pointInRing } from './buildgeo.js';
 
-export const CAL = { candle: 0, festive: 1 };
+export const CAL = { candle: 0, festive: 1, piste: 2 }; // piste – reflektory tras narciarskich (regiony, zimą)
 const STRIDE = 5; // x, y, z, rodzaj, los
 
 const hash = (x, z) => { const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return s - Math.floor(s); };
@@ -62,6 +62,7 @@ export class CalendarLights {
 		this.pos.setUsage(35048); this.par.setUsage(35048);
 		this.candles = uniform(0.03);
 		this.festive = uniform(0);
+		this.winter = uniform(0);
 	}
 
 	createSprite(glow, camXZ, pixelAngle) {
@@ -82,8 +83,9 @@ export class CalendarLights {
 		const festC = select(fh.lessThan(0.35), vec3(1, 0.7, 0.25), select(fh.lessThan(0.55), vec3(0.9, 0.92, 1), select(fh.lessThan(0.75), vec3(0.25, 0.45, 1),
 			select(fh.lessThan(0.88), vec3(1, 0.15, 0.1), vec3(0.2, 1, 0.35)))));
 		const twinkle = step(0.25, fract(time.mul(0.7).add(seed.mul(13)))).mul(0.7).add(0.3);
-		const on = select(isCandle, step(seed, this.candles), this.festive);
-		const col = select(isCandle, candleC.mul(1.3), festC.mul(twinkle).mul(1.8));
+		const isPiste = kind.greaterThan(1.5);
+		const on = select(isCandle, step(seed, this.candles), select(isPiste, this.winter, this.festive));
+		const col = select(isCandle, candleC.mul(1.3), select(isPiste, vec3(0.9, 0.95, 1).mul(2), festC.mul(twinkle).mul(1.8)));
 		// znicze z daleka – łuna (gasną wolniej niż pojedynczy punkt), iluminacje – do ~6 km
 		m.colorNode = col.mul(f.mul(on).mul(max(glow, 0.1)).mul(4).mul(exp(dist.mul(select(isCandle, float(-1 / 9000), float(-1 / 6000))))));
 		this.sprite = new Sprite(m);
@@ -105,5 +107,5 @@ export class CalendarLights {
 		return n;
 	}
 
-	update(day, hour) { this.candles.value = candlesOn(day, hour); this.festive.value = festiveOn(day); }
+	update(day, hour) { this.candles.value = candlesOn(day, hour); this.festive.value = festiveOn(day); this.winter.value = day >= 335 || day <= 80 ? 1 : 0; }
 }

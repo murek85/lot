@@ -38,38 +38,8 @@ export function chunkLamps(ch) {
 	};
 	const out = [];
 	const r = rng(9090 + (ch.x * 7919 + ch.y) % 100000);
-	// lotniska: światła krawędzi pasa co 60 m (białe), progi (zielone) i końce (czerwone), światła podejścia na
-	// przedłużeniu osi (~900 m, co 30 m), krawędzie dróg kołowania (niebieskie); rodzaje 3–6, bez plam na ziemi
 	const inside = (x, z) => x >= f.x0 && x < f.x0 + f.w && z >= f.z0 && z < f.z0 + f.h;
-	const put = (x, z, kind, dy = 0.6) => { if (inside(x, z)) out.push(x, gridHeightAt(ch, x, z) + dy, z, kind); };
-	for (const [w10, c] of ch.osm.runways ?? []) {
-		const p = [];
-		for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10);
-		if (p.length < 4) continue;
-		const hw = w10 / 20 + 1;
-		for (const [x, z] of lampPositions(densify(p, 20), 30, hw)) put(x, z, 3);
-		for (const [end, nxt] of [[0, 2], [p.length - 2, p.length - 4]]) {
-			const ex = p[end], ez = p[end + 1], dx = ex - p[nxt], dz = ez - p[nxt + 1], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
-			for (let k = -4; k <= 4; k++) { put(ex - uz * k * hw / 4, ez + ux * k * hw / 4, 4); put(ex - uz * k * hw / 4 - ux * 3, ez + ux * k * hw / 4 - uz * 3, 5); }
-			for (let d = 60; d <= 900; d += 30) put(ex + ux * d, ez + uz * d, 3, 1.5);
-		}
-	}
-	for (const [w10, c] of ch.osm.taxiways ?? []) {
-		const p = [];
-		for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10);
-		if (p.length >= 4) for (const [x, z] of lampPositions(densify(p, 20), 25, Math.min(12, w10 / 20) + 0.5)) put(x, z, 6, 0.4);
-	}
-	// oświetlone trasy zjazdowe (zimą): maszty co ~45 m – wzdłuż linii trasy po obu stronach albo po obrysie
-	for (const [lit, c, poly] of ch.osm.pistes ?? []) {
-		if (!lit) continue;
-		const p = [];
-		for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10);
-		if (p.length < 4) continue;
-		for (const [x, z] of lampPositions(densify(p, 20), poly ? 45 : 30, poly ? 0 : 18)) {
-			if (x < f.x0 || x >= f.x0 + f.w || z < f.z0 || z >= f.z0 + f.h) continue;
-			out.push(x, gridHeightAt(ch, x, z) + 10, z, 2);
-		}
-	}
+	extraLamps(ch.osm, (x, z, kind, dy) => { if (inside(x, z)) out.push(x, gridHeightAt(ch, x, z) + dy, z, kind); });
 	for (const [cls, w10, , bridge, , c] of ch.osm.roads) {
 		if (cls < 1 || cls > 4) continue;
 		const p = [];
@@ -83,6 +53,38 @@ export function chunkLamps(ch) {
 	}
 	return new Float32Array(out);
 }
+
+/**
+ * Światła lotnisk i oświetlonych tras zjazdowych z danych (pasy, drogi kołowania, trasy z piste:lit): put(x, z,
+ * rodzaj, wysokość nad terenem). Lotniska: krawędzie pasa co 30 m po obu stronach (3 – białe), progi (4 – zielone)
+ * i końce (5 – czerwone), światła podejścia na przedłużeniu osi (~900 m), krawędzie dróg kołowania (6 – niebieskie).
+ * Trasy (2 – reflektory, tylko zimą): maszty co ~30 m po obu stronach linii trasy albo co ~45 m po obrysie.
+ */
+export function extraLamps(osm, put) {
+	const pts = (c) => { const p = []; for (let i = 0; i < c.length; i += 2) p.push(c[i] / 10, c[i + 1] / 10); return p; };
+	for (const [w10, c] of osm.runways ?? []) {
+		const p = pts(c);
+		if (p.length < 4) continue;
+		const hw = w10 / 20 + 1;
+		for (const [x, z] of lampPositions(densify(p, 20), 30, hw)) put(x, z, 3, 0.6);
+		for (const [end, nxt] of [[0, 2], [p.length - 2, p.length - 4]]) {
+			const ex = p[end], ez = p[end + 1], dx = ex - p[nxt], dz = ez - p[nxt + 1], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
+			for (let k = -4; k <= 4; k++) { put(ex - uz * k * hw / 4, ez + ux * k * hw / 4, 4, 0.6); put(ex - uz * k * hw / 4 - ux * 3, ez + ux * k * hw / 4 - uz * 3, 5, 0.6); }
+			for (let d = 60; d <= 900; d += 30) put(ex + ux * d, ez + uz * d, 3, 1.5);
+		}
+	}
+	for (const [w10, c] of osm.taxiways ?? []) {
+		const p = pts(c);
+		if (p.length >= 4) for (const [x, z] of lampPositions(densify(p, 20), 25, Math.min(12, w10 / 20) + 0.5)) put(x, z, 6, 0.4);
+	}
+	for (const [lit, c, poly] of osm.pistes ?? []) {
+		const p = pts(c);
+		if (lit && p.length >= 4) for (const [x, z] of lampPositions(densify(p, 20), poly ? 45 : 30, poly ? 0 : 18)) put(x, z, 2, 10);
+	}
+}
+
+/** Barwy świateł lotnisk (rodzaje 3–6, extraLamps). */
+export const AIR_LIGHT = { 3: [1, 0.93, 0.8], 4: [0.15, 1, 0.35], 5: [1, 0.08, 0.04], 6: [0.2, 0.35, 1] };
 
 /**
  * Daleki teren (kafle z11 do ~50 km): światła z zabudowy na rastrze pokrycia (~50 m na piksel) – co trzeci piksel
@@ -208,7 +210,7 @@ export class WorldLights {
 			const put = (data, i) => {
 				P[n * 3] = data[i]; P[n * 3 + 1] = data[i + 1]; P[n * 3 + 2] = data[i + 2];
 				if (data[i + 3] === 2 && !this.winter) return; // reflektory tras narciarskich – tylko zimą
-				const AIR = [null, null, null, [1, 0.93, 0.8], [0.15, 1, 0.35], [1, 0.08, 0.04], [0.2, 0.35, 1]][data[i + 3]];
+				const AIR = AIR_LIGHT[data[i + 3]];
 				if (AIR) { C[n * 3] = AIR[0]; C[n * 3 + 1] = AIR[1]; C[n * 3 + 2] = AIR[2]; } else if (data[i + 3]) { C[n * 3] = 0.85; C[n * 3 + 1] = 0.9; C[n * 3 + 2] = 1.0; } else { C[n * 3] = 1.0; C[n * 3 + 1] = 0.62; C[n * 3 + 2] = 0.28; }
 				n++;
 			};

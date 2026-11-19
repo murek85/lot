@@ -1,12 +1,34 @@
 // Mokre powierzchnie w deszczu i po nim (drogi, dachy, ziemia): wsiąknięta woda przyciemnia barwę, cienka warstwa
 // wody i kałuże odbijają niebo (pod pełnym zachmurzeniem – szare), słońce w prześwitach i latarnie nocą.
-import { uniform, float, vec3, max, pow, dot, normalize, reflect, smoothstep, mix, cameraPosition } from 'three/tsl';
-import { valueNoise } from './noise.js';
+import { uniform, float, vec3, max, pow, dot, normalize, reflect, smoothstep, mix, cameraPosition, floor, fract, sin, length, clamp } from 'three/tsl';
+import { valueNoise, hash22 } from './noise.js';
+import { cityLight } from './ground.js';
 
 /** Zmoczenie 0..1: narasta w deszczu (~20 s), schnie po nim (~2 min) – ustawiane w src/main.js. */
 export const wetness = uniform(0);
 /** Natężenie padającego deszczu 0..1 (kręgi na wodzie) – ustawia main.js. */
 export const rainRate = uniform(0);
+
+/**
+ * Kręgi od kropel deszczu na wodzie: nachylenie (vec2) do dodania do fal – komórki 1,6 m, każda w swojej fazie;
+ * z daleka (piksel większy niż ~0,8 m) wygaszone. xz – metry (stałe względem Ziemi), t – czas, fp – wielkość piksela.
+ */
+export function rainRipple(xz, t, fp) {
+	const rc = xz.div(1.6), h = hash22(floor(rc)), ph = fract(t.mul(0.9).add(h.x.mul(7)));
+	const d = fract(rc).sub(h.mul(0.6).add(0.2)), rd = length(d).mul(1.6), front = ph.mul(1.2);
+	const ring = sin(rd.sub(front).mul(18)).mul(float(1).sub(ph)).mul(float(1).sub(smoothstep(front, front.add(0.15), rd)));
+	return d.div(max(rd, 0.05)).mul(ring).mul(0.35).mul(rainRate).mul(float(1).sub(smoothstep(0.15, 0.8, fp)));
+}
+
+/**
+ * Odbicie latarni z brzegu w wodzie: promień odbity R z punktu p sięga wysokości lampy (~7 m) w odległości 7/tg –
+ * tam plama światła latarni (src/citylights.js); F – Fresnel.
+ */
+export function lampReflection(p, R, F) {
+	const l = max(1e-3, length(R.xz)), tanR = max(R.y, 0.01).div(l);
+	const at = p.add(vec3(R.x, 0, R.z).div(l).mul(clamp(float(7).div(tanR), 0, 400)));
+	return cityLight(at).mul(F.mul(4).add(0.15));
+}
 
 /** Barwa mokrej powierzchni: porous – jak mocno woda ją przyciemnia (asfalt ~0,45, dachówka ~0,3, ziemia ~0,25). */
 export const wetAlbedo = (albedo, porous) => albedo.mul(float(1).sub(wetness.mul(porous)));

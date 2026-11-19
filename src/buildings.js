@@ -19,9 +19,10 @@ import { buildBuildingTiles, minRect, polygonArea2, addBuilding, addCoolingTower
 export { buildBuildingTiles, minRect, polygonArea2, addBuilding, addCoolingTower };
 
 const EARTH_R = 6371000;
-export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null, shared = null) {
+/** skip(x, z) – budynek pominięty (stoi tu bryła z ręcznego przepisu, src/gen/recipes.js). */
+export function createBuildings(osm, region, terrain, atmo, clouds, plane, worldShadow = null, shared = null, skip = null) {
 	const terrainH = (x, z) => terrain.meshHeightAt(x, z);
-	const { tiles, count, structures, beacons, smoke } = buildBuildingTiles(osm.buildings, terrainH, region.size / 2 - 30, osm.parts ?? []);
+	const { tiles, count, structures, beacons, smoke } = buildBuildingTiles(osm.buildings, terrainH, region.size / 2 - 30, osm.parts ?? [], skip);
 	return buildingMeshes(tiles, { count, structures, beacons, smoke }, atmo, clouds, plane, worldShadow, shared);
 }
 

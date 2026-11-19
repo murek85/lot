@@ -30,6 +30,30 @@ import { buildRoadGraph, edgeGrid } from './traffic/graph.js';
 import { TrafficSim, trafficByHour } from './traffic/sim.js';
 import { createTrafficView } from './traffic/render.js';
 import { SmokeSet } from './smoke.js';
+import { landmarkArrays } from './gen/landmarkgeo.js';
+import { landmarksFromArrays, updateLandmarkMaterials, updateRotors } from './landmarks.js';
+import { recipesNear, recipeCovers, recipeLanes } from './gen/recipes.js';
+import { pointInRing } from './buildgeo.js';
+
+/**
+ * Przecinki lasu w regionie (linie maski dróg { pts, half }): wyciągi, trasy zjazdowe, pasy i drogi kołowania,
+ * pasy skoczni z przepisów; wielokąty (trasy, farmy fotowoltaiczne, place budowy, płyty lotnisk) – siatka punktów co 10 m.
+ */
+function clearingLines(osm, recipes) {
+	const m = (c) => c.map((v) => v / 10);
+	const out = [];
+	for (const [, c] of osm.aerialways ?? []) out.push({ pts: m(c), half: 7 });
+	for (const [w10, c] of [...(osm.runways ?? []), ...(osm.taxiways ?? [])]) out.push({ pts: m(c), half: w10 / 20 + 15 });
+	for (const l of recipeLanes(recipes)) out.push({ pts: m(l[5]), half: l[1] / 20 });
+	const fill = (c) => {
+		let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+		for (let i = 0; i < c.length; i += 2) { x0 = Math.min(x0, c[i]); x1 = Math.max(x1, c[i]); z0 = Math.min(z0, c[i + 1]); z1 = Math.max(z1, c[i + 1]); }
+		for (let z = z0; z <= z1; z += 100) for (let x = x0; x <= x1; x += 100) if (pointInRing(c, x, z)) out.push({ pts: [x / 10, z / 10, x / 10 + 0.1, z / 10], half: 7 });
+	};
+	for (const [, c, poly] of osm.pistes ?? []) if (poly) fill(c); else out.push({ pts: m(c), half: 17 });
+	for (const c of [...(osm.solar ?? []), ...(osm.construction ?? []), ...(osm.aprons ?? [])]) fill(c);
+	return out;
+}
 import { Fireworks, fireworksRate } from './fireworks.js';
 import { TrainSim } from './traffic/trains.js';
 import { createTrainView } from './traffic/trainview.js';
@@ -161,15 +185,27 @@ async function start() {
 	if (rails) scene.add(...rails.objects);
 	const rivers = region.osm ? createRivers(region.osm, region, terrain, atmo, clouds, plane, worldShadow) : null;
 	if (rivers) scene.add(...rivers.objects);
-	const roads = region.osm ? createRoads(region.osm, region, terrain, atmo, clouds, plane, worldShadow, [...rails.lines, ...rivers.lines]) : null;
+	// region: ręczne przepisy znanych budowli (Spodek, skocznie…) i przecinki lasu pod wyciągami, trasami, lotniskami
+	const recipes = region.osm && !world ? recipesNear(region.meta.center, { x0: -region.size / 2, z0: -region.size / 2, w: region.size, h: region.size }) : [];
+	const roads = region.osm ? createRoads(region.osm, region, terrain, atmo, clouds, plane, worldShadow, [...rails.lines, ...rivers.lines, ...(world ? [] : clearingLines(region.osm, recipes))]) : null;
 	const bridges = region.osm ? createBridges(region.osm, region, terrain, atmo, clouds, plane, worldShadow) : null;
 	if (bridges) scene.add(...bridges.objects, ...bridges.shadowCasters);
 	const details = region.osm ? createDetails(region.osm, region, terrain, atmo, clouds, plane, worldShadow) : null;
 	if (details) scene.add(...details.objects, ...details.shadowCasters);
 	if (roads) scene.add(...roads.objects);
-	const buildings = region.osm ? createBuildings(region.osm, region, terrain, atmo, clouds, plane, worldShadow) : null;
+	const buildings = region.osm ? createBuildings(region.osm, region, terrain, atmo, clouds, plane, worldShadow, null, recipes.length ? (x, z) => recipeCovers(recipes, x, z) : null) : null;
 	if (buildings) scene.add(...buildings.shadowCasters);
 	if (buildings) scene.add(...buildings.objects);
+	// region: punkty orientacyjne, przepisy, dźwigi, fotowoltaika, wyciągi, lotniska (jak kafle otwartego świata)
+	const regionLm = { shared: {}, arrays: null };
+	if (region.osm && !world) {
+		const half = region.size / 2 - 30;
+		const hAt = (x, z) => (Math.abs(x) < half && Math.abs(z) < half ? terrain.meshHeightAt(x, z) : NaN);
+		regionLm.arrays = landmarkArrays(region.osm.landmarks ?? [], hAt, recipes, region.osm.buildings, region.osm);
+		const lm = landmarksFromArrays(regionLm.arrays, atmo, clouds, plane, worldShadow, regionLm.shared);
+		scene.add(...lm.objects, ...lm.shadowCasters);
+		buildings.beacons.push(...regionLm.arrays.beacons); // światła przeszkodowe razem z kominami z obrysów
+	}
 	// czerwone światła przeszkodowe na kominach i chłodniach (nocą)
 	const beacons = buildings?.createBeacons(atmo.u.pixelAngle);
 	if (beacons) scene.add(beacons);
@@ -233,7 +269,10 @@ async function start() {
 	// dym z kominów, para z chłodni, zimą dym z domów (src/smoke.js) – w tej samej nakładce co ptaki
 	const smoke = new SmokeSet(atmo, atmo.u.pixelAngle);
 	if (world) world.view.smoke = smoke;
-	else if (buildings?.smoke) smoke.set('region', buildings.smoke);
+	else if (buildings?.smoke) {
+		smoke.set('region', buildings.smoke);
+		if (regionLm.arrays?.smoke.length) smoke.set('landmarks', regionLm.arrays.smoke);
+	}
 	// fajerwerki w noc sylwestrową (src/fireworks.js) – też w nakładce
 	const fireworks = new Fireworks(atmo.u.pixelAngle);
 	const overlay = { scene: birdDots.scene, build: (d, p) => { birdDots.build(d, p); smoke.build(d, p, birdDots.scene); fireworks.build(d, p, birdDots.scene); air.view.build(d, p, birdDots.scene); } };
@@ -243,7 +282,8 @@ async function start() {
 	 */
 	const runwayEnds = () => {
 		const segs = [];
-		for (const ch of world.streamer.chunks.values()) for (const [, c] of ch.osm?.runways ?? []) if (c.length >= 4) segs.push(c);
+		const lists = world ? [...world.streamer.chunks.values()].map((ch) => ch.osm?.runways ?? []) : [region.osm?.runways ?? []];
+		for (const l of lists) for (const [, c] of l) if (c.length >= 4) segs.push(c);
 		const ends = [];
 		for (const c of segs) for (const [i, j] of [[0, 2], [c.length - 2, c.length - 4]]) ends.push({ x: c[i] / 10, z: c[i + 1] / 10, nx: c[j] / 10, nz: c[j + 1] / 10, c });
 		const out = [];
@@ -1332,7 +1372,7 @@ async function start() {
 		{
 			// statki powietrzne: rodzaje z pory i pogody; końce pasów z kafli (co 5 s); smugi przy pogodnym niebie
 			const live = game !== 'paused' && game !== 'loading', pp = plane.model.position;
-			if (world && t > air.runwaysAt) { air.runwaysAt = t + 5; air.sim.runways = runwayEnds(); }
+			if (t > air.runwaysAt) { air.runwaysAt = world ? t + 5 : Infinity; air.sim.runways = runwayEnds(); }
 			air.sim.targets = airTargets({ day: dd, hour: hh, sunY: sun.y, wind: wx.wind.speed, cover: state.cover, precip: !!W.precip, storm: !!W.storm });
 			air.sim.wind = wx.wind;
 			if (live) air.sim.step(dt, { x: pp.x, z: pp.z });
@@ -1385,6 +1425,7 @@ async function start() {
 		bridges?.update(camera);
 		details?.update(camera);
 		buildings?.update(camera);
+		if (regionLm.arrays) { updateLandmarkMaterials(regionLm.shared, camera.position.x, camera.position.z); updateRotors(dt); }
 		// cienie wokół miejsca, na które patrzymy (samolot albo środek widoku swobodnego)
 		sunDirNow = key;
 		worldShadow.update(mode !== 'free' ? plane.model.position : view.target, key);

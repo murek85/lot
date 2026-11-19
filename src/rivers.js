@@ -3,8 +3,10 @@
 // toń, odbicie nieba z Fresnelem, drobne zmarszczki i odblask słońca; brzegi wygładzone przezroczystością.
 // Do tego linie koryt (z pasem nadbrzeżnym) dla maski lasu.
 import { Mesh, BufferGeometry, BufferAttribute, MeshBasicNodeMaterial, Vector2 } from 'three/webgpu';
-import { Fn, float, vec2, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, pow, dot, normalize, reflect, fwidth, cameraPosition, smoothstep } from 'three/tsl';
-import { onGround, worldOffset } from './gfx/ground.js';
+import { Fn, float, vec2, vec3, attribute, varying, positionLocal, uniform, abs, max, min, clamp, mix, pow, dot, normalize, reflect, fwidth, cameraPosition, smoothstep, length } from 'three/tsl';
+import { onGround, worldOffset, snowCover } from './gfx/ground.js';
+import { rainRipple, lampReflection } from './gfx/wet.js';
+import { TREE_WIND } from './forest.js';
 import { valueNoise } from './gfx/noise.js';
 import { COL } from './gfx/palette.js';
 import { riverArrays } from './objgeo.js';
@@ -72,8 +74,14 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const flow = dist.sub(time.mul(speed));
 		const nA = valueNoise(vec2(across.div(1.6), flow.div(2.6)));
 		const nB = valueNoise(vec2(across.div(0.9).add(3.1), flow.mul(1.2).div(1.3)));
-		const nC = valueNoise(xz.div(1.4).sub(vec2(0, time.mul(0.28)))); // drobna fala od wiatru
-		const wn = normalize(vec3(nA.sub(0.5).mul(0.2).mul(fine), 1, nB.sub(0.5).mul(0.2).add(nC.sub(0.5).mul(0.08)).mul(fine)));
+		// drobna fala od wiatru: płynie z wiatrem, przy ciszy prawie znika, przy silnym – wyraźne zmarszczki
+		const wv = TREE_WIND.v, windK = smoothstep(0.5, 13, length(wv));
+		const nC = valueNoise(xz.sub(wv.mul(time).mul(0.35)).div(1.4));
+		const nD = valueNoise(xz.sub(wv.mul(time).mul(0.5)).div(0.6).add(5.7));
+		const wAmp = mix(float(0.03), float(0.16), windK);
+		const rain = rainRipple(xz, time, fp);
+		const wn = normalize(vec3(nA.sub(0.5).mul(0.2).add(nD.sub(0.5).mul(wAmp)).mul(fine).sub(rain.x), 1,
+			nB.sub(0.5).mul(0.2).add(nC.sub(0.5).mul(wAmp)).mul(fine).sub(rain.y)));
 		// bystrza na stromych ciekach (spadek ~2–6%) i smugi piany przy brzegach szybkiej wody – płyną z nurtem
 		const rapids = smoothstep(0.02, 0.06, slope);
 		// smugi wydłużone z nurtem (wąskie w poprzek, długie wzdłuż), w dwóch skalach
@@ -96,7 +104,12 @@ function makeMaterial(atmo, clouds, plane, worldShadow) {
 		const H = normalize(V.add(sun));
 		const glint = pow(max(0, dot(wn, H)), 400).mul(30).mul(shadow);
 		const foamC = vec3(0.75, 0.78, 0.8).mul(sunE.mul(max(0, sun.y)).mul(shadow).add(atmo.skyIrradiance())).div(Math.PI);
-		return mix(mix(lit, sky, F).add(sunE.mul(glint).mul(F)), foamC, foam.mul(0.7));
+		const water = mix(mix(lit, sky, F).add(sunE.mul(glint).mul(F)), foamC, foam.mul(0.7)).add(lampReflection(vWorld, R, F));
+		// zima: przy mrozie wolne rzeki zamarzają (od brzegów), bystre potoki płyną dalej; lód szary z płatami śniegu
+		const freeze = smoothstep(0.55, 0.9, snowCover).mul(float(1).sub(smoothstep(0.7, 1.6, speed))).mul(smoothstep(0.2, 0.75, edge.add(valueNoise(xz.div(40)).mul(0.5))));
+		const snowOnIce = smoothstep(0.35, 0.7, valueNoise(xz.div(12)).mul(0.6).add(valueNoise(xz.div(3.5)).mul(0.4)));
+		const ice = mix(vec3(0.32, 0.36, 0.4), vec3(0.78, 0.8, 0.84), snowOnIce).div(Math.PI).mul(sunE.mul(max(0, sun.y)).mul(shadow).add(atmo.skyIrradiance())).add(sky.mul(0.04));
+		return mix(water, ice, freeze);
 	})();
 	m.opacityNode = Fn(() => {
 		const fp = max(fwidth(vWorld.x), fwidth(vWorld.z)).max(0.05);

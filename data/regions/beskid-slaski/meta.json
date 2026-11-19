@@ -61,7 +61,15 @@
 			"stations": 77,
 			"crossings": 0,
 			"platforms": 196,
-			"cemeteries": 268
+			"cemeteries": 268,
+			"landmarks": 186,
+			"solar": 108,
+			"construction": 89,
+			"aerialways": 150,
+			"pistes": 270,
+			"runways": 5,
+			"taxiways": 0,
+			"aprons": 4
 		}
 	},
 	"places": [
@@ -5539,5 +5547,5 @@
 			"license": "© OpenMapTiles, dane © współtwórcy OpenStreetMap (ODbL)"
 		}
 	],
-	"baked": "2026-11-18T13:50:34.541Z"
+	"baked": "2026-11-19T09:57:52.511Z"
 }

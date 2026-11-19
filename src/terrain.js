@@ -16,7 +16,7 @@ import { waveMap } from './gfx/waves.js';
 import { COL } from './gfx/palette.js';
 import { forestStand, forestCover, aboveTreeline } from './gfx/stand.js';
 import { TREE_WIND } from './forest.js';
-import { wetness, rainRate } from './gfx/wet.js';
+import { wetness, rainRipple, lampReflection } from './gfx/wet.js';
 
 const EARTH_R = 6371000;
 
@@ -461,12 +461,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			const amp = mix(float(0.25), float(1.15), gust).mul(mix(float(0.18), float(1.7), windK));
 			const w1 = wave(46, [0.030, 0.004], 0), w2 = wave(13, [0.05, -0.012], 0.5), w3 = wave(3.3, [0.14, 0.03], 2.3);
 			let slope = w1.g.mul(0.09).add(w2.g.mul(0.07)).add(w3.g.mul(0.05).mul(float(1).sub(smoothstep(0.4, 3, footprint)))).mul(amp);
-			// deszcz: kręgi od kropel (komórki 1,6 m, każda w swojej fazie), z bliska
-			const rc = xz.div(1.6), rcell = floor(rc), rhs = hash22(rcell), rph = fract(tt.mul(0.9).add(rhs.x.mul(7)));
-			const rd = length(fract(rc).sub(rhs.mul(0.6).add(0.2))).mul(1.6);
-			const ring = sin(rd.sub(rph.mul(1.2)).mul(18)).mul(float(1).sub(rph)).mul(smoothstep(rph.mul(1.2).add(0.15), rph.mul(1.2), rd));
-			const rippleK = rainRate.mul(float(1).sub(smoothstep(0.15, 0.8, footprint)));
-			slope = slope.add(fract(rc).sub(rhs.mul(0.6).add(0.2)).div(max(rd, 0.05)).mul(ring).mul(0.35).mul(rippleK));
+			slope = slope.add(rainRipple(xz, tt, footprint)); // deszcz: kręgi od kropel
 			const wn = normalize(vec3(slope.x.negate(), 1, slope.y.negate()));
 			const V = normalize(cameraPosition.sub(p));
 			const R = reflect(V.negate(), wn);
@@ -502,9 +497,7 @@ export function shadeGround(vFlat, src, atmo, clouds, plane, worldShadow) {
 			// białe grzywy na grzbietach fal przy silnym wietrze (w podmuchach)
 			const capsN = smoothstep(0.5, 0.78, valueNoise(xz.div(23).add(vec2(tt.mul(0.25), tt.mul(-0.17)))));
 			const caps = smoothstep(0.8, 0.95, w2.h.mul(0.5).add(w1.h.mul(0.3)).add(w3.h.mul(0.2))).mul(smoothstep(0.55, 1, windK)).mul(capsN).mul(gust.mul(0.6).add(0.4)).mul(0.7);
-			// nocą odbicia latarni z brzegu: promień odbity sięga wysokości lampy (~7 m) w odległości 7/tg – tam plama światła
-			const lampAt = p.add(vec3(R.x, 0, R.z).div(max(1e-3, length(R.xz))).mul(clamp(float(7).div(max(tanR, 0.01)), 0, 400)));
-			const lamps = cityLight(lampAt).mul(F.mul(4).add(0.15)).mul(float(1).sub(occ.mul(0.5)));
+			const lamps = lampReflection(p, R, F).mul(float(1).sub(occ.mul(0.5))); // nocą odbicia latarni z brzegu
 			let water = body.mul(float(1).sub(F)).add(reflected.mul(F)).add(spec).add(vec3(0.6).mul(light).mul(foam.add(caps))).add(lamps);
 			// zima: przy mrozie (śnieg na ziemi) jeziora zamarzają – najpierw płytkie przy brzegu, duże tafle później;
 			// lód szary z odbłyskiem nieba, na nim płaty śniegu

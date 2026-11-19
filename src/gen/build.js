@@ -28,7 +28,9 @@ export async function pool(list, n, fn, signal) {
 	await Promise.all(Array.from({ length: Math.min(n, list.length) }, worker));
 }
 
-const empty = () => ({ roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], cemeteries: [] });
+// warstwy brane z własnych kafli gry (io.lotTile) – OpenMapTiles ich nie ma
+const LOT_EXTRA = ['landmarks', 'solar', 'construction', 'aerialways', 'pistes', 'runways', 'taxiways', 'aprons'];
+const empty = () => ({ roads: [], rails: [], buildings: [], parts: [], waterways: [], power: [], treeRows: [], stations: [], crossings: [], platforms: [], cemeteries: [], ...Object.fromEntries(LOT_EXTRA.map((k) => [k, []])) });
 
 /**
  * Miejsca startu: podane z nazwy (regiony wbudowane – z odmianą gen/instr, kolejność jak na liście) albo wybrane
@@ -93,6 +95,7 @@ export async function buildRegion(params, io) {
 				const own = convertLotTile(decodeTile(lot, LOT_LAYERS), MAP_Z, x, y, { center });
 				out.buildings = own.buildings;
 				osm.parts.push(...own.parts);
+				for (const k of LOT_EXTRA) osm[k].push(...own[k]);
 			}
 			for (const k of ['roads', 'rails', 'buildings', 'waterways', 'stations', 'platforms', 'cemeteries']) for (const o of out[k]) osm[k].push(o);
 			for (const c of out.cover) rasterizePolygon(cover, coverRes, size, c.rings, c.cls, COVER_PRIORITY);

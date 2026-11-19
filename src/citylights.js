@@ -8,7 +8,8 @@ import { densify } from './roads.js';
 import { onGround } from './gfx/ground.js';
 import { rng } from './clouds/noise3d.js';
 import { SignalLights, signalPositions } from './signals.js';
-import { CalendarLights, candlePositions, festivePositions, festiveOn } from './calendar.js';
+import { CalendarLights, candlePositions, festivePositions, festiveOn, CAL } from './calendar.js';
+import { extraLamps, AIR_LIGHT } from './world/lights.js';
 
 const RES = 4096; // tekstura plam światła (≈11 m na piksel w regionie 46 km)
 const SPACING = 34; // odstęp latarni (m)
@@ -83,11 +84,18 @@ export function createCityLights(osm, region) {
 			lamps.push([x, z, r() < 0.55 ? 0 : 1]); // 0 – sodowa (pomarańczowa), 1 – LED (biała)
 		}
 	}
+	// lotniska (rodzaje 3–6, wysokość dy) i reflektory tras narciarskich (osobno – zimą, w świetlach kalendarza)
+	const pistes = [];
+	extraLamps(osm, (x, z, kind, dy) => {
+		if (Math.abs(x) >= half || Math.abs(z) >= half) return;
+		if (kind === 2) pistes.push([x, z, dy]); else lamps.push([x, z, kind, dy]);
+	});
 
 	// plamy światła: gaussowskie, promień ~16 m (dwie komórki tekstury), sumowane i przycięte
 	const acc = new Float32Array(RES * RES);
 	const cell = size / RES;
-	for (const [x, z] of lamps) {
+	for (const [x, z, kind] of lamps) {
+		if (kind >= 2) continue; // światła lotnisk – bez plam na ziemi
 		const fx = (x + size / 2) / cell - 0.5, fz = (z + size / 2) / cell - 0.5;
 		const i0 = Math.floor(fx), j0 = Math.floor(fz);
 		for (let j = j0 - 2; j <= j0 + 3; j++) for (let i = i0 - 2; i <= i0 + 3; i++) {
@@ -126,9 +134,9 @@ export function createCityLights(osm, region) {
 		createGlows(terrain, pixelAngle) {
 			const n = lamps.length;
 			const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-			lamps.forEach(([x, z, kind], i) => {
-				pos.set([x, terrain.meshHeightAt(x, z) + 7.5, z], i * 3);
-				col.set(kind ? [0.85, 0.9, 1.0] : [1.0, 0.62, 0.28], i * 3);
+			lamps.forEach(([x, z, kind, dy], i) => {
+				pos.set([x, terrain.meshHeightAt(x, z) + (dy ?? 7.5), z], i * 3);
+				col.set(AIR_LIGHT[kind] ?? (kind ? [0.85, 0.9, 1.0] : [1.0, 0.62, 0.28]), i * 3);
 			});
 			const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
 			const center = instancedBufferAttribute(new InstancedBufferAttribute(pos, 3));
@@ -153,7 +161,8 @@ export function createCityLights(osm, region) {
 			signals.set([signalPositions(osm.roads, osm.buildings, hAt)]);
 			calendar = new CalendarLights();
 			sprite.add(calendar.createSprite(U.glow, U.camXZ, pixelAngle));
-			calendar.set([festivePositions(lamps.flatMap(([x, z, k], i) => [x, pos[i * 3 + 1], z, k]), candlePositions(osm.cemeteries ?? [], hAt))]);
+			const pisteLights = pistes.flatMap(([x, z, dy], i) => [x, terrain.meshHeightAt(x, z) + dy, z, CAL.piste, (i * 0.618) % 1]);
+			calendar.set([festivePositions(lamps.flatMap(([x, z, k], i) => [x, pos[i * 3 + 1], z, k]), candlePositions(osm.cemeteries ?? [], hAt)), pisteLights]);
 			return sprite;
 		},
 		/** Godzina lokalna, wysokość słońca (sun.y), adaptacja oka (≤ 1 nocą), kamera. */

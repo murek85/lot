@@ -158,7 +158,9 @@ export function createAirView(sim, atmo, clouds, plane, pixelAngle, cap = 24) {
 				m.colorNode = Fn(() => {
 					occl(vViewZ);
 					const q = uv().sub(0.5).mul(2);
-					const a = clamp(float(1).sub(dot(q, q)), 0, 1).mul(valueNoise(uv().mul(3).add(vA.mul(40))).mul(0.6).add(0.5)).mul(vA);
+					// smuga wysoko nad chmurami: za nimi tylko tyle, ile przepuszczą (przepuszczalność chmur w tym pikselu)
+					const a = clamp(float(1).sub(dot(q, q)), 0, 1).mul(valueNoise(uv().mul(3).add(vA.mul(40))).mul(0.6).add(0.5)).mul(vA)
+						.mul(clouds.output.sample(screenUV).level(0).a.min(1));
 					If(a.lessThan(0.003), () => { Discard(); });
 					return vec4(vLight.mul(vT).add(vIns), a);
 				})();
